@@ -1,0 +1,130 @@
+{
+  "name": "f2t-indexing-bot",
+  "version": "1.0.0",
+  "main": "dist/electron/main",
+  "description": "",
+  "author": {
+    "name": "Iron",
+    "email": "k37844350@gmail.com"
+  },
+  "type": "module",
+  "build": {
+    "appId": "f2t-indexing-bot",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "pyramid-ing",
+        "repo": "prd-naver-kin",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "your.app.category.type"
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "asar": true,
+    "asarUnpack": [
+      "files/**/*"
+    ],
+    "files": [
+      "build/**/*",
+      "dist/electron/**/*",
+      "dist/renderer/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "directories": {
+      "output": "release"
+    }
+  },
+  "scripts": {
+    "lint": "eslint \"{src,test}/**/*.{ts,tsx}\" --fix",
+    "start": "concurrently \"yarn start:renderer\" \"wait-on tcp:5173 && yarn start:main\"",
+    "start:main": "tsc -p tsconfig.electron.json && electron .",
+    "start:renderer": "vite --config vite.config.ts",
+    "debug": "rimraf dist/* && concurrently \"yarn debug:renderer\" \"wait-on tcp:5173 && yarn debug:main\"",
+    "debug:renderer": "cross-env ELECTRON_DEBUG=true NODE_ENV=development vite --config vite.config.ts --debug",
+    "debug:main": "tsc -p tsconfig.electron.json && cross-env ELECTRON_DEBUG=true electron --inspect=9228 .",
+    "clean": "rimraf dist/*",
+    "build": "yarn clean && yarn build:main && yarn build:renderer",
+    "build:main": "tsc -p tsconfig.electron.prod.json",
+    "build:renderer": "vite build --config vite.config.ts",
+    "package": "yarn build && electron-builder",
+    "package-mac": "yarn build && electron-builder --mac",
+    "package-win": "yarn build && electron-builder --win --publish=always"
+  },
+  "dependencies": {
+    "@ant-design/cssinjs": "^1.23.0",
+    "@ant-design/icons": "^5.5.1",
+    "@anthropic-ai/sdk": "^0.40.1",
+    "@langchain/anthropic": "^0.3.15",
+    "@langchain/core": "^0.3.43",
+    "@langchain/openai": "^0.4.8",
+    "@prisma/client": "^6.6.0",
+    "antd": "^5.22.2",
+    "axios": "^1.7.9",
+    "dayjs": "^1.11.13",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.6.2",
+    "file-type": "^19.6.0",
+    "prisma": "^6.6.0",
+    "puppeteer-core": "^23.7.1",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "react": "^18.3.1",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^18.3.1",
+    "react-rnd": "^10.5.2",
+    "react-router-dom": "^7.0.1",
+    "recoil": "^0.7.7",
+    "reflect-metadata": "^0.2.2",
+    "sqlite3": "^5.1.7",
+    "styled-components": "^6.1.16",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.2.0",
+    "@electron-forge/maker-deb": "^7.2.0",
+    "@electron-forge/maker-rpm": "^7.2.0",
+    "@electron-forge/maker-squirrel": "^7.2.0",
+    "@electron-forge/maker-zip": "^7.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@typescript-eslint/eslint-plugin": "^6.3.0",
+    "@typescript-eslint/parser": "^6.3.0",
+    "@vitejs/plugin-react": "^4.5.2",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-devtools-installer": "^3.2.0",
+    "eslint": "^8.47.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.0",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "husky": "^9.1.7",
+    "postcss": "^8.5.3",
+    "postcss-loader": "^8.1.1",
+    "prettier": "^3.0.1",
+    "tailwindcss": "3",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "4.9.5",
+    "vite": "^6.3.5",
+    "vite-plugin-static-copy": "^3.0.0",
+    "wait-on": "^8.0.1"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "yarn": ">=1.22.0"
+  }
+}

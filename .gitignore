@@ -1,0 +1,40 @@
+/tmp
+/out-tsc
+
+/node_modules
+/temp
+/dist
+/release
+.idea
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+/.pnp
+.pnp.js
+/prisma/db.sqlite
+
+.vscode/*
+
+# Added by Claude Task Master
+# Logs
+logs
+*.log
+dev-debug.log
+# Dependency directories
+node_modules/
+# Environment variables
+.env
+# Editor directories and files
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+.DS_Store
+# Task files
+tasks.json
+tasks/
+
+prisma/db.sqlite
