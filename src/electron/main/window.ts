@@ -13,8 +13,8 @@ export function createWindow() {
     },
   })
   if (process.env.ELECTRON_DEBUG) {
-    console.log('Loading dev server at http://localhost:5173')
-    state.mainWindow.loadURL('http://localhost:5173')
+    console.log('Loading dev server at http://localhost:8080')
+    state.mainWindow.loadURL('http://localhost:8080')
   } else {
     const indexPath = path.resolve(require('electron').app.getAppPath(), 'dist/renderer/index.html')
     state.mainWindow.loadFile(indexPath)

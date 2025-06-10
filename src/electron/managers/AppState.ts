@@ -1,7 +1,6 @@
 import { BrowserWindow } from 'electron'
 import * as puppeteer from 'puppeteer-core'
 import { AppState as IAppState } from '../types'
-import { Post } from '../types'
 
 export class AppState implements IAppState {
   private static instance: AppState
@@ -11,9 +10,6 @@ export class AppState implements IAppState {
   naverLoginBrowser: puppeteer.Browser | null = null
   naverLoginPage: puppeteer.Page | null = null
   mainWindow: BrowserWindow | null = null
-
-  // posts 필드 추가
-  posts: Post[] = []
 
   private constructor() {}
 
@@ -30,6 +26,5 @@ export class AppState implements IAppState {
     this.page = null
     this.naverLoginBrowser = null
     this.naverLoginPage = null
-    this.posts = []
   }
 }

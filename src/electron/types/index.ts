@@ -1,16 +1,6 @@
 import { BrowserWindow } from 'electron'
 import * as puppeteer from 'puppeteer-core'
 
-export interface Post {
-  id: number
-  title: string
-  content: string
-  link: string
-  matchedKeywords: string[]
-  aiReply?: string
-  status: 'pending' | 'completed' | 'failed'
-}
-
 export interface Settings {
   id: number
   keywords: string[]
@@ -50,13 +40,4 @@ export interface LoginResponse {
 export interface LoginCheckResponse {
   login: boolean
   message: string
-}
-
-export type PostInput = {
-  title: string
-  content: string
-  link: string
-  matchedKeywords: string[]
-  aiReply?: string
-  status?: 'pending' | 'completed' | 'failed'
 }
