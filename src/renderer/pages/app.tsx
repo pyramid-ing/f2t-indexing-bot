@@ -5,6 +5,7 @@ import styled from 'styled-components'
 import { ipcRenderer } from 'electron'
 import Settings from './Settings'
 import Login from './Login'
+import Blogger from './Blogger'
 import Sidebar from '../components/Sidebar'
 import { checkLoginStatus } from '../utils/auth'
 
@@ -78,6 +79,7 @@ const App: React.FC = () => {
           <h1>자동 색인</h1>
           <Routes>
             <Route path="/settings" element={<Settings />} />
+            <Route path="/blogger" element={<Blogger />} />
             <Route path="/login" element={<Login />} />
           </Routes>
         </StyledContent>

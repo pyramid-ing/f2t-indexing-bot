@@ -5,8 +5,8 @@ import customConfig from '@prd/apps/config/custom-config'
 import { DaumIndexerModule } from '@prd/apps/app/modules/daum-indexer/daum-indexer.module'
 import { NaverIndexerModule } from '@prd/apps/app/modules/naver-indexer/naver-indexer.module'
 import { BingIndexerModule } from '@prd/apps/app/modules/bing-indexer/bing-indexer.module'
-import { GoogleIndexerModule } from '@prd/apps/app/modules/google-indexer/google-indexer.module'
 import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter'
+import { GoogleModule } from '@prd/apps/app/modules/google/google.module'
 
 @Module({
   imports: [
@@ -17,7 +17,7 @@ import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter
     DaumIndexerModule,
     NaverIndexerModule,
     BingIndexerModule,
-    GoogleIndexerModule,
+    GoogleModule,
   ],
   providers: [
     {

@@ -3,6 +3,7 @@ import { Card, message } from 'antd'
 import styled from 'styled-components'
 import { ipcRenderer } from 'electron'
 import SettingsForm from '../components/SettingsForm'
+import GoogleAccountSettings from '../components/GoogleAccountSettings'
 
 const StyledCard = styled(Card)`
   margin: 20px;
@@ -76,18 +77,21 @@ const Settings: React.FC = () => {
   }
 
   return (
-    <StyledCard>
-      <SettingsForm
-        {...settings}
-        onApiKeyChange={value => setSettings(prev => ({ ...prev, apiKey: value }))}
-        onIntervalChange={value => setSettings(prev => ({ ...prev, intervalSec: value }))}
-        onUseAiChange={value => setSettings(prev => ({ ...prev, useAi: value }))}
-        onAiProviderChange={value => setSettings(prev => ({ ...prev, aiProvider: value }))}
-        onAnswerModeChange={value => setSettings(prev => ({ ...prev, answerMode: value }))}
-        onHideBrowserChange={value => setSettings(prev => ({ ...prev, hideBrowser: value }))}
-        onSave={handleSave}
-      />
-    </StyledCard>
+    <div style={{ margin: '20px auto', maxWidth: '800px' }}>
+      <GoogleAccountSettings />
+      <StyledCard>
+        <SettingsForm
+          {...settings}
+          onApiKeyChange={value => setSettings(prev => ({ ...prev, apiKey: value }))}
+          onIntervalChange={value => setSettings(prev => ({ ...prev, intervalSec: value }))}
+          onUseAiChange={value => setSettings(prev => ({ ...prev, useAi: value }))}
+          onAiProviderChange={value => setSettings(prev => ({ ...prev, aiProvider: value }))}
+          onAnswerModeChange={value => setSettings(prev => ({ ...prev, answerMode: value }))}
+          onHideBrowserChange={value => setSettings(prev => ({ ...prev, hideBrowser: value }))}
+          onSave={handleSave}
+        />
+      </StyledCard>
+    </div>
   )
 }
 

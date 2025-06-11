@@ -1,6 +1,6 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
-import { SettingOutlined, MessageOutlined, UserOutlined } from '@ant-design/icons'
+import { SettingOutlined, MessageOutlined, UserOutlined, GoogleOutlined } from '@ant-design/icons'
 import styled from 'styled-components'
 
 const { Sider } = Layout
@@ -33,6 +33,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, onMenuClick, appVersion }) => {
   const menuItems = [
     { key: '/add-keyword', icon: <MessageOutlined />, label: '자동 답변' },
+    { key: '/blogger', icon: <GoogleOutlined />, label: 'Blogger' },
     { key: '/settings', icon: <SettingOutlined />, label: '설정' },
     { key: '/login', icon: <UserOutlined />, label: '로그인' },
   ]
