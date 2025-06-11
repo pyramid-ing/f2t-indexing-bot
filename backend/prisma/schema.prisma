@@ -1,0 +1,136 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./db.sqlite"
+}
+
+model Settings {
+  id        Int      @id @default(autoincrement())
+  data      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Auth {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 사이트 설정 모델
+model Site {
+  id            Int       @id @default(autoincrement())
+  siteUrl       String    @unique
+  blogType      BlogType
+  indexingUrls  String    // JSON 배열로 저장
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // 연관 관계
+  bingConfig    BingConfig?
+  googleConfig  GoogleConfig?
+  daumConfig    DaumConfig?
+  naverConfig   NaverConfig?
+}
+
+// 블로그 타입 enum
+enum BlogType {
+  TISTORY
+  BLOGGER
+  WORDPRESS
+}
+
+// Bing 설정
+model BingConfig {
+  id      Int     @id @default(autoincrement())
+  siteId  Int     @unique
+  use     Boolean @default(false)
+  apiKey  String?
+  
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Google 설정
+model GoogleConfig {
+  id                    Int     @id @default(autoincrement())
+  siteId                Int     @unique
+  use                   Boolean @default(false)
+  serviceAccountEmail   String?
+  privateKey            String? // JSON으로 저장
+  oauth2ClientId        String?
+  oauth2ClientSecret    String?
+  oauth2AccessToken     String?
+  oauth2RefreshToken    String?
+  oauth2TokenExpiry     DateTime?
+  
+  site                  Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Daum 설정
+model DaumConfig {
+  id       Int     @id @default(autoincrement())
+  siteId   Int     @unique
+  use      Boolean @default(false)
+  siteUrl  String?
+  password String?
+  
+  site     Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Naver 설정
+model NaverConfig {
+  id       Int     @id @default(autoincrement())
+  siteId   Int     @unique
+  use      Boolean @default(false)
+  naverId  String?
+  password String?
+  
+  site     Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 색인 작업 로그
+model IndexingLog {
+  id          Int           @id @default(autoincrement())
+  siteUrl     String
+  targetUrl   String
+  provider    IndexProvider
+  status      IndexStatus
+  message     String?
+  responseData String?      // JSON으로 저장
+  
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+}
+
+// 색인 제공자 enum
+enum IndexProvider {
+  BING
+  GOOGLE
+  DAUM
+  NAVER
+}
+
+// 색인 상태 enum
+enum IndexStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  RETRY
+} 

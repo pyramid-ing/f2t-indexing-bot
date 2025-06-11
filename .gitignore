@@ -11,7 +11,15 @@ yarn-debug.log*
 yarn-error.log*
 /.pnp
 .pnp.js
+# Prisma Database files
 /prisma/db.sqlite
+/prisma/db.sqlite-journal
+/prisma/db.sqlite-wal
+/prisma/db.sqlite-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 .vscode/*
 
@@ -37,4 +45,18 @@ node_modules/
 tasks.json
 tasks/
 
-prisma/db.sqlite
+# Additional Prisma ignore files
+/backend/prisma/.env*
+/backend/.env*
+
+# Generated Prisma client
+/backend/prisma/generated/
+
+# Prisma Studio cache
+.prisma/
+
+# Backend database files (removing duplicate)
+/backend/prisma/db.sqlite
+/backend/prisma/db.sqlite-journal
+/backend/prisma/db.sqlite-wal
+/backend/prisma/db.sqlite-shm
