@@ -1,4 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
+import { HttpService } from '@nestjs/axios'
+import { firstValueFrom } from 'rxjs'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import fs from 'fs'
@@ -28,7 +30,10 @@ function getNaverCookiePath(naverId?: string) {
 export class NaverIndexerService {
   private readonly logger = new Logger(NaverIndexerService.name)
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+  ) {}
 
   private sleep(ms: number) {
     return new Promise(res => setTimeout(res, ms))
@@ -150,20 +155,20 @@ export class NaverIndexerService {
           const imgSrc = await page.$eval('#captchaimg', el => el.getAttribute('src') || '')
           // base64 -> buffer 변환 및 form-data 파일 전송
           const FormData = (await import('form-data')).default
-          const fetch = (await import('node-fetch')).default
           const form = new FormData()
           form.append('question', question)
           // data:image/png;base64,... 에서 base64 부분만 추출
           const base64 = imgSrc.split(',')[1]
           const imgBuffer = Buffer.from(base64, 'base64')
           form.append('receipt_image', imgBuffer, { filename: 'captcha.png', contentType: 'image/png' })
-          const resp = await fetch(`${this.configService.get('n8n.endpoint')}/naver-receipt-capcha`, {
-            method: 'POST',
-            body: form,
-            headers: form.getHeaders(),
-          })
-          const data = await resp.json()
-          const answer = data?.output.trim() || ''
+
+          const response = await firstValueFrom(
+            this.httpService.post(`${this.configService.get('n8n.endpoint')}/naver-receipt-capcha`, form, {
+              headers: form.getHeaders(),
+            }),
+          )
+          const answer = response.data?.output?.trim() || ''
+
           if (!answer) {
             throw new Error('캡챠 풀이 실패: 외부 서비스에서 답변을 받지 못함')
           }

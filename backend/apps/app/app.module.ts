@@ -4,6 +4,8 @@ import { APP_FILTER } from '@nestjs/core'
 import customConfig from '@prd/apps/config/custom-config'
 import { DaumIndexerModule } from '@prd/apps/app/modules/daum-indexer/daum-indexer.module'
 import { NaverIndexerModule } from '@prd/apps/app/modules/naver-indexer/naver-indexer.module'
+import { BingIndexerModule } from '@prd/apps/app/modules/bing-indexer/bing-indexer.module'
+import { GoogleIndexerModule } from '@prd/apps/app/modules/google-indexer/google-indexer.module'
 import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter'
 
 @Module({
@@ -14,6 +16,8 @@ import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter
     }),
     DaumIndexerModule,
     NaverIndexerModule,
+    BingIndexerModule,
+    GoogleIndexerModule,
   ],
   providers: [
     {
