@@ -1,27 +1,50 @@
 import { Injectable } from '@nestjs/common'
 import { GoogleAuth } from 'google-auth-library'
+import { SettingsService } from './settings.service'
 
 @Injectable()
 export class GoogleAuthService {
-  private auth: GoogleAuth
+  constructor(private readonly settingsService: SettingsService) {}
 
-  constructor() {
-    // Service Account 정보 (환경변수 또는 설정에서 가져오기)
-    const serviceAccountEmail = 'prd-google-search-console@test-everything-461213.iam.gserviceaccount.com'
-    const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n') || ''
+  private async createGoogleAuth(): Promise<GoogleAuth> {
+    try {
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      const googleConfig = globalSettings.google
 
-    this.auth = new GoogleAuth({
-      credentials: {
-        client_email: serviceAccountEmail,
-        private_key: privateKey,
-      },
-      scopes: ['https://www.googleapis.com/auth/indexing'],
-    })
+      if (!googleConfig.serviceAccountEmail || !googleConfig.privateKey) {
+        throw new Error('Google Service Account 설정이 완료되지 않았습니다.')
+      }
+
+      // privateKey가 JSON 문자열인지 확인하고 파싱
+      let privateKey = googleConfig.privateKey
+      if (privateKey.startsWith('{')) {
+        try {
+          const keyData = JSON.parse(privateKey)
+          privateKey = keyData.private_key
+        } catch (error) {
+          throw new Error('Private Key JSON 파싱 실패')
+        }
+      }
+
+      // 개행 문자 처리
+      privateKey = privateKey.replace(/\\n/g, '\n')
+
+      return new GoogleAuth({
+        credentials: {
+          client_email: googleConfig.serviceAccountEmail,
+          private_key: privateKey,
+        },
+        scopes: ['https://www.googleapis.com/auth/indexing'],
+      })
+    } catch (error) {
+      throw new Error(`Google Auth 설정 실패: ${error.message}`)
+    }
   }
 
   async getAccessToken(): Promise<string> {
     try {
-      const client = await this.auth.getClient()
+      const auth = await this.createGoogleAuth()
+      const client = await auth.getClient()
       const accessTokenResponse = await client.getAccessToken()
 
       if (!accessTokenResponse.token) {

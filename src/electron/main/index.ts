@@ -24,13 +24,18 @@ app.whenReady().then(() => {
   // 사용자별 데이터 디렉토리 설정
   setupUserDataDirectory()
 
-  // NestJS 서버 실행 (개발용)
-  nestProcess = spawn('yarn', ['start'], {
-    cwd: path.join(__dirname, '../../../backend'), // NestJS 프로젝트 경로
-    shell: true,
-    stdio: 'inherit',
-    env: { ...process.env }, // 설정된 환경변수 전달
-  })
+  // NestJS 서버 실행 (프로덕션 모드에서만)
+  if (app.isPackaged) {
+    console.log('🚀 프로덕션 모드: NestJS 서버 실행')
+    nestProcess = spawn('yarn', ['start'], {
+      cwd: path.join(__dirname, '../../../backend'), // NestJS 프로젝트 경로
+      shell: true,
+      stdio: 'inherit',
+      env: { ...process.env }, // 설정된 환경변수 전달
+    })
+  } else {
+    console.log('🔧 개발 모드: NestJS 서버는 별도로 실행해주세요 (npm run dev)')
+  }
 
   createWindow()
   registerIpcHandlers()
