@@ -36,7 +36,7 @@ const SiteManagement: React.FC = () => {
     try {
       setLoading(true)
       const data = await getAllSiteConfigs()
-      setSites(data)
+      setSites(data.sites || [])
     } catch (error) {
       console.error('사이트 목록 로드 실패:', error)
       message.error('사이트 목록을 불러오는데 실패했습니다.')

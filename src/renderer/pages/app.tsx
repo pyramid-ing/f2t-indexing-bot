@@ -40,9 +40,9 @@ interface AppStatus {
 }
 
 const App: React.FC = () => {
-  const [appStatus, setAppStatus] = useState<AppStatus | null>(null)
+  const [appReady, setAppReady] = useState(false)
+  const [appVersion, setAppVersion] = useState('1.0.0')
   const [collapsed, setCollapsed] = useState(false)
-  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -51,44 +51,30 @@ const App: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    if (appStatus && appStatus.setupCompleted && location.pathname === '/') {
+    if (appReady && location.pathname === '/') {
       navigate('/dashboard')
     }
-  }, [appStatus, location, navigate])
+  }, [appReady, location, navigate])
 
   const checkAppStatus = async () => {
     try {
       const status = await getAppStatus()
-      setAppStatus(status)
+      setAppVersion(status.appVersion || '1.0.0')
+      setAppReady(true)
     } catch (error) {
       console.error('앱 상태 확인 실패:', error)
-
-      // 네트워크 연결 오류인지 확인
-      const isNetworkError =
-        error?.code === 'ECONNREFUSED' ||
-        error?.message?.includes('ECONNREFUSED') ||
-        error?.message?.includes('Network Error') ||
-        error?.response?.status === undefined
-
-      const errorMessage = isNetworkError
-        ? '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.'
-        : `상태 확인 실패: ${error?.message || '알 수 없는 오류'}`
-
-      setAppStatus({
-        initialized: false,
-        setupCompleted: false,
-        firstRun: true,
-        appVersion: '1.0.0',
-        error: errorMessage,
-      })
-    } finally {
-      setLoading(false)
+      // 에러가 있어도 앱을 시작하되, FirstRunSetup에서 처리
+      setAppReady(false)
     }
   }
 
-  // 초기 설정이 완료되지 않은 경우 FirstRunSetup 표시
-  if (loading || !appStatus || !appStatus.setupCompleted) {
-    return <FirstRunSetup onSetupComplete={checkAppStatus} />
+  const handleSetupComplete = () => {
+    setAppReady(true)
+  }
+
+  // 앱이 준비되지 않은 경우 FirstRunSetup 표시
+  if (!appReady) {
+    return <FirstRunSetup onSetupComplete={handleSetupComplete} />
   }
 
   return (
@@ -98,7 +84,7 @@ const App: React.FC = () => {
         onCollapse={setCollapsed}
         selectedKey={location.pathname}
         onMenuClick={key => navigate(key)}
-        appVersion={appStatus.appVersion}
+        appVersion={appVersion}
       />
 
       <Layout>

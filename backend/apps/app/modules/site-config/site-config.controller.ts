@@ -24,6 +24,42 @@ export class SiteConfigController {
     return { sites }
   }
 
+  // 앱 상태 확인 - 더 구체적인 라우트이므로 위로 이동
+  @Get('app-status')
+  async getAppStatus() {
+    return await this.databaseInitService.getAppStatus()
+  }
+
+  // 전역 엔진 설정 관련 API - 구체적인 라우트이므로 위로 이동
+  @Get('global-engine-settings')
+  async getGlobalEngineSettings() {
+    return await this.databaseInitService.getGlobalEngineSettings()
+  }
+
+  @Put('global-google-settings')
+  async updateGlobalGoogleSettings(@Body() settings: any) {
+    await this.databaseInitService.updateGlobalGoogleSettings(settings)
+    return { success: true, message: 'Google 전역 설정이 업데이트되었습니다.' }
+  }
+
+  @Put('global-bing-settings')
+  async updateGlobalBingSettings(@Body() settings: any) {
+    await this.databaseInitService.updateGlobalBingSettings(settings)
+    return { success: true, message: 'Bing 전역 설정이 업데이트되었습니다.' }
+  }
+
+  @Put('global-naver-settings')
+  async updateGlobalNaverSettings(@Body() settings: any) {
+    await this.databaseInitService.updateGlobalNaverSettings(settings)
+    return { success: true, message: 'Naver 전역 설정이 업데이트되었습니다.' }
+  }
+
+  @Put('global-daum-settings')
+  async updateGlobalDaumSettings(@Body() settings: any) {
+    await this.databaseInitService.updateGlobalDaumSettings(settings)
+    return { success: true, message: 'Daum 전역 설정이 업데이트되었습니다.' }
+  }
+
   @Get(':siteUrl')
   async getSiteConfig(@Param('siteUrl') siteUrl: string) {
     const site = await this.siteConfigService.getSiteConfig(decodeURIComponent(siteUrl))
@@ -104,12 +140,6 @@ export class SiteConfigController {
       message: 'Naver 설정이 업데이트되었습니다.',
       site,
     }
-  }
-
-  // 앱 상태 확인
-  @Get('app-status')
-  async getAppStatus() {
-    return await this.databaseInitService.getAppStatus()
   }
 
   // 초기 설정 완료 표시

@@ -94,20 +94,24 @@ export class DatabaseInitService implements OnModuleInit {
   }
 
   private async runSeedLogic(): Promise<void> {
-    // 기본 설정 데이터 생성
+    // 기본 설정 데이터 생성 - 자동으로 설정 완료 상태로 생성
+    const defaultData = {
+      appVersion: '1.0.0',
+      initialized: true,
+      setupCompleted: true, // 자동으로 설정 완료
+      theme: 'light',
+      language: 'ko',
+      firstRun: false, // 첫 실행이 아닌 것으로 처리
+    }
+
     await this.prisma.settings.upsert({
       where: { id: 1 },
-      update: {},
+      update: {
+        data: JSON.stringify(defaultData),
+      },
       create: {
         id: 1,
-        data: JSON.stringify({
-          appVersion: '1.0.0',
-          initialized: true,
-          setupCompleted: false,
-          theme: 'light',
-          language: 'ko',
-          firstRun: true,
-        }),
+        data: JSON.stringify(defaultData),
       },
     })
 
@@ -191,6 +195,108 @@ export class DatabaseInitService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error('설정 완료 표시 실패:', error)
+      throw error
+    }
+  }
+
+  // 전역 엔진 설정 관련 메서드들
+  async getGlobalEngineSettings() {
+    try {
+      const settings = await this.prisma.settings.findFirst({ where: { id: 2 } })
+      if (!settings) {
+        // 기본 전역 설정 생성
+        const defaultGlobalSettings = {
+          google: {
+            use: false,
+            serviceAccountEmail: '',
+            privateKey: '',
+            oauth2ClientId: '',
+            oauth2ClientSecret: '',
+            oauth2AccessToken: '',
+            oauth2RefreshToken: '',
+          },
+          bing: { use: false, apiKey: '' },
+          naver: { use: false, naverId: '', password: '' },
+          daum: { use: false, siteUrl: '', password: '' },
+        }
+
+        await this.prisma.settings.create({
+          data: {
+            id: 2,
+            data: JSON.stringify(defaultGlobalSettings),
+          },
+        })
+
+        return defaultGlobalSettings
+      }
+
+      return JSON.parse(settings.data)
+    } catch (error) {
+      this.logger.error('전역 엔진 설정 조회 실패:', error)
+      throw error
+    }
+  }
+
+  async updateGlobalGoogleSettings(googleSettings: any) {
+    try {
+      const settings = await this.getGlobalEngineSettings()
+      settings.google = { ...settings.google, ...googleSettings }
+
+      await this.prisma.settings.upsert({
+        where: { id: 2 },
+        update: { data: JSON.stringify(settings) },
+        create: { id: 2, data: JSON.stringify(settings) },
+      })
+    } catch (error) {
+      this.logger.error('Google 전역 설정 업데이트 실패:', error)
+      throw error
+    }
+  }
+
+  async updateGlobalBingSettings(bingSettings: any) {
+    try {
+      const settings = await this.getGlobalEngineSettings()
+      settings.bing = { ...settings.bing, ...bingSettings }
+
+      await this.prisma.settings.upsert({
+        where: { id: 2 },
+        update: { data: JSON.stringify(settings) },
+        create: { id: 2, data: JSON.stringify(settings) },
+      })
+    } catch (error) {
+      this.logger.error('Bing 전역 설정 업데이트 실패:', error)
+      throw error
+    }
+  }
+
+  async updateGlobalNaverSettings(naverSettings: any) {
+    try {
+      const settings = await this.getGlobalEngineSettings()
+      settings.naver = { ...settings.naver, ...naverSettings }
+
+      await this.prisma.settings.upsert({
+        where: { id: 2 },
+        update: { data: JSON.stringify(settings) },
+        create: { id: 2, data: JSON.stringify(settings) },
+      })
+    } catch (error) {
+      this.logger.error('Naver 전역 설정 업데이트 실패:', error)
+      throw error
+    }
+  }
+
+  async updateGlobalDaumSettings(daumSettings: any) {
+    try {
+      const settings = await this.getGlobalEngineSettings()
+      settings.daum = { ...settings.daum, ...daumSettings }
+
+      await this.prisma.settings.upsert({
+        where: { id: 2 },
+        update: { data: JSON.stringify(settings) },
+        create: { id: 2, data: JSON.stringify(settings) },
+      })
+    } catch (error) {
+      this.logger.error('Daum 전역 설정 업데이트 실패:', error)
       throw error
     }
   }

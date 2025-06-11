@@ -53,9 +53,10 @@ const IndexingDashboard: React.FC = () => {
   const loadSites = async () => {
     try {
       const data = await getAllSiteConfigs()
-      setSites(data)
-      if (data.length > 0 && !selectedSite) {
-        setSelectedSite(data[0].siteUrl)
+      const siteList = data.sites || []
+      setSites(siteList)
+      if (siteList.length > 0 && !selectedSite) {
+        setSelectedSite(siteList[0].siteUrl)
       }
     } catch (error) {
       console.error('사이트 목록 로드 실패:', error)

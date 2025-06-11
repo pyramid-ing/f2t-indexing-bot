@@ -158,3 +158,37 @@ export async function getBloggerPost(blogId: string, postId: string, accessToken
   })
   return res.data
 }
+
+// 전역 엔진 설정 관련 API
+export async function getGlobalEngineSettings() {
+  const res = await axios.get(`${API_BASE_URL}/site-config/global-engine-settings`)
+  return res.data
+}
+
+export async function updateGlobalGoogleSettings(settings: {
+  use: boolean
+  serviceAccountEmail?: string
+  privateKey?: string
+  oauth2ClientId?: string
+  oauth2ClientSecret?: string
+  oauth2AccessToken?: string
+  oauth2RefreshToken?: string
+}) {
+  const res = await axios.put(`${API_BASE_URL}/site-config/global-google-settings`, settings)
+  return res.data
+}
+
+export async function updateGlobalBingSettings(settings: { use: boolean; apiKey?: string }) {
+  const res = await axios.put(`${API_BASE_URL}/site-config/global-bing-settings`, settings)
+  return res.data
+}
+
+export async function updateGlobalNaverSettings(settings: { use: boolean; naverId?: string; password?: string }) {
+  const res = await axios.put(`${API_BASE_URL}/site-config/global-naver-settings`, settings)
+  return res.data
+}
+
+export async function updateGlobalDaumSettings(settings: { use: boolean; siteUrl?: string; password?: string }) {
+  const res = await axios.put(`${API_BASE_URL}/site-config/global-daum-settings`, settings)
+  return res.data
+}
