@@ -3,10 +3,11 @@ import { HttpModule } from '@nestjs/axios'
 import { GoogleIndexerService } from './google-indexer.service'
 import { GoogleIndexerController } from './google-indexer.controller'
 import { GoogleAuthService } from '@prd/apps/app/shared/google-auth.service'
+import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 
 @Module({
   imports: [HttpModule],
-  providers: [GoogleIndexerService, GoogleAuthService],
+  providers: [GoogleIndexerService, GoogleAuthService, PrismaService],
   controllers: [GoogleIndexerController],
   exports: [GoogleIndexerService],
 })

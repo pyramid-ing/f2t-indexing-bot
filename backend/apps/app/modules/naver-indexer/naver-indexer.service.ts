@@ -7,14 +7,15 @@ import fs from 'fs'
 import path from 'path'
 import type { Page } from 'puppeteer'
 import { ConfigService } from '@nestjs/config'
+import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 
 puppeteer.use(StealthPlugin())
 
 export interface NaverIndexerOptions {
   siteUrl: string
   urlsToIndex: string[]
-  naverId?: string // 네이버 아이디(선택, 자동로그인용)
-  naverPw?: string // 네이버 비번(선택, 자동로그인용)
+  naverId?: string // 네이버 아이디(선택, 자동로그인용) - DB에서 가져올 수 있음
+  naverPw?: string // 네이버 비번(선택, 자동로그인용) - DB에서 가져올 수 있음
 }
 
 // 쿠키 저장 경로 분기 (tistory-bot 방식과 동일)
@@ -33,6 +34,7 @@ export class NaverIndexerService {
   constructor(
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
+    private readonly prisma: PrismaService,
   ) {}
 
   private sleep(ms: number) {
@@ -57,11 +59,33 @@ export class NaverIndexerService {
     this.logger.log('쿠키를 저장했습니다.')
   }
 
+  private async getNaverConfig(siteUrl: string) {
+    const site = await this.prisma.getSiteWithConfigs(siteUrl)
+    if (!site) {
+      throw new Error(`사이트 설정을 찾을 수 없습니다: ${siteUrl}`)
+    }
+
+    if (!site.naverConfig || !site.naverConfig.use) {
+      throw new Error(`Naver 인덱싱이 비활성화되었습니다: ${siteUrl}`)
+    }
+
+    return {
+      naverId: site.naverConfig.naverId,
+      password: site.naverConfig.password,
+      siteUrl: site.siteUrl,
+    }
+  }
+
   async manualIndexing(
     options: NaverIndexerOptions,
     headless: boolean = true,
   ): Promise<{ url: string; status: string; msg: string }[]> {
-    const { siteUrl, urlsToIndex, naverId, naverPw } = options
+    const { siteUrl, urlsToIndex } = options
+
+    // DB에서 네이버 설정 가져오기 (옵션으로 전달된 값이 없을 경우)
+    const dbConfig = await this.getNaverConfig(siteUrl)
+    const naverId = options.naverId || dbConfig.naverId
+    const naverPw = options.naverPw || dbConfig.password
     const launchOptions: any = {
       headless,
       args: [
@@ -257,33 +281,75 @@ export class NaverIndexerService {
         }
 
         if (dialogAppeared) {
-          results.push({
+          const result = {
             url,
             status: 'skipped',
             msg: dialogMsg || '이미 요청된 URL',
+          }
+          results.push(result)
+
+          // 로그 기록 (RETRY 상태로 기록)
+          await this.prisma.createIndexingLog({
+            siteUrl,
+            targetUrl: url,
+            provider: 'NAVER',
+            status: 'RETRY',
+            message: result.msg,
           })
+
           continue
         }
 
+        let result
         if (isSuccess) {
-          results.push({
+          result = {
             url,
             status: 'success',
             msg: '색인 요청 성공',
+          }
+          results.push(result)
+
+          // 성공 로그 기록
+          await this.prisma.createIndexingLog({
+            siteUrl,
+            targetUrl: url,
+            provider: 'NAVER',
+            status: 'SUCCESS',
+            message: result.msg,
           })
         } else {
-          results.push({
+          result = {
             url,
             status: 'fail',
             msg: '색인 요청 실패 또는 테이블에 20초 내 반영되지 않음',
+          }
+          results.push(result)
+
+          // 실패 로그 기록
+          await this.prisma.createIndexingLog({
+            siteUrl,
+            targetUrl: url,
+            provider: 'NAVER',
+            status: 'FAILED',
+            message: result.msg,
           })
         }
         await this.sleep(1000)
       } catch (e: any) {
-        results.push({
+        const result = {
           url,
           status: 'error',
           msg: `[에러] ${e?.message || e}`,
+        }
+        results.push(result)
+
+        // 에러 로그 기록
+        await this.prisma.createIndexingLog({
+          siteUrl,
+          targetUrl: url,
+          provider: 'NAVER',
+          status: 'FAILED',
+          message: result.msg,
         })
       }
     }
