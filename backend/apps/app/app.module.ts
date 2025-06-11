@@ -7,6 +7,9 @@ import { NaverIndexerModule } from '@prd/apps/app/modules/naver-indexer/naver-in
 import { BingIndexerModule } from '@prd/apps/app/modules/bing-indexer/bing-indexer.module'
 import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter'
 import { GoogleModule } from '@prd/apps/app/modules/google/google.module'
+import { SiteConfigModule } from '@prd/apps/app/modules/site-config/site-config.module'
+import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
+import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 
 @Module({
   imports: [
@@ -18,6 +21,7 @@ import { GoogleModule } from '@prd/apps/app/modules/google/google.module'
     NaverIndexerModule,
     BingIndexerModule,
     GoogleModule,
+    SiteConfigModule,
   ],
   providers: [
     {
@@ -25,6 +29,8 @@ import { GoogleModule } from '@prd/apps/app/modules/google/google.module'
       provide: APP_FILTER,
       useClass: GlobalExceptionFilter,
     },
+    DatabaseInitService,
+    PrismaService,
   ],
   controllers: [],
 })

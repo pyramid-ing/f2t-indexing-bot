@@ -1,9 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common'
+import { Body, Controller, Delete, Get, Param, Post, Put, HttpCode } from '@nestjs/common'
 import { SiteConfigService, SiteConfigData } from './site-config.service'
+import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
 
 @Controller('site-config')
 export class SiteConfigController {
-  constructor(private readonly siteConfigService: SiteConfigService) {}
+  constructor(
+    private readonly siteConfigService: SiteConfigService,
+    private readonly databaseInitService: DatabaseInitService,
+  ) {}
 
   @Post()
   async createSiteConfig(@Body() data: SiteConfigData) {
@@ -100,5 +104,27 @@ export class SiteConfigController {
       message: 'Naver 설정이 업데이트되었습니다.',
       site,
     }
+  }
+
+  // 앱 상태 확인
+  @Get('app-status')
+  async getAppStatus() {
+    return await this.databaseInitService.getAppStatus()
+  }
+
+  // 초기 설정 완료 표시
+  @Post('setup-completed')
+  @HttpCode(200)
+  async markSetupCompleted() {
+    await this.databaseInitService.markSetupCompleted()
+    return { success: true, message: '초기 설정이 완료되었습니다.' }
+  }
+
+  // DB 재초기화 (관리자 기능)
+  @Post('reinitialize-database')
+  @HttpCode(200)
+  async reinitializeDatabase() {
+    await this.databaseInitService.reinitializeDatabase()
+    return { success: true, message: '데이터베이스가 재초기화되었습니다.' }
   }
 }

@@ -76,7 +76,7 @@ const GoogleAccountSettings: React.FC = () => {
     message.info('브라우저에서 Google 로그인을 완료하면 인증 코드가 표시됩니다. 코드를 복사해서 입력해주세요.')
   }
 
-    const handleAuthCodeSubmit = async () => {
+  const handleAuthCodeSubmit = async () => {
     if (!authCode.trim()) {
       message.error('인증 코드를 입력해주세요.')
       return
@@ -96,13 +96,13 @@ const GoogleAccountSettings: React.FC = () => {
 
       const tokens = await exchangeCodeForTokens(authCode.trim(), clientSecret.trim())
       saveGoogleTokens(tokens)
-      
+
       const user = await getGoogleUserInfo(tokens.accessToken)
       setUserInfo(user)
       setIsLoggedIn(true)
       setAuthModalVisible(false)
       setAuthCode('')
-      
+
       message.success(`Google 계정 연동이 완료되었습니다. (${user.email})`)
     } catch (error: any) {
       console.error('Google 로그인 오류:', error)

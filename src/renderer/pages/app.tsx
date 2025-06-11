@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react'
 import { Layout } from 'antd'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
-import { ipcRenderer } from 'electron'
 import Settings from './Settings'
-import Login from './Login'
 import Blogger from './Blogger'
 import Sidebar from '../components/Sidebar'
-import { checkLoginStatus } from '../utils/auth'
+import { getAppStatus } from '../api'
+import FirstRunSetup from '../components/FirstRunSetup'
+import SiteManagement from '../components/SiteManagement'
+import IndexingDashboard from '../components/IndexingDashboard'
 
 const { Header, Content } = Layout
 
@@ -30,37 +31,64 @@ const StyledContent = styled(Content)`
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 `
 
+interface AppStatus {
+  initialized: boolean
+  setupCompleted: boolean
+  firstRun: boolean
+  appVersion: string
+  error?: string
+}
+
 const App: React.FC = () => {
-  const [appVersion, setAppVersion] = useState<string>('')
+  const [appStatus, setAppStatus] = useState<AppStatus | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
   const location = useLocation()
-  const [msg, setMsg] = useState('')
-
-  const verifyAuth = async () => {
-    const { isLoggedIn } = await checkLoginStatus()
-    setIsLoggedIn(isLoggedIn)
-
-    if (!isLoggedIn && location.pathname !== '/login') {
-      navigate('/login')
-    }
-  }
 
   useEffect(() => {
-    fetchVersion()
-    verifyAuth()
+    checkAppStatus()
   }, [])
 
   useEffect(() => {
-    if (location.pathname === '/') {
-      navigate('/add-keyword')
+    if (appStatus && appStatus.setupCompleted && location.pathname === '/') {
+      navigate('/dashboard')
     }
-  }, [location, navigate])
+  }, [appStatus, location, navigate])
 
-  const fetchVersion = async () => {
-    const version = await ipcRenderer.invoke('get-app-version')
-    setAppVersion(version)
+  const checkAppStatus = async () => {
+    try {
+      const status = await getAppStatus()
+      setAppStatus(status)
+    } catch (error) {
+      console.error('앱 상태 확인 실패:', error)
+
+      // 네트워크 연결 오류인지 확인
+      const isNetworkError =
+        error?.code === 'ECONNREFUSED' ||
+        error?.message?.includes('ECONNREFUSED') ||
+        error?.message?.includes('Network Error') ||
+        error?.response?.status === undefined
+
+      const errorMessage = isNetworkError
+        ? '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.'
+        : `상태 확인 실패: ${error?.message || '알 수 없는 오류'}`
+
+      setAppStatus({
+        initialized: false,
+        setupCompleted: false,
+        firstRun: true,
+        appVersion: '1.0.0',
+        error: errorMessage,
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 초기 설정이 완료되지 않은 경우 FirstRunSetup 표시
+  if (loading || !appStatus || !appStatus.setupCompleted) {
+    return <FirstRunSetup onSetupComplete={checkAppStatus} />
   }
 
   return (
@@ -70,17 +98,20 @@ const App: React.FC = () => {
         onCollapse={setCollapsed}
         selectedKey={location.pathname}
         onMenuClick={key => navigate(key)}
-        appVersion={appVersion}
+        appVersion={appStatus.appVersion}
       />
 
       <Layout>
-        <StyledHeader />
+        <StyledHeader>
+          <div style={{ padding: '0 20px', color: '#333', fontSize: '16px', fontWeight: 'bold' }}>F2T 인덱싱 봇</div>
+        </StyledHeader>
         <StyledContent>
-          <h1>자동 색인</h1>
           <Routes>
+            <Route path="/dashboard" element={<IndexingDashboard />} />
+            <Route path="/sites" element={<SiteManagement />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/blogger" element={<Blogger />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<IndexingDashboard />} />
           </Routes>
         </StyledContent>
       </Layout>

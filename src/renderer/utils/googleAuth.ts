@@ -58,7 +58,7 @@ export const exchangeCodeForTokens = async (code: string, clientSecret: string):
     if (!response.ok) {
       const errorData = await response.json()
       console.error('OAuth 에러 응답:', errorData)
-      
+
       let errorMessage = '토큰 교환 실패'
       if (errorData.error === 'invalid_client') {
         errorMessage = 'Client ID 또는 Client Secret이 잘못되었습니다.'
@@ -69,7 +69,7 @@ export const exchangeCodeForTokens = async (code: string, clientSecret: string):
       } else if (errorData.error_description) {
         errorMessage = errorData.error_description
       }
-      
+
       throw new Error(errorMessage)
     }
 

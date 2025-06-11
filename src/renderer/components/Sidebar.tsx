@@ -1,25 +1,45 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
-import { SettingOutlined, MessageOutlined, UserOutlined, GoogleOutlined } from '@ant-design/icons'
+import {
+  DashboardOutlined,
+  GlobalOutlined,
+  SettingOutlined,
+  GoogleOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+} from '@ant-design/icons'
 import styled from 'styled-components'
 
 const { Sider } = Layout
 
+const StyledSider = styled(Sider)`
+  .ant-layout-sider-trigger {
+    background: #001529;
+  }
+`
+
 const Logo = styled.div`
-  text-align: center;
-  background-color: #ff4d4f;
+  height: 64px;
+  margin: 16px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: white;
   font-weight: bold;
-  padding: 16px;
+  font-size: 14px;
+  text-align: center;
 `
 
-const StyledSider = styled(Sider)`
-  background-color: #f5f5f5;
-`
-
-const StyledMenu = styled(Menu)`
-  background-color: #f5f5f5;
-  color: #000000;
+const VersionInfo = styled.div`
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12px;
+  text-align: center;
 `
 
 interface SidebarProps {
@@ -32,22 +52,55 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, onMenuClick, appVersion }) => {
   const menuItems = [
-    { key: '/add-keyword', icon: <MessageOutlined />, label: '자동 답변' },
-    { key: '/blogger', icon: <GoogleOutlined />, label: 'Blogger' },
-    { key: '/settings', icon: <SettingOutlined />, label: '설정' },
-    { key: '/login', icon: <UserOutlined />, label: '로그인' },
+    {
+      key: '/dashboard',
+      icon: <DashboardOutlined />,
+      label: '대시보드',
+    },
+    {
+      key: '/sites',
+      icon: <GlobalOutlined />,
+      label: '사이트 관리',
+    },
+    {
+      key: '/settings',
+      icon: <SettingOutlined />,
+      label: '검색엔진 설정',
+    },
+    {
+      key: '/blogger',
+      icon: <GoogleOutlined />,
+      label: 'Google 블로거',
+    },
   ]
 
   return (
-    <StyledSider collapsible collapsed={collapsed} onCollapse={onCollapse}>
-      <Logo>N사 자동답변 v{appVersion}</Logo>
-      <StyledMenu
-        theme="light"
+    <StyledSider trigger={null} collapsible collapsed={collapsed} onCollapse={onCollapse} theme="dark" width={200}>
+      <Logo>{collapsed ? 'F2T' : 'F2T 인덱싱 봇'}</Logo>
+
+      <Menu
+        theme="dark"
         mode="inline"
         selectedKeys={[selectedKey]}
         items={menuItems}
         onClick={({ key }) => onMenuClick(key)}
       />
+
+      <div
+        style={{
+          position: 'absolute',
+          top: 16,
+          right: 16,
+          color: 'white',
+          cursor: 'pointer',
+          fontSize: 16,
+        }}
+        onClick={() => onCollapse(!collapsed)}
+      >
+        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+      </div>
+
+      {!collapsed && <VersionInfo>v{appVersion}</VersionInfo>}
     </StyledSider>
   )
 }
