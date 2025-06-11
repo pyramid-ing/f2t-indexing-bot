@@ -1,8 +1,11 @@
-import { Controller, Get, Query, Res } from '@nestjs/common'
+import { Controller, Get, Query, Res, Post, Body } from '@nestjs/common'
 import { Response } from 'express'
+import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
 
 @Controller('google-oauth')
 export class GoogleOAuthController {
+  constructor(private readonly databaseInitService: DatabaseInitService) {}
+
   @Get('callback')
   async handleCallback(@Query('code') code: string, @Query('error') error: string, @Res() res: Response) {
     if (error) {
@@ -19,10 +22,9 @@ export class GoogleOAuthController {
           <p>오류: ${error}</p>
           <p>이 창을 닫고 다시 시도해주세요.</p>
           <script>
-            // 5초 후 창 닫기
             setTimeout(() => {
               window.close();
-            }, 5000);
+            }, 3000);
           </script>
         </body>
         </html>
@@ -45,110 +47,321 @@ export class GoogleOAuthController {
           <script>
             setTimeout(() => {
               window.close();
-            }, 5000);
+            }, 3000);
           </script>
         </body>
         </html>
       `)
     }
 
-    // 인증 성공 - 코드를 사용자에게 표시
-    return res.send(`
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>OAuth 인증 성공</title>
-        <meta charset="utf-8">
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 50px auto;
-            padding: 20px;
-            text-align: center;
-          }
-          .code-box {
-            background-color: #f5f5f5;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-            font-family: monospace;
-            font-size: 14px;
-            word-break: break-all;
-          }
-          .copy-btn {
-            background-color: #1890ff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin: 10px;
-          }
-          .copy-btn:hover {
-            background-color: #40a9ff;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>✅ Google OAuth 인증 성공!</h1>
-        <p>아래 인증 코드를 복사하여 애플리케이션에 입력해주세요:</p>
-        
-        <div class="code-box" id="authCode">${code}</div>
-        
-        <button class="copy-btn" onclick="copyCode()">📋 코드 복사</button>
-        <button class="copy-btn" onclick="window.close()">창 닫기</button>
-        
-        <p style="color: #666; margin-top: 30px;">
-          <small>이 코드는 보안을 위해 한 번만 사용할 수 있습니다.<br>
-          애플리케이션으로 돌아가서 코드를 입력해주세요.</small>
-        </p>
+    try {
+      // 서버에서 자동으로 토큰 교환 및 저장 처리
+      await this.processOAuthCallback(code)
 
-        <script>
-          function copyCode() {
-            const codeElement = document.getElementById('authCode');
-            const code = codeElement.textContent;
-            
-            if (navigator.clipboard) {
-              navigator.clipboard.writeText(code).then(() => {
-                alert('인증 코드가 클립보드에 복사되었습니다!');
-              }).catch(() => {
-                fallbackCopy(code);
-              });
-            } else {
-              fallbackCopy(code);
+      // 성공 페이지 반환
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>OAuth 인증 완료</title>
+          <meta charset="utf-8">
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              max-width: 600px;
+              margin: 50px auto;
+              padding: 20px;
+              text-align: center;
             }
-          }
+            .success-box {
+              background-color: #f6ffed;
+              border: 2px solid #52c41a;
+              border-radius: 8px;
+              padding: 30px;
+              margin: 20px 0;
+            }
+            .btn {
+              background-color: #1890ff;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 4px;
+              cursor: pointer;
+              margin: 10px;
+              font-size: 16px;
+            }
+            .btn:hover {
+              background-color: #40a9ff;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="success-box">
+            <h1>✅ Google OAuth 인증 완료!</h1>
+            <p>Google 계정 연동이 성공적으로 완료되었습니다.</p>
+            <p>이제 이 창을 닫고 애플리케이션으로 돌아가세요.</p>
+          </div>
           
-          function fallbackCopy(text) {
-            const textArea = document.createElement('textarea');
-            textArea.value = text;
-            document.body.appendChild(textArea);
-            textArea.select();
-            try {
-              document.execCommand('copy');
-              alert('인증 코드가 클립보드에 복사되었습니다!');
-            } catch (err) {
-              alert('복사에 실패했습니다. 코드를 수동으로 선택하여 복사해주세요.');
-            }
-            document.body.removeChild(textArea);
-          }
+          <button class="btn" onclick="window.close()">창 닫기</button>
           
-          // 페이지 로드 후 자동으로 코드 선택
-          window.onload = function() {
-            const codeElement = document.getElementById('authCode');
-            if (window.getSelection && document.createRange) {
-              const selection = window.getSelection();
-              const range = document.createRange();
-              range.selectNodeContents(codeElement);
-              selection.removeAllRanges();
-              selection.addRange(range);
-            }
-          };
-        </script>
-      </body>
-      </html>
-    `)
+          <script>
+            // 5초 후 자동으로 창 닫기
+            setTimeout(() => {
+              window.close();
+            }, 5000);
+          </script>
+        </body>
+        </html> 
+      `)
+    } catch (error) {
+      console.error('OAuth 콜백 처리 오류:', error)
+
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>OAuth 처리 오류</title>
+          <meta charset="utf-8">
+        </head>
+        <body>
+          <h1>OAuth 처리 오류</h1>
+          <p>토큰 처리 중 오류가 발생했습니다: ${error.message}</p>
+          <p>이 창을 닫고 다시 시도해주세요.</p>
+          <script>
+            setTimeout(() => {
+              window.close();
+            }, 5000);
+          </script>
+        </body>
+        </html>
+      `)
+    }
+  }
+
+  @Post('exchange-tokens')
+  async exchangeTokens(@Body() body: { code: string }) {
+    try {
+      const result = await this.processOAuthCallback(body.code)
+      return {
+        success: true,
+        message: 'Google 토큰이 성공적으로 저장되었습니다.',
+        userInfo: result.userInfo,
+      }
+    } catch (error) {
+      throw new Error(`토큰 교환 실패: ${error.message}`)
+    }
+  }
+
+  private async processOAuthCallback(code: string) {
+    // 현재 저장된 Google 설정에서 Client ID와 Secret 가져오기
+    const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+    const { oauth2ClientId, oauth2ClientSecret } = globalSettings.google
+
+    if (!oauth2ClientId || !oauth2ClientSecret) {
+      throw new Error('OAuth2 Client ID 또는 Client Secret이 설정되지 않았습니다.')
+    }
+
+    // Google OAuth2 토큰 교환
+    const tokens = await this.exchangeCodeForTokens(code, oauth2ClientId, oauth2ClientSecret)
+
+    // 사용자 정보 가져오기
+    const userInfo = await this.getGoogleUserInfo(tokens.accessToken)
+
+    // DB에 토큰 저장
+    const updatedGoogleSettings = {
+      ...globalSettings.google,
+      oauth2AccessToken: tokens.accessToken,
+      oauth2RefreshToken: tokens.refreshToken,
+      oauth2TokenExpiry: new Date(tokens.expiresAt).toISOString(),
+    }
+
+    await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+
+    return { tokens, userInfo }
+  }
+
+  private async exchangeCodeForTokens(code: string, clientId: string, clientSecret: string) {
+    const requestBody = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: 'http://localhost:3030/google-oauth/callback',
+    })
+
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: requestBody,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      let errorMessage = '토큰 교환 실패'
+      if (errorData.error === 'invalid_client') {
+        errorMessage = 'Client ID 또는 Client Secret이 잘못되었습니다.'
+      } else if (errorData.error === 'invalid_grant') {
+        errorMessage = '인증 코드가 잘못되었거나 만료되었습니다.'
+      } else if (errorData.error_description) {
+        errorMessage = errorData.error_description
+      }
+      throw new Error(errorMessage)
+    }
+
+    const data = await response.json()
+    return {
+      accessToken: data.access_token,
+      refreshToken: data.refresh_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    }
+  }
+
+  private async getGoogleUserInfo(accessToken: string) {
+    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error('사용자 정보 조회 실패')
+    }
+
+    return await response.json()
+  }
+
+  // 토큰 갱신 엔드포인트
+  @Post('refresh-token')
+  async refreshToken() {
+    try {
+      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const { oauth2ClientId, oauth2ClientSecret, oauth2RefreshToken } = globalSettings.google
+
+      if (!oauth2RefreshToken) {
+        throw new Error('Refresh token이 없습니다.')
+      }
+
+      const newTokens = await this.refreshAccessToken(oauth2RefreshToken, oauth2ClientId, oauth2ClientSecret)
+
+      // DB에 새로운 토큰 저장
+      const updatedGoogleSettings = {
+        ...globalSettings.google,
+        oauth2AccessToken: newTokens.accessToken,
+        oauth2TokenExpiry: new Date(newTokens.expiresAt).toISOString(),
+      }
+
+      await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+
+      return {
+        success: true,
+        message: '토큰이 성공적으로 갱신되었습니다.',
+        accessToken: newTokens.accessToken,
+      }
+    } catch (error) {
+      throw new Error(`토큰 갱신 실패: ${error.message}`)
+    }
+  }
+
+  private async refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string) {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error_description || 'Token 갱신 실패')
+    }
+
+    const data = await response.json()
+    return {
+      accessToken: data.access_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    }
+  }
+
+  // 현재 토큰 상태 확인
+  @Get('status')
+  async getOAuthStatus() {
+    try {
+      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const { oauth2AccessToken, oauth2RefreshToken, oauth2TokenExpiry } = globalSettings.google
+
+      if (!oauth2AccessToken) {
+        return {
+          isLoggedIn: false,
+          message: '로그인이 필요합니다.',
+        }
+      }
+
+      // 토큰 만료 확인
+      const expiryTime = oauth2TokenExpiry ? new Date(oauth2TokenExpiry).getTime() : 0
+      const isExpired = Date.now() >= expiryTime - 60000 // 1분 여유
+
+      if (isExpired && oauth2RefreshToken) {
+        // 자동으로 토큰 갱신 시도
+        try {
+          await this.refreshToken()
+          const userInfo = await this.getGoogleUserInfo(globalSettings.google.oauth2AccessToken)
+          return {
+            isLoggedIn: true,
+            userInfo,
+            message: '토큰이 자동으로 갱신되었습니다.',
+          }
+        } catch (error) {
+          return {
+            isLoggedIn: false,
+            message: '토큰 갱신 실패. 다시 로그인해주세요.',
+          }
+        }
+      }
+
+      // 유효한 토큰으로 사용자 정보 가져오기
+      const userInfo = await this.getGoogleUserInfo(oauth2AccessToken)
+      return {
+        isLoggedIn: true,
+        userInfo,
+        message: '로그인 상태입니다.',
+      }
+    } catch (error) {
+      return {
+        isLoggedIn: false,
+        message: '로그인 상태 확인 실패.',
+        error: error.message,
+      }
+    }
+  }
+
+  // 로그아웃 (토큰 삭제)
+  @Post('logout')
+  async logout() {
+    try {
+      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const updatedGoogleSettings = {
+        ...globalSettings.google,
+        oauth2AccessToken: '',
+        oauth2RefreshToken: '',
+        oauth2TokenExpiry: '',
+      }
+
+      await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+
+      return {
+        success: true,
+        message: 'Google 계정 연동이 해제되었습니다.',
+      }
+    } catch (error) {
+      throw new Error(`로그아웃 실패: ${error.message}`)
+    }
   }
 }

@@ -1,9 +1,12 @@
-import { message } from 'antd'
+import { getGoogleOAuthStatus, googleOAuthLogout } from '../api'
 
 // OAuth2 설정
-const GOOGLE_CLIENT_ID = '788251656266-5j49jprf9mgkputnod6b885jijakgd.apps.googleusercontent.com'
 const GOOGLE_REDIRECT_URI = 'http://localhost:3030/google-oauth/callback'
-const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/blogger'
+const GOOGLE_SCOPE = [
+  'https://www.googleapis.com/auth/blogger',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+].join(' ')
 
 export interface GoogleTokens {
   accessToken: string
@@ -12,9 +15,9 @@ export interface GoogleTokens {
 }
 
 // OAuth2 인증 URL 생성
-export const generateGoogleAuthUrl = (): string => {
+export const generateGoogleAuthUrl = (clientId: string): string => {
   const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: clientId,
     redirect_uri: GOOGLE_REDIRECT_URI,
     scope: GOOGLE_SCOPE,
     response_type: 'code',
@@ -25,175 +28,114 @@ export const generateGoogleAuthUrl = (): string => {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`
 }
 
-// Authorization Code를 Access Token으로 교환
-export const exchangeCodeForTokens = async (code: string, clientSecret: string): Promise<GoogleTokens> => {
+// 서버에서 Google OAuth 상태 확인
+export const getGoogleAuthStatus = async () => {
   try {
-    console.log('OAuth 토큰 교환 시작:', {
-      client_id: GOOGLE_CLIENT_ID,
-      redirect_uri: GOOGLE_REDIRECT_URI,
-      code_length: code.length,
-      client_secret_length: clientSecret.length,
-    })
-
-    const requestBody = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
-      client_secret: clientSecret,
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: GOOGLE_REDIRECT_URI,
-    })
-
-    console.log('요청 Body:', requestBody.toString())
-
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: requestBody,
-    })
-
-    console.log('응답 상태:', response.status, response.statusText)
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('OAuth 에러 응답:', errorData)
-
-      let errorMessage = '토큰 교환 실패'
-      if (errorData.error === 'invalid_client') {
-        errorMessage = 'Client ID 또는 Client Secret이 잘못되었습니다.'
-      } else if (errorData.error === 'invalid_grant') {
-        errorMessage = '인증 코드가 잘못되었거나 만료되었습니다.'
-      } else if (errorData.error === 'redirect_uri_mismatch') {
-        errorMessage = 'Redirect URI가 일치하지 않습니다.'
-      } else if (errorData.error_description) {
-        errorMessage = errorData.error_description
-      }
-
-      throw new Error(errorMessage)
-    }
-
-    const data = await response.json()
-    console.log('토큰 교환 성공:', { access_token_length: data.access_token?.length })
-
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresAt: Date.now() + data.expires_in * 1000,
-    }
+    const response = await getGoogleOAuthStatus()
+    return response
   } catch (error) {
-    console.error('Token 교환 오류:', error)
+    console.error('Google OAuth 상태 확인 오류:', error)
+    return {
+      isLoggedIn: false,
+      message: '상태 확인 실패',
+      error: error.message,
+    }
+  }
+}
+
+// 서버에서 Google OAuth 로그아웃
+export const logoutGoogle = async () => {
+  try {
+    const response = await googleOAuthLogout()
+    return response
+  } catch (error) {
+    console.error('Google OAuth 로그아웃 오류:', error)
     throw error
   }
 }
 
-// Refresh Token으로 Access Token 갱신
-export const refreshAccessToken = async (refreshToken: string, clientSecret: string): Promise<GoogleTokens> => {
+// 로그인 상태 확인 (서버 기반)
+export const isGoogleLoggedIn = async (): Promise<boolean> => {
   try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error_description || 'Token 갱신 실패')
-    }
-
-    const data = await response.json()
-
-    return {
-      accessToken: data.access_token,
-      refreshToken, // refresh token은 유지
-      expiresAt: Date.now() + data.expires_in * 1000,
-    }
+    const status = await getGoogleAuthStatus()
+    return status.isLoggedIn || false
   } catch (error) {
-    console.error('Token 갱신 오류:', error)
-    throw error
+    return false
   }
 }
 
-// 토큰 저장
-export const saveGoogleTokens = (tokens: GoogleTokens): void => {
-  localStorage.setItem('google_tokens', JSON.stringify(tokens))
-}
-
-// 토큰 로드
-export const loadGoogleTokens = (): GoogleTokens | null => {
-  const stored = localStorage.getItem('google_tokens')
-  if (!stored) return null
-
+// 사용자 정보 가져오기 (서버에서 저장된 토큰 사용)
+export const getGoogleUserInfo = async (): Promise<any> => {
   try {
-    return JSON.parse(stored)
-  } catch {
-    return null
-  }
-}
-
-// 토큰 삭제
-export const clearGoogleTokens = (): void => {
-  localStorage.removeItem('google_tokens')
-}
-
-// 유효한 Access Token 가져오기 (필요시 갱신)
-export const getValidAccessToken = async (clientSecret: string): Promise<string | null> => {
-  const tokens = loadGoogleTokens()
-  if (!tokens) return null
-
-  // 토큰이 만료되지 않았으면 그대로 반환
-  if (Date.now() < tokens.expiresAt - 60000) {
-    // 1분 여유
-    return tokens.accessToken
-  }
-
-  // 토큰이 만료되었으면 갱신 시도
-  if (tokens.refreshToken) {
-    try {
-      const newTokens = await refreshAccessToken(tokens.refreshToken, clientSecret)
-      saveGoogleTokens(newTokens)
-      return newTokens.accessToken
-    } catch (error) {
-      console.error('토큰 갱신 실패:', error)
-      clearGoogleTokens()
-      message.error('Google 토큰이 만료되었습니다. 다시 로그인해주세요.')
-      return null
+    const status = await getGoogleAuthStatus()
+    if (status.isLoggedIn && status.userInfo) {
+      return status.userInfo
     }
-  }
-
-  clearGoogleTokens()
-  return null
-}
-
-// 로그인 상태 확인
-export const isGoogleLoggedIn = (): boolean => {
-  const tokens = loadGoogleTokens()
-  return tokens !== null
-}
-
-// Google 사용자 정보 가져오기
-export const getGoogleUserInfo = async (accessToken: string): Promise<any> => {
-  try {
-    const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error('사용자 정보 조회 실패')
-    }
-
-    return await response.json()
+    throw new Error('로그인되지 않았거나 사용자 정보가 없습니다.')
   } catch (error) {
     console.error('사용자 정보 조회 오류:', error)
     throw error
   }
+}
+
+// 로그인 프로세스 시작 (브라우저에서 OAuth 진행)
+export const startGoogleLogin = (clientId: string) => {
+  if (!clientId.trim()) {
+    throw new Error('OAuth2 Client ID가 필요합니다.')
+  }
+
+  const authUrl = generateGoogleAuthUrl(clientId)
+
+  // Electron에서 외부 브라우저로 열기
+  if ((window as any).electron?.shell?.openExternal) {
+    ;(window as any).electron.shell.openExternal(authUrl)
+  } else {
+    window.open(authUrl, '_blank')
+  }
+
+  return {
+    success: true,
+    message: '브라우저에서 Google 로그인을 완료하세요. 인증이 완료되면 자동으로 처리됩니다.',
+  }
+}
+
+// 레거시 함수들 (하위 호환성을 위해 유지하되 서버 API 사용)
+export const loadGoogleTokens = (): GoogleTokens | null => {
+  // 더 이상 localStorage를 사용하지 않음
+  console.warn('loadGoogleTokens는 더 이상 사용되지 않습니다. getGoogleAuthStatus()를 사용하세요.')
+  return null
+}
+
+export const saveGoogleTokens = (tokens: GoogleTokens): void => {
+  // 더 이상 localStorage를 사용하지 않음
+  console.warn('saveGoogleTokens는 더 이상 사용되지 않습니다. 서버에서 자동으로 처리됩니다.')
+}
+
+export const clearGoogleTokens = (): void => {
+  // 더 이상 localStorage를 사용하지 않음
+  console.warn('clearGoogleTokens는 더 이상 사용되지 않습니다. logoutGoogle()을 사용하세요.')
+}
+
+// 유효한 Access Token 가져오기 (서버에서 자동 갱신)
+export const getValidAccessToken = async (): Promise<string | null> => {
+  try {
+    const status = await getGoogleAuthStatus()
+    if (status.isLoggedIn) {
+      // 서버에서 자동으로 토큰 갱신을 처리하므로 별도 처리 불필요
+      return 'valid' // 실제 토큰 값은 서버에서 관리
+    }
+    return null
+  } catch (error) {
+    console.error('토큰 확인 실패:', error)
+    return null
+  }
+}
+
+// 사용되지 않는 함수들 (레거시 지원)
+export const exchangeCodeForTokens = async (): Promise<GoogleTokens> => {
+  throw new Error('exchangeCodeForTokens는 더 이상 사용되지 않습니다. 서버에서 자동으로 처리됩니다.')
+}
+
+export const refreshAccessToken = async (): Promise<GoogleTokens> => {
+  throw new Error('refreshAccessToken는 더 이상 사용되지 않습니다. 서버에서 자동으로 처리됩니다.')
 }

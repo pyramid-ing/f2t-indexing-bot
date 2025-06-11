@@ -3,7 +3,6 @@ import { Layout } from 'antd'
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import Settings from './Settings'
-import Blogger from './Blogger'
 import Sidebar from '../components/Sidebar'
 import { getAppStatus } from '../api'
 import FirstRunSetup from '../components/FirstRunSetup'
@@ -96,7 +95,6 @@ const App: React.FC = () => {
             <Route path="/dashboard" element={<IndexingDashboard />} />
             <Route path="/sites" element={<SiteManagement />} />
             <Route path="/settings" element={<Settings />} />
-            <Route path="/blogger" element={<Blogger />} />
             <Route path="/" element={<IndexingDashboard />} />
           </Routes>
         </StyledContent>

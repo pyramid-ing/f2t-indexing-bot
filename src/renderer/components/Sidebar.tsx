@@ -4,7 +4,6 @@ import {
   DashboardOutlined,
   GlobalOutlined,
   SettingOutlined,
-  GoogleOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
 } from '@ant-design/icons'
@@ -65,12 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, o
     {
       key: '/settings',
       icon: <SettingOutlined />,
-      label: '검색엔진 설정',
-    },
-    {
-      key: '/blogger',
-      icon: <GoogleOutlined />,
-      label: 'Google 블로거',
+      label: '설정',
     },
   ]
 

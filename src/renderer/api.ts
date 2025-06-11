@@ -106,21 +106,19 @@ export async function daumManualIndex(options: { siteUrl: string; urlsToIndex: s
   return res.data
 }
 
-// Google OAuth 관련
-export async function generateGoogleAuthUrl() {
-  const res = await axios.get(`${API_BASE_URL}/google-oauth/auth-url`)
+// Google OAuth 관련 - 서버 기반 처리
+export async function getGoogleOAuthStatus() {
+  const res = await axios.get(`${API_BASE_URL}/google-oauth/status`)
   return res.data
 }
 
-export async function exchangeGoogleAuthCode(code: string) {
-  const res = await axios.post(`${API_BASE_URL}/google-oauth/exchange-code`, { code })
+export async function googleOAuthLogout() {
+  const res = await axios.post(`${API_BASE_URL}/google-oauth/logout`)
   return res.data
 }
 
-export async function getGoogleUserInfo(accessToken: string) {
-  const res = await axios.get(`${API_BASE_URL}/google-oauth/user-info`, {
-    params: { accessToken },
-  })
+export async function refreshGoogleToken() {
+  const res = await axios.post(`${API_BASE_URL}/google-oauth/refresh-token`)
   return res.data
 }
 

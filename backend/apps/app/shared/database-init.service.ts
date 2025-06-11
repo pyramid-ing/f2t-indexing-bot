@@ -214,6 +214,7 @@ export class DatabaseInitService implements OnModuleInit {
             oauth2ClientSecret: '',
             oauth2AccessToken: '',
             oauth2RefreshToken: '',
+            oauth2TokenExpiry: '',
           },
           bing: { use: false, apiKey: '' },
           naver: { use: false, naverId: '', password: '' },

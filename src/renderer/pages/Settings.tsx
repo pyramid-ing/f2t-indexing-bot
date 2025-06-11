@@ -7,6 +7,8 @@ import {
   Switch,
   message,
   Typography,
+  Avatar,
+  Statistic,
   Space,
   Divider,
   Row,
@@ -29,6 +31,7 @@ import {
   updateGlobalNaverSettings,
   updateGlobalDaumSettings,
 } from '../api'
+import { startGoogleLogin, getGoogleAuthStatus, logoutGoogle } from '../utils/googleAuth'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -57,8 +60,6 @@ interface GlobalEngineSettings {
     privateKey: string
     oauth2ClientId: string
     oauth2ClientSecret: string
-    oauth2AccessToken: string
-    oauth2RefreshToken: string
   }
   bing: {
     use: boolean
@@ -78,6 +79,18 @@ interface GlobalEngineSettings {
 
 const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false)
+
+  // 구글 OAuth 관련 state
+  const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false)
+  const [googleUserInfo, setGoogleUserInfo] = useState<any>(null)
+
+  // 블로거 설정 관련 state
+  const [bloggerSettings, setBloggerSettings] = useState({
+    autoIndex: false,
+    selectedBlogs: [] as string[],
+    indexOnPublish: true,
+    batchSize: 10,
+  })
   const [appSettings, setAppSettings] = useState<AppSettings>({
     appVersion: '1.0.0',
     initialized: true,
@@ -99,8 +112,6 @@ const Settings: React.FC = () => {
       privateKey: '',
       oauth2ClientId: '',
       oauth2ClientSecret: '',
-      oauth2AccessToken: '',
-      oauth2RefreshToken: '',
     },
     bing: {
       use: false,
@@ -168,6 +179,8 @@ const Settings: React.FC = () => {
 
       // 인덱싱 설정 폼에 기본값 설정
       indexingForm.setFieldsValue(indexingSettings)
+
+      // 구글 로그인 상태 확인은 useEffect에서 처리
     } catch (error) {
       console.error('설정 로드 실패:', error)
       message.error('설정을 불러오는데 실패했습니다.')
@@ -259,6 +272,117 @@ const Settings: React.FC = () => {
     }
   }
 
+  // Google OAuth 상태 확인
+  useEffect(() => {
+    const checkGoogleAuthStatus = async () => {
+      try {
+        const status = await getGoogleAuthStatus()
+        if (status.isLoggedIn && status.userInfo) {
+          setIsGoogleLoggedIn(true)
+          setGoogleUserInfo(status.userInfo)
+        } else {
+          setIsGoogleLoggedIn(false)
+          setGoogleUserInfo(null)
+        }
+      } catch (error) {
+        console.error('Google 인증 상태 확인 오류:', error)
+        setIsGoogleLoggedIn(false)
+        setGoogleUserInfo(null)
+      }
+    }
+
+    if (engineSettings.google.oauth2ClientId) {
+      checkGoogleAuthStatus()
+    }
+  }, [engineSettings.google.oauth2ClientId])
+
+  // 주기적으로 OAuth 상태 확인 (30초마다)
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (engineSettings.google.oauth2ClientId) {
+        try {
+          const status = await getGoogleAuthStatus()
+          if (status.isLoggedIn && status.userInfo) {
+            setIsGoogleLoggedIn(true)
+            setGoogleUserInfo(status.userInfo)
+          } else if (isGoogleLoggedIn) {
+            // 이전에 로그인 상태였는데 지금 로그아웃 상태라면 UI 업데이트
+            setIsGoogleLoggedIn(false)
+            setGoogleUserInfo(null)
+            message.info('Google 세션이 만료되었습니다.')
+          }
+        } catch (error) {
+          console.error('Google 인증 상태 확인 오류:', error)
+        }
+      }
+    }, 30000) // 30초마다 확인
+
+    return () => clearInterval(interval)
+  }, [engineSettings.google.oauth2ClientId, isGoogleLoggedIn])
+
+  const handleGoogleLogin = async () => {
+    if (!engineSettings.google.oauth2ClientId.trim()) {
+      message.error('OAuth2 Client ID를 먼저 입력해주세요.')
+      return
+    }
+
+    if (!engineSettings.google.oauth2ClientSecret.trim()) {
+      message.error('OAuth2 Client Secret을 먼저 입력해주세요.')
+      return
+    }
+
+    try {
+      const result = startGoogleLogin(engineSettings.google.oauth2ClientId)
+      message.info(result.message)
+
+      // 주기적으로 로그인 상태 확인 (5초마다, 최대 2분)
+      let attempts = 0
+      const maxAttempts = 24 // 2분 (5초 * 24)
+
+      const checkInterval = setInterval(async () => {
+        attempts++
+        try {
+          const status = await getGoogleAuthStatus()
+          if (status.isLoggedIn && status.userInfo) {
+            clearInterval(checkInterval)
+            setIsGoogleLoggedIn(true)
+            setGoogleUserInfo(status.userInfo)
+            message.success(`Google 계정 연동이 완료되었습니다. (${status.userInfo.email})`)
+
+            // 엔진 설정 새로고침
+            loadSettings()
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval)
+            message.warning('로그인 확인 시간이 초과되었습니다. 페이지를 새로고침해서 상태를 확인해주세요.')
+          }
+        } catch (error) {
+          if (attempts >= maxAttempts) {
+            clearInterval(checkInterval)
+            message.error('로그인 상태 확인 중 오류가 발생했습니다.')
+          }
+        }
+      }, 5000)
+    } catch (error: any) {
+      console.error('Google 로그인 오류:', error)
+      message.error(error.message || 'Google 로그인에 실패했습니다.')
+    }
+  }
+
+  const handleGoogleLogout = async () => {
+    try {
+      const result = await logoutGoogle()
+      setIsGoogleLoggedIn(false)
+      setGoogleUserInfo(null)
+      message.success(result.message)
+
+      // 엔진 설정 새로고침
+      loadSettings()
+    } catch (error: any) {
+      console.error('Google 로그아웃 오류:', error)
+      message.error(error.message || 'Google 로그아웃에 실패했습니다.')
+    }
+  }
+
   const resetToDefaults = () => {
     const defaultSettings: AppSettings = {
       appVersion: appSettings.appVersion,
@@ -283,8 +407,6 @@ const Settings: React.FC = () => {
         privateKey: '',
         oauth2ClientId: '',
         oauth2ClientSecret: '',
-        oauth2AccessToken: '',
-        oauth2RefreshToken: '',
       },
       bing: {
         use: false,
@@ -418,15 +540,6 @@ const Settings: React.FC = () => {
                       <Input.Password placeholder="OAuth2 Client Secret" />
                     </Form.Item>
                   </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="oauth2AccessToken"
-                      label="Access Token"
-                      help="현재 활성화된 Access Token (선택사항)"
-                    >
-                      <Input placeholder="ya29.xxx" />
-                    </Form.Item>
-                  </Col>
                 </Row>
 
                 <Form.Item name="privateKey" label="Private Key" help="Service Account의 Private Key (JSON 형태)">
@@ -436,9 +549,41 @@ const Settings: React.FC = () => {
                   />
                 </Form.Item>
 
-                <Form.Item name="oauth2RefreshToken" label="Refresh Token" help="OAuth2 Refresh Token (선택사항)">
-                  <Input placeholder="1//xxx" />
-                </Form.Item>
+                {/* OAuth 로그인 섹션 */}
+                <Divider>OAuth 로그인</Divider>
+                {isGoogleLoggedIn && googleUserInfo ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <Text strong>연동된 계정:</Text>
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Avatar src={googleUserInfo.picture} size={32} />
+                      <div>
+                        <div>{googleUserInfo.name}</div>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          {googleUserInfo.email}
+                        </Text>
+                      </div>
+                      <Button type="link" danger onClick={handleGoogleLogout}>
+                        연동 해제
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 16 }}>
+                    <Text type="secondary">Google 계정이 연동되지 않았습니다.</Text>
+                    <br />
+                    <Button
+                      type="primary"
+                      icon={<GoogleOutlined />}
+                      onClick={handleGoogleLogin}
+                      disabled={
+                        !engineSettings.google.oauth2ClientId.trim() || !engineSettings.google.oauth2ClientSecret.trim()
+                      }
+                      style={{ marginTop: 8 }}
+                    >
+                      Google 계정 연동
+                    </Button>
+                  </div>
+                )}
 
                 <Form.Item>
                   <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
@@ -610,7 +755,124 @@ const Settings: React.FC = () => {
             </Space>
           </Card>
         </TabPane>
+
+        {/* 블로거 설정 탭 */}
+        <TabPane tab="블로거 설정" key="blogger">
+          <Card>
+            <Form layout="vertical">
+              <Form.Item>
+                <Text strong style={{ fontSize: 16 }}>
+                  Google 블로거 설정
+                </Text>
+                <br />
+                <Text type="secondary">블로거 자동 인덱싱 및 게시물 관리 설정</Text>
+              </Form.Item>
+
+              <Form.Item label="자동 인덱싱 활성화">
+                <Switch
+                  checked={bloggerSettings.autoIndex}
+                  onChange={checked => setBloggerSettings(prev => ({ ...prev, autoIndex: checked }))}
+                  checkedChildren="활성화"
+                  unCheckedChildren="비활성화"
+                />
+                <div style={{ marginTop: 4 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    새 게시물 발행 시 자동으로 검색엔진에 인덱싱 요청
+                  </Text>
+                </div>
+              </Form.Item>
+
+              <Form.Item label="게시 시 즉시 인덱싱">
+                <Switch
+                  checked={bloggerSettings.indexOnPublish}
+                  onChange={checked => setBloggerSettings(prev => ({ ...prev, indexOnPublish: checked }))}
+                  checkedChildren="활성화"
+                  unCheckedChildren="비활성화"
+                />
+                <div style={{ marginTop: 4 }}>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    블로거에서 게시물을 발행하는 즉시 인덱싱 실행
+                  </Text>
+                </div>
+              </Form.Item>
+
+              <Row gutter={16}>
+                <Col span={12}>
+                  <Form.Item label="배치 크기">
+                    <InputNumber
+                      min={1}
+                      max={50}
+                      value={bloggerSettings.batchSize}
+                      onChange={value => setBloggerSettings(prev => ({ ...prev, batchSize: value || 10 }))}
+                      style={{ width: '100%' }}
+                    />
+                    <div style={{ marginTop: 4 }}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        한 번에 처리할 게시물 수
+                      </Text>
+                    </div>
+                  </Form.Item>
+                </Col>
+              </Row>
+
+              {/* 연동 상태 표시 */}
+              <Divider>연동 상태</Divider>
+              <div style={{ marginBottom: 16 }}>
+                <Row gutter={16}>
+                  <Col span={8}>
+                    <Card size="small">
+                      <Statistic
+                        title="Google 계정 연동"
+                        value={isGoogleLoggedIn ? '연동됨' : '미연동'}
+                        valueStyle={{ color: isGoogleLoggedIn ? '#3f8600' : '#cf1322' }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col span={8}>
+                    <Card size="small">
+                      <Statistic
+                        title="인덱싱 엔진"
+                        value={engineSettings.google.use ? '활성화' : '비활성화'}
+                        valueStyle={{ color: engineSettings.google.use ? '#3f8600' : '#cf1322' }}
+                      />
+                    </Card>
+                  </Col>
+                  <Col span={8}>
+                    <Card size="small">
+                      <Statistic
+                        title="자동 인덱싱"
+                        value={bloggerSettings.autoIndex ? '활성화' : '비활성화'}
+                        valueStyle={{ color: bloggerSettings.autoIndex ? '#3f8600' : '#cf1322' }}
+                      />
+                    </Card>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* 도움말 */}
+              <div style={{ background: '#f6f8fa', padding: 16, borderRadius: 8, marginTop: 16 }}>
+                <Text strong>설정 가이드:</Text>
+                <ul style={{ marginTop: 8, marginBottom: 0 }}>
+                  <li>먼저 검색엔진 설정에서 Google 인덱싱을 활성화하고 OAuth 로그인을 완료하세요.</li>
+                  <li>자동 인덱싱을 활성화하면 새 게시물이 자동으로 검색엔진에 등록됩니다.</li>
+                  <li>배치 크기를 조절하여 한 번에 처리할 게시물 수를 제한할 수 있습니다.</li>
+                </ul>
+              </div>
+
+              <Form.Item style={{ marginTop: 24 }}>
+                <Space>
+                  <Button type="primary" icon={<SaveOutlined />}>
+                    블로거 설정 저장
+                  </Button>
+                  <Button icon={<ReloadOutlined />}>블로그 목록 새로고침</Button>
+                </Space>
+              </Form.Item>
+            </Form>
+          </Card>
+        </TabPane>
       </Tabs>
+
+      {/* OAuth 인증 코드 입력 모달 */}
     </div>
   )
 }

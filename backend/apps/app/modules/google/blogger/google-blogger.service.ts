@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { firstValueFrom } from 'rxjs'
+import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
 
 export interface BloggerOptions {
   blogId?: string
   blogUrl?: string
-  accessToken: string
   maxResults?: number
   pageToken?: string
   status?: 'live' | 'draft' | 'scheduled'
@@ -30,20 +30,99 @@ export interface BloggerPost {
 export class GoogleBloggerService {
   private readonly bloggerApiUrl = 'https://www.googleapis.com/blogger/v3'
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly databaseInitService: DatabaseInitService,
+  ) {}
+
+  /**
+   * 저장된 Google OAuth 토큰 가져오기
+   */
+  private async getAccessToken(): Promise<string> {
+    try {
+      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const { oauth2AccessToken, oauth2RefreshToken, oauth2TokenExpiry, oauth2ClientId, oauth2ClientSecret } =
+        globalSettings.google
+
+      if (!oauth2AccessToken) {
+        throw new Error('Google OAuth 토큰이 없습니다. 먼저 로그인해주세요.')
+      }
+
+      // 토큰 만료 확인
+      const expiryTime = oauth2TokenExpiry ? new Date(oauth2TokenExpiry).getTime() : 0
+      const isExpired = Date.now() >= expiryTime - 60000 // 1분 여유
+
+      if (isExpired && oauth2RefreshToken) {
+        // 토큰 자동 갱신
+        console.log('Google 토큰 만료 감지, 자동 갱신 시도...')
+        try {
+          const newTokens = await this.refreshAccessToken(oauth2RefreshToken, oauth2ClientId, oauth2ClientSecret)
+
+          // DB에 새로운 토큰 저장
+          const updatedGoogleSettings = {
+            ...globalSettings.google,
+            oauth2AccessToken: newTokens.accessToken,
+            oauth2TokenExpiry: new Date(newTokens.expiresAt).toISOString(),
+          }
+
+          await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+          console.log('Google 토큰이 자동으로 갱신되었습니다.')
+
+          return newTokens.accessToken
+        } catch (refreshError) {
+          throw new Error(`Google 토큰 갱신 실패: ${refreshError.message}. 다시 로그인해주세요.`)
+        }
+      }
+
+      return oauth2AccessToken
+    } catch (error) {
+      throw new Error(`Google 인증 토큰 가져오기 실패: ${error.message}`)
+    }
+  }
+
+  /**
+   * Refresh Token으로 Access Token 갱신
+   */
+  private async refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string) {
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error_description || 'Token 갱신 실패')
+    }
+
+    const data = await response.json()
+    return {
+      accessToken: data.access_token,
+      expiresAt: Date.now() + data.expires_in * 1000,
+    }
+  }
 
   /**
    * 블로그 URL로 블로그 정보 조회
    */
-  async getBlogByUrl(blogUrl: string, accessToken: string): Promise<any> {
+  async getBlogByUrl(blogUrl: string, accessToken?: string): Promise<any> {
     try {
+      const token = accessToken || (await this.getAccessToken())
+
       const response = await firstValueFrom(
         this.httpService.get(`${this.bloggerApiUrl}/blogs/byurl`, {
           params: {
             url: blogUrl,
           },
           headers: {
-            Authorization: `Bearer ${accessToken}`,
+            Authorization: `Bearer ${token}`,
           },
         }),
       )
@@ -57,9 +136,10 @@ export class GoogleBloggerService {
    * 블로그 게시물 목록 조회
    */
   async getBlogPosts(options: BloggerOptions): Promise<any> {
-    const { blogId, blogUrl, accessToken, maxResults = 10, pageToken, status = 'live' } = options
+    const { blogId, blogUrl, maxResults = 10, pageToken, status = 'live' } = options
 
     try {
+      const accessToken = await this.getAccessToken()
       let finalBlogId = blogId
 
       // blogId가 없으면 blogUrl로 조회
@@ -99,8 +179,10 @@ export class GoogleBloggerService {
   /**
    * 특정 게시물 조회
    */
-  async getBlogPost(blogId: string, postId: string, accessToken: string): Promise<any> {
+  async getBlogPost(blogId: string, postId: string): Promise<any> {
     try {
+      const accessToken = await this.getAccessToken()
+
       const response = await firstValueFrom(
         this.httpService.get(`${this.bloggerApiUrl}/blogs/${blogId}/posts/${postId}`, {
           headers: {
@@ -117,8 +199,10 @@ export class GoogleBloggerService {
   /**
    * 블로그 정보 조회
    */
-  async getBlogInfo(blogId: string, accessToken: string): Promise<any> {
+  async getBlogInfo(blogId: string): Promise<any> {
     try {
+      const accessToken = await this.getAccessToken()
+
       const response = await firstValueFrom(
         this.httpService.get(`${this.bloggerApiUrl}/blogs/${blogId}`, {
           headers: {
@@ -135,8 +219,10 @@ export class GoogleBloggerService {
   /**
    * 사용자의 블로그 목록 조회
    */
-  async getUserBlogs(accessToken: string): Promise<any> {
+  async getUserBlogs(): Promise<any> {
     try {
+      const accessToken = await this.getAccessToken()
+
       const response = await firstValueFrom(
         this.httpService.get(`${this.bloggerApiUrl}/users/self/blogs`, {
           headers: {
