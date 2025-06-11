@@ -1,0 +1,17 @@
+{
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps",
+  "compilerOptions": {
+    "webpack": false,
+    "tsConfigPath": "./tsconfig.build.json",
+    "assets": [
+      "**/*.png",
+      "**/*.jpg",
+      "**/*.hbs",
+      "**/*.html",
+      "**/*.ejs",
+      "static/**/*"
+    ],
+    "watchAssets": true
+  }
+}

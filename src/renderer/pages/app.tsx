@@ -35,6 +35,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const navigate = useNavigate()
   const location = useLocation()
+  const [msg, setMsg] = useState('')
 
   const verifyAuth = async () => {
     const { isLoggedIn } = await checkLoginStatus()
@@ -74,6 +75,7 @@ const App: React.FC = () => {
       <Layout>
         <StyledHeader />
         <StyledContent>
+          <h1>자동 색인</h1>
           <Routes>
             <Route path="/settings" element={<Settings />} />
             <Route path="/login" element={<Login />} />
