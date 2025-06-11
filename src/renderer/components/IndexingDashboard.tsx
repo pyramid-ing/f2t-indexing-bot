@@ -17,6 +17,7 @@ import {
   Checkbox,
   Tooltip,
   Divider,
+  Alert,
 } from 'antd'
 import {
   PlayCircleOutlined,
@@ -28,6 +29,7 @@ import {
   CloseCircleOutlined,
   LoadingOutlined,
   EyeOutlined,
+  LoginOutlined,
 } from '@ant-design/icons'
 import {
   getAllSiteConfigs,
@@ -37,6 +39,11 @@ import {
   daumManualIndex,
   getGlobalSettings,
   SiteConfig,
+  checkNaverLoginStatus,
+  openNaverLoginBrowser,
+  checkNaverLoginComplete,
+  closeNaverLoginBrowser,
+  NaverLoginStatus,
 } from '../api'
 
 const { Title, Text } = Typography
@@ -62,12 +69,22 @@ const IndexingDashboard: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false)
   const [selectedTask, setSelectedTask] = useState<IndexingTask | null>(null)
   const [globalEngineSettings, setGlobalEngineSettings] = useState<any>(null)
+  const [naverLoginStatus, setNaverLoginStatus] = useState<NaverLoginStatus | null>(null)
+  const [naverLoginChecking, setNaverLoginChecking] = useState(false)
+  const [naverLoginBrowserOpen, setNaverLoginBrowserOpen] = useState(false)
   const [form] = Form.useForm()
 
   useEffect(() => {
     loadSites()
     loadGlobalSettings()
   }, [])
+
+  useEffect(() => {
+    // 네이버가 활성화되어 있으면 로그인 상태 확인
+    if (globalEngineSettings?.naver?.use) {
+      checkNaverLogin()
+    }
+  }, [globalEngineSettings])
 
   const loadSites = async () => {
     try {
@@ -194,6 +211,10 @@ const IndexingDashboard: React.FC = () => {
               })
               break
             case 'naver':
+              // 네이버 로그인 상태 확인
+              if (naverLoginStatus && !naverLoginStatus.isLoggedIn) {
+                throw new Error('네이버 로그인이 필요합니다. 먼저 로그인을 완료해주세요.')
+              }
               result = await naverManualIndex({
                 siteUrl: siteConfig.siteUrl,
                 urlsToIndex: urls,
@@ -426,6 +447,76 @@ const IndexingDashboard: React.FC = () => {
   const siteConfig = getSelectedSiteConfig()
   const availableServices = getAvailableServices()
 
+  const checkNaverLogin = async () => {
+    if (!globalEngineSettings?.naver?.use) return
+
+    setNaverLoginChecking(true)
+    try {
+      const status = await checkNaverLoginStatus()
+      setNaverLoginStatus(status)
+    } catch (error) {
+      console.error('네이버 로그인 상태 확인 실패:', error)
+      setNaverLoginStatus({
+        isLoggedIn: false,
+        needsLogin: true,
+        message: '로그인 상태 확인 실패',
+      })
+    } finally {
+      setNaverLoginChecking(false)
+    }
+  }
+
+  const handleNaverLogin = async () => {
+    try {
+      const result = await openNaverLoginBrowser()
+      if (result.success) {
+        setNaverLoginBrowserOpen(true)
+        message.info('네이버 로그인 창이 열렸습니다. 수동으로 로그인해주세요.')
+
+        // 5초마다 로그인 완료 상태 확인
+        const checkInterval = setInterval(async () => {
+          try {
+            const completeResult = await checkNaverLoginComplete()
+            if (completeResult.success) {
+              clearInterval(checkInterval)
+              setNaverLoginBrowserOpen(false)
+              message.success('네이버 로그인이 완료되었습니다!')
+              await checkNaverLogin() // 상태 새로고침
+            }
+          } catch (error) {
+            // 브라우저가 닫혔거나 오류 발생 시 체크 중단
+            console.log('로그인 완료 확인 중 오류:', error)
+          }
+        }, 5000)
+
+        // 2분 후 자동으로 체크 중단
+        setTimeout(() => {
+          clearInterval(checkInterval)
+          if (naverLoginBrowserOpen) {
+            setNaverLoginBrowserOpen(false)
+            message.warning('로그인 확인을 중단했습니다. 로그인 완료 후 상태를 새로고침해주세요.')
+          }
+        }, 120000)
+      } else {
+        message.error(result.message)
+      }
+    } catch (error) {
+      console.error('네이버 로그인 브라우저 열기 실패:', error)
+      message.error('네이버 로그인 창 열기에 실패했습니다.')
+    }
+  }
+
+  const handleCloseNaverBrowser = async () => {
+    try {
+      await closeNaverLoginBrowser()
+      setNaverLoginBrowserOpen(false)
+      message.info('네이버 로그인 브라우저를 닫았습니다.')
+    } catch (error) {
+      console.error('브라우저 닫기 실패:', error)
+      message.error('브라우저 닫기에 실패했습니다.')
+    }
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -509,6 +600,59 @@ const IndexingDashboard: React.FC = () => {
                 )}
                 {availableServices.length === 0 && <Tag color="red">활성화된 서비스가 없습니다</Tag>}
               </Space>
+            </div>
+          )}
+
+          {/* 네이버 로그인 상태 */}
+          {globalEngineSettings?.naver?.use && (
+            <div>
+              <Text strong>네이버 로그인 상태: </Text>
+              <Space>
+                {naverLoginChecking ? (
+                  <Tag icon={<LoadingOutlined />} color="blue">
+                    확인 중...
+                  </Tag>
+                ) : naverLoginStatus ? (
+                  naverLoginStatus.isLoggedIn ? (
+                    <Tag icon={<CheckCircleOutlined />} color="green">
+                      로그인됨
+                    </Tag>
+                  ) : (
+                    <Tag icon={<CloseCircleOutlined />} color="red">
+                      로그인 필요
+                    </Tag>
+                  )
+                ) : (
+                  <Tag icon={<LoadingOutlined />} color="default">
+                    상태 확인 중...
+                  </Tag>
+                )}
+
+                {naverLoginBrowserOpen ? (
+                  <Space>
+                    <Button size="small" type="link" icon={<LoadingOutlined />} onClick={checkNaverLogin}>
+                      로그인 완료 확인
+                    </Button>
+                    <Button size="small" type="link" danger onClick={handleCloseNaverBrowser}>
+                      브라우저 닫기
+                    </Button>
+                  </Space>
+                ) : naverLoginStatus && !naverLoginStatus.isLoggedIn ? (
+                  <Button size="small" type="link" icon={<LoginOutlined />} onClick={handleNaverLogin}>
+                    로그인하기
+                  </Button>
+                ) : (
+                  <Button size="small" type="link" icon={<ReloadOutlined />} onClick={checkNaverLogin}>
+                    상태 새로고침
+                  </Button>
+                )}
+              </Space>
+
+              {naverLoginStatus && !naverLoginStatus.isLoggedIn && (
+                <div style={{ marginTop: 8 }}>
+                  <Alert message="네이버 로그인 필요" description={naverLoginStatus.message} type="warning" showIcon />
+                </div>
+              )}
             </div>
           )}
 
@@ -603,11 +747,16 @@ const IndexingDashboard: React.FC = () => {
                   </Checkbox>
                 )}
                 {globalEngineSettings?.naver?.use && (
-                  <Checkbox value="naver">
+                  <Checkbox value="naver" disabled={naverLoginStatus && !naverLoginStatus.isLoggedIn}>
                     <Space>
                       {getServiceIcon('naver')}
                       <span>Naver 웹마스터</span>
                       <Tag color="green">활성화됨</Tag>
+                      {naverLoginStatus && !naverLoginStatus.isLoggedIn && (
+                        <Tag color="red" icon={<CloseCircleOutlined />}>
+                          로그인 필요
+                        </Tag>
+                      )}
                     </Space>
                   </Checkbox>
                 )}

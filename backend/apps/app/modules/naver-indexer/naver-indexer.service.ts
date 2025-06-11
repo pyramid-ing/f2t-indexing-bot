@@ -5,10 +5,11 @@ import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import fs from 'fs'
 import path from 'path'
-import type { Page } from 'puppeteer'
+import type { Page, Browser } from 'puppeteer'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 import { SettingsService } from '../../shared/settings.service'
+import { OnModuleInit } from '@nestjs/common'
 
 puppeteer.use(StealthPlugin())
 
@@ -17,6 +18,12 @@ export interface NaverIndexerOptions {
   urlsToIndex: string[]
   naverId?: string // 네이버 아이디(선택, 자동로그인용) - DB에서 가져올 수 있음
   naverPw?: string // 네이버 비번(선택, 자동로그인용) - DB에서 가져올 수 있음
+}
+
+export interface NaverLoginStatus {
+  isLoggedIn: boolean
+  needsLogin: boolean
+  message: string
 }
 
 // 쿠키 저장 경로 분기 (tistory-bot 방식과 동일)
@@ -29,8 +36,10 @@ function getNaverCookiePath(naverId?: string) {
 }
 
 @Injectable()
-export class NaverIndexerService {
+export class NaverIndexerService implements OnModuleInit {
   private readonly logger = new Logger(NaverIndexerService.name)
+  private loginBrowser: Browser | null = null
+  private loginPage: Page | null = null
 
   constructor(
     private readonly configService: ConfigService,
@@ -38,6 +47,13 @@ export class NaverIndexerService {
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
   ) {}
+
+  async onModuleInit() {
+    // 애플리케이션 시작 시 네이버 로그인 상태 확인 (3초 지연 후)
+    setTimeout(() => {
+      this.initializeLoginStatus()
+    }, 3000)
+  }
 
   private sleep(ms: number) {
     return new Promise(res => setTimeout(res, ms))
@@ -367,5 +383,242 @@ export class NaverIndexerService {
     await browser.close()
     this.logger.log('모든 색인 요청이 완료되었습니다.')
     return results
+  }
+
+  /**
+   * 네이버 로그인 상태 확인 (headless)
+   */
+  async checkLoginStatus(): Promise<NaverLoginStatus> {
+    try {
+      const naverConfig = await this.getNaverConfig()
+
+      const launchOptions: any = {
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
+          '--lang=ko-KR,ko',
+        ],
+        defaultViewport: { width: 1280, height: 900 },
+      }
+
+      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+      }
+
+      const browser = await puppeteer.launch(launchOptions)
+      const page = await browser.newPage()
+
+      await page.setExtraHTTPHeaders({
+        'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      })
+      await page.emulateTimezone('Asia/Seoul')
+
+      let needsLogin = false
+
+      try {
+        // 저장된 쿠키 로드 시도
+        await this.loadCookies(page, naverConfig.naverId)
+
+        // 네이버 서치 어드바이저 페이지로 이동
+        await page.goto('https://searchadvisor.naver.com/console/site', {
+          waitUntil: 'networkidle2',
+          timeout: 10000,
+        })
+
+        await this.sleep(2000)
+
+        // 로그인 필요 여부 확인
+        if (
+          page.url().startsWith('https://nid.naver.com/oauth2.0/authorize') ||
+          page.url().startsWith('https://nid.naver.com/nidlogin.login')
+        ) {
+          needsLogin = true
+        }
+
+        await browser.close()
+
+        if (needsLogin) {
+          return {
+            isLoggedIn: false,
+            needsLogin: true,
+            message: '네이버 로그인이 필요합니다.',
+          }
+        } else {
+          return {
+            isLoggedIn: true,
+            needsLogin: false,
+            message: '네이버 로그인 상태입니다.',
+          }
+        }
+      } catch (error) {
+        await browser.close()
+        return {
+          isLoggedIn: false,
+          needsLogin: true,
+          message: '쿠키가 만료되었거나 존재하지 않습니다. 로그인이 필요합니다.',
+        }
+      }
+    } catch (error) {
+      this.logger.error('네이버 로그인 상태 확인 실패:', error)
+      return {
+        isLoggedIn: false,
+        needsLogin: true,
+        message: `로그인 상태 확인 실패: ${error.message}`,
+      }
+    }
+  }
+
+  /**
+   * 수동 로그인을 위한 브라우저 창 열기
+   */
+  async openLoginBrowser(): Promise<{ success: boolean; message: string }> {
+    try {
+      // 기존 브라우저가 열려있다면 닫기
+      if (this.loginBrowser) {
+        await this.closeBrowser()
+      }
+
+      const naverConfig = await this.getNaverConfig()
+
+      const launchOptions: any = {
+        headless: false, // 사용자가 수동으로 로그인할 수 있도록 브라우저 창 표시
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
+          '--lang=ko-KR,ko',
+        ],
+        defaultViewport: { width: 1280, height: 900 },
+      }
+
+      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+      }
+
+      this.loginBrowser = await puppeteer.launch(launchOptions)
+      this.loginPage = await this.loginBrowser.newPage()
+
+      await this.loginPage.setExtraHTTPHeaders({
+        'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+      })
+      await this.loginPage.emulateTimezone('Asia/Seoul')
+
+      // 네이버 로그인 페이지로 이동
+      await this.loginPage.goto('https://nid.naver.com/nidlogin.login?mode=form&url=https://searchadvisor.naver.com/', {
+        waitUntil: 'networkidle2',
+      })
+
+      this.logger.log('네이버 수동 로그인 브라우저를 열었습니다.')
+
+      return {
+        success: true,
+        message: '네이버 로그인 페이지가 열렸습니다. 수동으로 로그인해주세요.',
+      }
+    } catch (error) {
+      this.logger.error('네이버 로그인 브라우저 열기 실패:', error)
+      return {
+        success: false,
+        message: `브라우저 열기 실패: ${error.message}`,
+      }
+    }
+  }
+
+  /**
+   * 로그인 완료 확인 및 쿠키 저장
+   */
+  async checkLoginComplete(): Promise<{ success: boolean; message: string }> {
+    try {
+      if (!this.loginBrowser || !this.loginPage) {
+        return {
+          success: false,
+          message: '로그인 브라우저가 열려있지 않습니다.',
+        }
+      }
+
+      const naverConfig = await this.getNaverConfig()
+
+      // 현재 페이지 URL 확인
+      const currentUrl = this.loginPage.url()
+
+      // 로그인이 완료되었는지 확인 (nid.naver.com이 아닌 다른 도메인으로 이동했는지)
+      if (!currentUrl.includes('nid.naver.com')) {
+        // 네이버 서치 어드바이저로 이동하여 최종 확인
+        await this.loginPage.goto('https://searchadvisor.naver.com/console/site', {
+          waitUntil: 'networkidle2',
+        })
+
+        await this.sleep(2000)
+
+        // 다시 로그인 페이지로 리다이렉트되지 않았다면 로그인 성공
+        if (!this.loginPage.url().includes('nid.naver.com')) {
+          // 쿠키 저장
+          await this.saveCookies(this.loginPage, naverConfig.naverId)
+
+          // 브라우저 닫기
+          await this.closeBrowser()
+
+          this.logger.log('네이버 로그인 완료 및 쿠키 저장')
+
+          return {
+            success: true,
+            message: '네이버 로그인이 완료되었습니다. 쿠키가 저장되었습니다.',
+          }
+        }
+      }
+
+      return {
+        success: false,
+        message: '아직 로그인이 완료되지 않았습니다. 계속 로그인을 진행해주세요.',
+      }
+    } catch (error) {
+      this.logger.error('네이버 로그인 완료 확인 실패:', error)
+      return {
+        success: false,
+        message: `로그인 완료 확인 실패: ${error.message}`,
+      }
+    }
+  }
+
+  /**
+   * 로그인 브라우저 닫기
+   */
+  async closeBrowser(): Promise<void> {
+    try {
+      if (this.loginBrowser) {
+        await this.loginBrowser.close()
+        this.loginBrowser = null
+        this.loginPage = null
+        this.logger.log('네이버 로그인 브라우저를 닫았습니다.')
+      }
+    } catch (error) {
+      this.logger.error('브라우저 닫기 실패:', error)
+    }
+  }
+
+  /**
+   * 애플리케이션 시작 시 네이버 로그인 상태 초기화
+   */
+  async initializeLoginStatus(): Promise<void> {
+    try {
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+
+      if (!globalSettings.naver || !globalSettings.naver.use) {
+        this.logger.log('네이버 서비스가 비활성화되어 있습니다.')
+        return
+      }
+
+      this.logger.log('네이버 로그인 상태를 확인합니다...')
+      const status = await this.checkLoginStatus()
+
+      if (status.needsLogin) {
+        this.logger.warn('네이버 로그인이 필요합니다. 수동 로그인을 진행해주세요.')
+      } else {
+        this.logger.log('네이버 로그인 상태가 정상입니다.')
+      }
+    } catch (error) {
+      this.logger.error('네이버 로그인 상태 초기화 실패:', error)
+    }
   }
 }

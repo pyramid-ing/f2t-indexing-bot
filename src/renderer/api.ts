@@ -198,3 +198,30 @@ export async function updateGlobalDaumSettings(settings: Partial<GlobalEngineSet
   }
   return await updateGlobalSettings(updatedSettings)
 }
+
+// 네이버 로그인 관련
+export interface NaverLoginStatus {
+  isLoggedIn: boolean
+  needsLogin: boolean
+  message: string
+}
+
+export async function checkNaverLoginStatus(): Promise<NaverLoginStatus> {
+  const res = await axios.get(`${API_BASE_URL}/naver-indexer/login-status`)
+  return res.data
+}
+
+export async function openNaverLoginBrowser(): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/open-login`)
+  return res.data
+}
+
+export async function checkNaverLoginComplete(): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/check-login-complete`)
+  return res.data
+}
+
+export async function closeNaverLoginBrowser(): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-browser`)
+  return res.data
+}
