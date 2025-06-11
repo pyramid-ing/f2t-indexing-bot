@@ -22,7 +22,7 @@ model Auth {
   updatedAt DateTime @updatedAt
 }
 
-// 사이트 설정 모델
+// 사이트 설정 모델 (검색엔진별 설정은 전역 설정으로 이동)
 model Site {
   id            Int       @id @default(autoincrement())
   siteUrl       String    @unique
@@ -30,12 +30,6 @@ model Site {
   indexingUrls  String    // JSON 배열로 저장
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
-  // 연관 관계
-  bingConfig    BingConfig?
-  googleConfig  GoogleConfig?
-  daumConfig    DaumConfig?
-  naverConfig   NaverConfig?
 }
 
 // 블로그 타입 enum
@@ -43,66 +37,6 @@ enum BlogType {
   TISTORY
   BLOGGER
   WORDPRESS
-}
-
-// Bing 설정
-model BingConfig {
-  id      Int     @id @default(autoincrement())
-  siteId  Int     @unique
-  use     Boolean @default(false)
-  apiKey  String?
-  
-  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Google 설정
-model GoogleConfig {
-  id                    Int     @id @default(autoincrement())
-  siteId                Int     @unique
-  use                   Boolean @default(false)
-  serviceAccountEmail   String?
-  privateKey            String? // JSON으로 저장
-  oauth2ClientId        String?
-  oauth2ClientSecret    String?
-  oauth2AccessToken     String?
-  oauth2RefreshToken    String?
-  oauth2TokenExpiry     DateTime?
-  
-  site                  Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Daum 설정
-model DaumConfig {
-  id       Int     @id @default(autoincrement())
-  siteId   Int     @unique
-  use      Boolean @default(false)
-  siteUrl  String?
-  password String?
-  
-  site     Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// Naver 설정
-model NaverConfig {
-  id       Int     @id @default(autoincrement())
-  siteId   Int     @unique
-  use      Boolean @default(false)
-  naverId  String?
-  password String?
-  
-  site     Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }
 
 // 색인 작업 로그

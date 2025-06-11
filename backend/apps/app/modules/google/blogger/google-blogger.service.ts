@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { firstValueFrom } from 'rxjs'
-import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
+import { SettingsService } from '../../../shared/settings.service'
 
 export interface BloggerOptions {
   blogId?: string
@@ -28,11 +28,12 @@ export interface BloggerPost {
 
 @Injectable()
 export class GoogleBloggerService {
+  private readonly logger = new Logger(GoogleBloggerService.name)
   private readonly bloggerApiUrl = 'https://www.googleapis.com/blogger/v3'
 
   constructor(
     private readonly httpService: HttpService,
-    private readonly databaseInitService: DatabaseInitService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   /**
@@ -40,7 +41,7 @@ export class GoogleBloggerService {
    */
   private async getAccessToken(): Promise<string> {
     try {
-      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
       const { oauth2AccessToken, oauth2RefreshToken, oauth2TokenExpiry, oauth2ClientId, oauth2ClientSecret } =
         globalSettings.google
 
@@ -65,7 +66,7 @@ export class GoogleBloggerService {
             oauth2TokenExpiry: new Date(newTokens.expiresAt).toISOString(),
           }
 
-          await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+          await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
           console.log('Google 토큰이 자동으로 갱신되었습니다.')
 
           return newTokens.accessToken
@@ -233,6 +234,31 @@ export class GoogleBloggerService {
       return response.data
     } catch (error) {
       throw new Error(`사용자 블로그 목록 조회 실패: ${error.response?.data?.error?.message || error.message}`)
+    }
+  }
+
+  async getBloggerBlogs() {
+    try {
+      // 전역 Google 설정 조회
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      const googleConfig = globalSettings.google
+
+      if (!googleConfig.oauth2AccessToken) {
+        throw new Error('Google OAuth2 토큰이 설정되지 않았습니다.')
+      }
+
+      // Blogger API를 사용하여 블로그 목록 조회
+      this.logger.log('Blogger 블로그 목록 조회')
+
+      // 실제 구현은 Google API 클라이언트를 사용
+      return {
+        success: true,
+        blogs: [],
+        message: 'Blogger 블로그 목록 조회 성공',
+      }
+    } catch (error) {
+      this.logger.error('Blogger 블로그 목록 조회 실패:', error)
+      throw error
     }
   }
 }

@@ -8,6 +8,7 @@ import path from 'path'
 import type { Page } from 'puppeteer'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
+import { SettingsService } from '../../shared/settings.service'
 
 puppeteer.use(StealthPlugin())
 
@@ -35,6 +36,7 @@ export class NaverIndexerService {
     private readonly configService: ConfigService,
     private readonly httpService: HttpService,
     private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   private sleep(ms: number) {
@@ -59,20 +61,20 @@ export class NaverIndexerService {
     this.logger.log('쿠키를 저장했습니다.')
   }
 
-  private async getNaverConfig(siteUrl: string) {
-    const site = await this.prisma.getSiteWithConfigs(siteUrl)
-    if (!site) {
-      throw new Error(`사이트 설정을 찾을 수 없습니다: ${siteUrl}`)
+  private async getNaverConfig() {
+    const globalSettings = await this.settingsService.getGlobalEngineSettings()
+
+    if (!globalSettings.naver || !globalSettings.naver.use) {
+      throw new Error('Naver 색인이 비활성화되어 있습니다.')
     }
 
-    if (!site.naverConfig || !site.naverConfig.use) {
-      throw new Error(`Naver 인덱싱이 비활성화되었습니다: ${siteUrl}`)
+    if (!globalSettings.naver.naverId || !globalSettings.naver.password) {
+      throw new Error('Naver 인증 정보가 설정되지 않았습니다.')
     }
 
     return {
-      naverId: site.naverConfig.naverId,
-      password: site.naverConfig.password,
-      siteUrl: site.siteUrl,
+      naverId: globalSettings.naver.naverId,
+      password: globalSettings.naver.password,
     }
   }
 
@@ -83,7 +85,7 @@ export class NaverIndexerService {
     const { siteUrl, urlsToIndex } = options
 
     // DB에서 네이버 설정 가져오기 (옵션으로 전달된 값이 없을 경우)
-    const dbConfig = await this.getNaverConfig(siteUrl)
+    const dbConfig = await this.getNaverConfig()
     const naverId = options.naverId || dbConfig.naverId
     const naverPw = options.naverPw || dbConfig.password
     const launchOptions: any = {
@@ -289,12 +291,14 @@ export class NaverIndexerService {
           results.push(result)
 
           // 로그 기록 (RETRY 상태로 기록)
-          await this.prisma.createIndexingLog({
-            siteUrl,
-            targetUrl: url,
-            provider: 'NAVER',
-            status: 'RETRY',
-            message: result.msg,
+          await this.prisma.indexingLog.create({
+            data: {
+              siteUrl: 'global',
+              targetUrl: url,
+              provider: 'NAVER',
+              status: 'RETRY',
+              message: result.msg,
+            },
           })
 
           continue
@@ -310,12 +314,14 @@ export class NaverIndexerService {
           results.push(result)
 
           // 성공 로그 기록
-          await this.prisma.createIndexingLog({
-            siteUrl,
-            targetUrl: url,
-            provider: 'NAVER',
-            status: 'SUCCESS',
-            message: result.msg,
+          await this.prisma.indexingLog.create({
+            data: {
+              siteUrl: 'global',
+              targetUrl: url,
+              provider: 'NAVER',
+              status: 'SUCCESS',
+              message: result.msg,
+            },
           })
         } else {
           result = {
@@ -326,12 +332,14 @@ export class NaverIndexerService {
           results.push(result)
 
           // 실패 로그 기록
-          await this.prisma.createIndexingLog({
-            siteUrl,
-            targetUrl: url,
-            provider: 'NAVER',
-            status: 'FAILED',
-            message: result.msg,
+          await this.prisma.indexingLog.create({
+            data: {
+              siteUrl: 'global',
+              targetUrl: url,
+              provider: 'NAVER',
+              status: 'FAILED',
+              message: result.msg,
+            },
           })
         }
         await this.sleep(1000)
@@ -344,12 +352,14 @@ export class NaverIndexerService {
         results.push(result)
 
         // 에러 로그 기록
-        await this.prisma.createIndexingLog({
-          siteUrl,
-          targetUrl: url,
-          provider: 'NAVER',
-          status: 'FAILED',
-          message: result.msg,
+        await this.prisma.indexingLog.create({
+          data: {
+            siteUrl: 'global',
+            targetUrl: url,
+            provider: 'NAVER',
+            status: 'FAILED',
+            message: result.msg,
+          },
         })
       }
     }

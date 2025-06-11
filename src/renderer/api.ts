@@ -7,71 +7,65 @@ export interface SiteConfig {
   siteUrl: string
   blogType: 'TISTORY' | 'BLOGGER' | 'WORDPRESS'
   indexingUrls: string[]
-  bing?: {
+}
+
+// 전역 엔진 설정 인터페이스
+export interface GlobalEngineSettings {
+  google: {
     use: boolean
-    apiKey?: string
+    serviceAccountEmail: string
+    privateKey: string
+    oauth2ClientId: string
+    oauth2ClientSecret: string
+    oauth2AccessToken: string
+    oauth2RefreshToken: string
+    oauth2TokenExpiry: string
   }
-  google?: {
+  bing: {
     use: boolean
-    serviceAccountEmail?: string
-    privateKey?: string
-    oauth2ClientId?: string
-    oauth2ClientSecret?: string
-    oauth2AccessToken?: string
-    oauth2RefreshToken?: string
-    oauth2TokenExpiry?: Date
+    apiKey: string
   }
-  daum?: {
+  naver: {
     use: boolean
-    siteUrl?: string
-    password?: string
+    naverId: string
+    password: string
   }
-  naver?: {
+  daum: {
     use: boolean
-    naverId?: string
-    password?: string
+    siteUrl: string
+    password: string
   }
 }
 
 // 앱 상태 관련
 export async function getAppStatus() {
-  const res = await axios.get(`${API_BASE_URL}/site-config/app-status`)
+  const res = await axios.get(`${API_BASE_URL}/settings/status`)
   return res.data
 }
 
-export async function markSetupCompleted() {
-  const res = await axios.post(`${API_BASE_URL}/site-config/setup-completed`)
-  return res.data
-}
-
-export async function reinitializeDatabase() {
-  const res = await axios.post(`${API_BASE_URL}/site-config/reinitialize-database`)
-  return res.data
-}
-
-// 사이트 설정 관리
+// 사이트 설정 관리 (간소화됨)
 export async function createSiteConfig(config: SiteConfig) {
-  const res = await axios.post(`${API_BASE_URL}/site-config`, config)
+  const res = await axios.post(`${API_BASE_URL}/sites`, config)
   return res.data
 }
 
 export async function getSiteConfig(siteUrl: string) {
-  const res = await axios.get(`${API_BASE_URL}/site-config/${encodeURIComponent(siteUrl)}`)
+  const res = await axios.get(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`)
   return res.data
 }
 
 export async function updateSiteConfig(siteUrl: string, updates: Partial<SiteConfig>) {
-  const res = await axios.put(`${API_BASE_URL}/site-config/${encodeURIComponent(siteUrl)}`, updates)
+  const res = await axios.put(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`, updates)
   return res.data
 }
 
 export async function deleteSiteConfig(siteUrl: string) {
-  const res = await axios.delete(`${API_BASE_URL}/site-config/${encodeURIComponent(siteUrl)}`)
+  const res = await axios.delete(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`)
   return res.data
 }
 
 export async function getAllSiteConfigs() {
-  const res = await axios.get(`${API_BASE_URL}/site-config`)
+  const res = await axios.get(`${API_BASE_URL}/sites`)
   return res.data
 }
 
@@ -157,36 +151,50 @@ export async function getBloggerPost(blogId: string, postId: string, accessToken
   return res.data
 }
 
-// 전역 엔진 설정 관련 API
-export async function getGlobalEngineSettings() {
-  const res = await axios.get(`${API_BASE_URL}/site-config/global-engine-settings`)
+// 전역 설정 관리 (통합된 Settings API)
+export async function getGlobalSettings(): Promise<{ success: boolean; data: GlobalEngineSettings }> {
+  const res = await axios.get(`${API_BASE_URL}/settings`)
   return res.data
 }
 
-export async function updateGlobalGoogleSettings(settings: {
-  use: boolean
-  serviceAccountEmail?: string
-  privateKey?: string
-  oauth2ClientId?: string
-  oauth2ClientSecret?: string
-  oauth2AccessToken?: string
-  oauth2RefreshToken?: string
-}) {
-  const res = await axios.put(`${API_BASE_URL}/site-config/global-google-settings`, settings)
+export async function updateGlobalSettings(settings: Partial<GlobalEngineSettings>) {
+  const res = await axios.put(`${API_BASE_URL}/settings`, settings)
   return res.data
 }
 
-export async function updateGlobalBingSettings(settings: { use: boolean; apiKey?: string }) {
-  const res = await axios.put(`${API_BASE_URL}/site-config/global-bing-settings`, settings)
-  return res.data
+// 개별 엔진 설정 업데이트를 위한 헬퍼 함수들
+export async function updateGlobalGoogleSettings(settings: Partial<GlobalEngineSettings['google']>) {
+  const currentSettings = await getGlobalSettings()
+  const updatedSettings = {
+    ...currentSettings.data,
+    google: { ...currentSettings.data.google, ...settings },
+  }
+  return await updateGlobalSettings(updatedSettings)
 }
 
-export async function updateGlobalNaverSettings(settings: { use: boolean; naverId?: string; password?: string }) {
-  const res = await axios.put(`${API_BASE_URL}/site-config/global-naver-settings`, settings)
-  return res.data
+export async function updateGlobalBingSettings(settings: Partial<GlobalEngineSettings['bing']>) {
+  const currentSettings = await getGlobalSettings()
+  const updatedSettings = {
+    ...currentSettings.data,
+    bing: { ...currentSettings.data.bing, ...settings },
+  }
+  return await updateGlobalSettings(updatedSettings)
 }
 
-export async function updateGlobalDaumSettings(settings: { use: boolean; siteUrl?: string; password?: string }) {
-  const res = await axios.put(`${API_BASE_URL}/site-config/global-daum-settings`, settings)
-  return res.data
+export async function updateGlobalNaverSettings(settings: Partial<GlobalEngineSettings['naver']>) {
+  const currentSettings = await getGlobalSettings()
+  const updatedSettings = {
+    ...currentSettings.data,
+    naver: { ...currentSettings.data.naver, ...settings },
+  }
+  return await updateGlobalSettings(updatedSettings)
+}
+
+export async function updateGlobalDaumSettings(settings: Partial<GlobalEngineSettings['daum']>) {
+  const currentSettings = await getGlobalSettings()
+  const updatedSettings = {
+    ...currentSettings.data,
+    daum: { ...currentSettings.data.daum, ...settings },
+  }
+  return await updateGlobalSettings(updatedSettings)
 }

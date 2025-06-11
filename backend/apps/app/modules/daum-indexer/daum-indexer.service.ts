@@ -5,6 +5,7 @@ import fs from 'fs'
 import path from 'path'
 import { Page } from 'puppeteer'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
+import { SettingsService } from '../../shared/settings.service'
 
 puppeteer.use(StealthPlugin())
 
@@ -18,22 +19,25 @@ export interface DaumIndexerOptions {
 export class DaumIndexerService {
   private readonly logger = new Logger(DaumIndexerService.name)
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly settingsService: SettingsService,
+  ) {}
 
   private async getDaumConfig(siteUrl: string) {
-    const site = await this.prisma.getSiteWithConfigs(siteUrl)
-    if (!site) {
-      throw new Error(`사이트 설정을 찾을 수 없습니다: ${siteUrl}`)
+    const globalSettings = await this.settingsService.getGlobalEngineSettings()
+
+    if (!globalSettings.daum || !globalSettings.daum.use) {
+      throw new Error('Daum 색인이 비활성화되어 있습니다.')
     }
 
-    if (!site.daumConfig || !site.daumConfig.use) {
-      throw new Error(`Daum 인덱싱이 비활성화되었습니다: ${siteUrl}`)
+    if (!globalSettings.daum.password) {
+      throw new Error('Daum 비밀번호가 설정되지 않았습니다.')
     }
 
     return {
-      siteUrl: site.daumConfig.siteUrl || site.siteUrl,
-      password: site.daumConfig.password,
-      configuredSiteUrl: site.siteUrl,
+      siteUrl: globalSettings.daum.siteUrl || siteUrl,
+      password: globalSettings.daum.password,
     }
   }
 
@@ -168,24 +172,30 @@ export class DaumIndexerService {
           await this.sleep(500)
 
           // 성공 로그 기록
-          await this.prisma.createIndexingLog({
-            siteUrl: dbConfig.configuredSiteUrl,
-            targetUrl: url,
-            provider: 'DAUM',
-            status: 'SUCCESS',
-            message: msg,
+          await this.prisma.indexingLog.create({
+            data: {
+              siteUrl: 'global', // 전역 설정이므로 임시값
+              targetUrl: url,
+              provider: 'DAUM',
+              status: 'SUCCESS',
+              message: msg,
+              responseData: JSON.stringify(result),
+            },
           })
         } else {
           msg = '수집요청 실패 또는 레이어 미노출'
           result = { url, status: 'fail', msg }
 
           // 실패 로그 기록
-          await this.prisma.createIndexingLog({
-            siteUrl: dbConfig.configuredSiteUrl,
-            targetUrl: url,
-            provider: 'DAUM',
-            status: 'FAILED',
-            message: msg,
+          await this.prisma.indexingLog.create({
+            data: {
+              siteUrl: 'global', // 전역 설정이므로 임시값
+              targetUrl: url,
+              provider: 'DAUM',
+              status: 'FAILED',
+              message: msg,
+              responseData: JSON.stringify(result),
+            },
           })
         }
         results.push(result)
@@ -195,12 +205,15 @@ export class DaumIndexerService {
         results.push(result)
 
         // 에러 로그 기록
-        await this.prisma.createIndexingLog({
-          siteUrl: dbConfig.configuredSiteUrl,
-          targetUrl: url,
-          provider: 'DAUM',
-          status: 'FAILED',
-          message: result.msg,
+        await this.prisma.indexingLog.create({
+          data: {
+            siteUrl: 'global', // 전역 설정이므로 임시값
+            targetUrl: url,
+            provider: 'DAUM',
+            status: 'FAILED',
+            message: result.msg,
+            responseData: JSON.stringify(result),
+          },
         })
       }
     }

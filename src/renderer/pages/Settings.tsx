@@ -25,11 +25,12 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons'
 import {
-  getGlobalEngineSettings,
+  getGlobalSettings,
   updateGlobalGoogleSettings,
   updateGlobalBingSettings,
   updateGlobalNaverSettings,
   updateGlobalDaumSettings,
+  GlobalEngineSettings,
 } from '../api'
 import { startGoogleLogin, getGoogleAuthStatus, logoutGoogle } from '../utils/googleAuth'
 
@@ -53,36 +54,20 @@ interface IndexingSettings {
   enableLogging: boolean
 }
 
-interface GlobalEngineSettings {
-  google: {
-    use: boolean
-    serviceAccountEmail: string
-    privateKey: string
-    oauth2ClientId: string
-    oauth2ClientSecret: string
-  }
-  bing: {
-    use: boolean
-    apiKey: string
-  }
-  naver: {
-    use: boolean
-    naverId: string
-    password: string
-  }
-  daum: {
-    use: boolean
-    siteUrl: string
-    password: string
-  }
-}
-
 const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false)
 
   // 구글 OAuth 관련 state
   const [isGoogleLoggedIn, setIsGoogleLoggedIn] = useState(false)
   const [googleUserInfo, setGoogleUserInfo] = useState<any>(null)
+
+  // 각 엔진의 사용 상태를 별도로 관리
+  const [engineUseStates, setEngineUseStates] = useState({
+    google: false,
+    bing: false,
+    naver: false,
+    daum: false,
+  })
 
   // 블로거 설정 관련 state
   const [bloggerSettings, setBloggerSettings] = useState({
@@ -112,6 +97,9 @@ const Settings: React.FC = () => {
       privateKey: '',
       oauth2ClientId: '',
       oauth2ClientSecret: '',
+      oauth2AccessToken: '',
+      oauth2RefreshToken: '',
+      oauth2TokenExpiry: '',
     },
     bing: {
       use: false,
@@ -143,8 +131,9 @@ const Settings: React.FC = () => {
     try {
       setLoading(true)
       // 앱 상태에서 설정 정보 로드
-      const response = await fetch('http://localhost:3030/site-config/app-status')
-      const data = await response.json()
+      const response = await fetch('http://localhost:3030/settings/status')
+      const responseData = await response.json()
+      const data = responseData.data || responseData
 
       if (data) {
         const settings: AppSettings = {
@@ -160,9 +149,16 @@ const Settings: React.FC = () => {
 
       // 전역 엔진 설정 로드
       try {
-        const engineData = await getGlobalEngineSettings()
-        if (engineData) {
+        const engineResponse = await getGlobalSettings()
+        if (engineResponse.success && engineResponse.data) {
+          const engineData = engineResponse.data
           setEngineSettings(engineData)
+          setEngineUseStates({
+            google: engineData.google.use,
+            bing: engineData.bing.use,
+            naver: engineData.naver.use,
+            daum: engineData.daum.use,
+          })
           googleForm.setFieldsValue(engineData.google)
           bingForm.setFieldsValue(engineData.bing)
           naverForm.setFieldsValue(engineData.naver)
@@ -171,6 +167,12 @@ const Settings: React.FC = () => {
       } catch (engineError) {
         console.log('전역 엔진 설정 로드 실패 (첫 실행일 수 있음):', engineError)
         // 첫 실행이거나 설정이 없으면 기본값 사용
+        setEngineUseStates({
+          google: engineSettings.google.use,
+          bing: engineSettings.bing.use,
+          naver: engineSettings.naver.use,
+          daum: engineSettings.daum.use,
+        })
         googleForm.setFieldsValue(engineSettings.google)
         bingForm.setFieldsValue(engineSettings.bing)
         naverForm.setFieldsValue(engineSettings.naver)
@@ -219,8 +221,9 @@ const Settings: React.FC = () => {
   const saveGoogleSettings = async (values: any) => {
     try {
       setLoading(true)
-      await updateGlobalGoogleSettings(values)
-      setEngineSettings(prev => ({ ...prev, google: values }))
+      const settingsWithUse = { ...values, use: engineUseStates.google }
+      await updateGlobalGoogleSettings(settingsWithUse)
+      setEngineSettings(prev => ({ ...prev, google: settingsWithUse }))
       message.success('Google 설정이 저장되었습니다.')
     } catch (error) {
       console.error('Google 설정 저장 실패:', error)
@@ -233,8 +236,9 @@ const Settings: React.FC = () => {
   const saveBingSettings = async (values: any) => {
     try {
       setLoading(true)
-      await updateGlobalBingSettings(values)
-      setEngineSettings(prev => ({ ...prev, bing: values }))
+      const settingsWithUse = { ...values, use: engineUseStates.bing }
+      await updateGlobalBingSettings(settingsWithUse)
+      setEngineSettings(prev => ({ ...prev, bing: settingsWithUse }))
       message.success('Bing 설정이 저장되었습니다.')
     } catch (error) {
       console.error('Bing 설정 저장 실패:', error)
@@ -247,8 +251,9 @@ const Settings: React.FC = () => {
   const saveNaverSettings = async (values: any) => {
     try {
       setLoading(true)
-      await updateGlobalNaverSettings(values)
-      setEngineSettings(prev => ({ ...prev, naver: values }))
+      const settingsWithUse = { ...values, use: engineUseStates.naver }
+      await updateGlobalNaverSettings(settingsWithUse)
+      setEngineSettings(prev => ({ ...prev, naver: settingsWithUse }))
       message.success('Naver 설정이 저장되었습니다.')
     } catch (error) {
       console.error('Naver 설정 저장 실패:', error)
@@ -261,8 +266,9 @@ const Settings: React.FC = () => {
   const saveDaumSettings = async (values: any) => {
     try {
       setLoading(true)
-      await updateGlobalDaumSettings(values)
-      setEngineSettings(prev => ({ ...prev, daum: values }))
+      const settingsWithUse = { ...values, use: engineUseStates.daum }
+      await updateGlobalDaumSettings(settingsWithUse)
+      setEngineSettings(prev => ({ ...prev, daum: settingsWithUse }))
       message.success('Daum 설정이 저장되었습니다.')
     } catch (error) {
       console.error('Daum 설정 저장 실패:', error)
@@ -407,6 +413,9 @@ const Settings: React.FC = () => {
         privateKey: '',
         oauth2ClientId: '',
         oauth2ClientSecret: '',
+        oauth2AccessToken: '',
+        oauth2RefreshToken: '',
+        oauth2TokenExpiry: '',
       },
       bing: {
         use: false,
@@ -433,6 +442,43 @@ const Settings: React.FC = () => {
     naverForm.setFieldsValue(defaultEngineSettings.naver)
     daumForm.setFieldsValue(defaultEngineSettings.daum)
     message.success('기본값으로 초기화되었습니다.')
+  }
+
+  // 엔진 사용 상태 토글 핸들러들
+  const handleEngineUseToggle = async (engine: keyof typeof engineUseStates, checked: boolean) => {
+    // 상태 업데이트
+    setEngineUseStates(prev => ({ ...prev, [engine]: checked }))
+
+    try {
+      // API 호출
+      switch (engine) {
+        case 'google':
+          const updatedGoogleSettings = { ...engineSettings.google, use: checked }
+          await updateGlobalGoogleSettings(updatedGoogleSettings)
+          setEngineSettings(prev => ({ ...prev, google: updatedGoogleSettings }))
+          break
+        case 'bing':
+          const updatedBingSettings = { ...engineSettings.bing, use: checked }
+          await updateGlobalBingSettings(updatedBingSettings)
+          setEngineSettings(prev => ({ ...prev, bing: updatedBingSettings }))
+          break
+        case 'naver':
+          const updatedNaverSettings = { ...engineSettings.naver, use: checked }
+          await updateGlobalNaverSettings(updatedNaverSettings)
+          setEngineSettings(prev => ({ ...prev, naver: updatedNaverSettings }))
+          break
+        case 'daum':
+          const updatedDaumSettings = { ...engineSettings.daum, use: checked }
+          await updateGlobalDaumSettings(updatedDaumSettings)
+          setEngineSettings(prev => ({ ...prev, daum: updatedDaumSettings }))
+          break
+      }
+    } catch (error) {
+      console.error(`${engine} 사용 상태 변경 실패:`, error)
+      // 실패 시 상태 롤백
+      setEngineUseStates(prev => ({ ...prev, [engine]: !checked }))
+      message.error(`${engine} 설정 변경에 실패했습니다.`)
+    }
   }
 
   return (
@@ -498,217 +544,286 @@ const Settings: React.FC = () => {
             {/* Google 설정 */}
             <Card
               title={
-                <>
-                  <GoogleOutlined style={{ color: '#4285f4' }} /> Google 설정
-                </>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <GoogleOutlined style={{ color: '#4285f4', marginRight: 8 }} />
+                    Google 설정
+                  </span>
+                  <Switch
+                    checked={engineUseStates.google}
+                    onChange={checked => handleEngineUseToggle('google', checked)}
+                    checkedChildren="사용"
+                    unCheckedChildren="미사용"
+                  />
+                </div>
               }
             >
-              <Form
-                form={googleForm}
-                layout="vertical"
-                onFinish={saveGoogleSettings}
-                initialValues={engineSettings.google}
-              >
-                <Form.Item name="use" label="Google 인덱싱 사용" valuePropName="checked">
-                  <Switch checkedChildren="사용" unCheckedChildren="미사용" />
-                </Form.Item>
+              {engineUseStates.google && (
+                <Form
+                  form={googleForm}
+                  layout="vertical"
+                  onFinish={saveGoogleSettings}
+                  initialValues={engineSettings.google}
+                >
+                  {/* Service Account 섹션 */}
+                  <div style={{ marginBottom: 24 }}>
+                    <Divider orientation="left">
+                      <Text strong style={{ color: '#1890ff' }}>
+                        Service Account 설정
+                      </Text>
+                    </Divider>
+                    <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
+                      Google Indexing API를 위한 Service Account 인증 정보
+                    </Text>
 
-                <Row gutter={16}>
-                  <Col span={12}>
                     <Form.Item
                       name="serviceAccountEmail"
                       label="Service Account Email"
-                      help="Google Service Account의 이메일 주소"
+                      help="Google Cloud Console > IAM > Service Accounts에서 생성한 Service Account 이메일"
+                      rules={[{ type: 'email', message: '올바른 이메일 주소를 입력해주세요' }]}
                     >
-                      <Input placeholder="example@project.iam.gserviceaccount.com" />
+                      <Input placeholder="service-account@project-id.iam.gserviceaccount.com" />
                     </Form.Item>
-                  </Col>
-                  <Col span={12}>
+
                     <Form.Item
-                      name="oauth2ClientId"
-                      label="OAuth2 Client ID"
-                      help="Google Cloud Console에서 생성한 Client ID"
+                      name="privateKey"
+                      label="Private Key"
+                      help="Service Account의 Private Key (JSON 키 파일 전체 내용)"
                     >
-                      <Input placeholder="123456789-xxx.apps.googleusercontent.com" />
+                      <TextArea
+                        rows={4}
+                        placeholder='{"type": "service_account", "project_id": "your-project", "private_key": "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n", ...}'
+                      />
                     </Form.Item>
-                  </Col>
-                </Row>
+                  </div>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item name="oauth2ClientSecret" label="OAuth2 Client Secret" help="OAuth2 Client Secret">
-                      <Input.Password placeholder="OAuth2 Client Secret" />
-                    </Form.Item>
-                  </Col>
-                </Row>
+                  {/* OAuth2 섹션 */}
+                  <div style={{ marginBottom: 24 }}>
+                    <Divider orientation="left">
+                      <Text strong style={{ color: '#52c41a' }}>
+                        OAuth2 설정
+                      </Text>
+                    </Divider>
+                    <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
+                      Google Blogger API 및 사용자 인증을 위한 OAuth2 클라이언트 정보
+                    </Text>
 
-                <Form.Item name="privateKey" label="Private Key" help="Service Account의 Private Key (JSON 형태)">
-                  <TextArea
-                    rows={4}
-                    placeholder='{"type": "service_account", "project_id": "...", "private_key": "..."}'
-                  />
-                </Form.Item>
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Form.Item
+                          name="oauth2ClientId"
+                          label="OAuth2 Client ID"
+                          help="Google Cloud Console > APIs & Services > Credentials에서 생성한 OAuth 2.0 클라이언트 ID"
+                        >
+                          <Input placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="oauth2ClientSecret"
+                          label="OAuth2 Client Secret"
+                          help="OAuth 2.0 클라이언트의 비밀번호"
+                        >
+                          <Input.Password placeholder="GOCSPX-********************************" />
+                        </Form.Item>
+                      </Col>
+                    </Row>
 
-                {/* OAuth 로그인 섹션 */}
-                <Divider>OAuth 로그인</Divider>
-                {isGoogleLoggedIn && googleUserInfo ? (
-                  <div style={{ marginBottom: 16 }}>
-                    <Text strong>연동된 계정:</Text>
-                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Avatar src={googleUserInfo.picture} size={32} />
-                      <div>
-                        <div>{googleUserInfo.name}</div>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {googleUserInfo.email}
-                        </Text>
-                      </div>
-                      <Button type="link" danger onClick={handleGoogleLogout}>
-                        연동 해제
-                      </Button>
+                    {/* OAuth 로그인 상태 */}
+                    <div
+                      style={{
+                        backgroundColor: '#f6ffed',
+                        border: '1px solid #b7eb8f',
+                        borderRadius: 8,
+                        padding: 16,
+                        marginTop: 16,
+                      }}
+                    >
+                      <Text strong style={{ color: '#389e0d' }}>
+                        Google 계정 연동 상태
+                      </Text>
+                      {isGoogleLoggedIn && googleUserInfo ? (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Avatar src={googleUserInfo.picture} size={40} />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 500 }}>{googleUserInfo.name}</div>
+                              <Text type="secondary" style={{ fontSize: 12 }}>
+                                {googleUserInfo.email}
+                              </Text>
+                            </div>
+                            <Button type="link" danger onClick={handleGoogleLogout}>
+                              연동 해제
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: 12 }}>
+                          <div style={{ marginBottom: 8 }}>
+                            <Text type="secondary">Google 계정이 연동되지 않았습니다.</Text>
+                          </div>
+                          <Button
+                            type="primary"
+                            icon={<GoogleOutlined />}
+                            onClick={handleGoogleLogin}
+                            disabled={
+                              !engineSettings.google.oauth2ClientId?.trim() ||
+                              !engineSettings.google.oauth2ClientSecret?.trim()
+                            }
+                          >
+                            Google 계정 연동
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div style={{ marginBottom: 16 }}>
-                    <Text type="secondary">Google 계정이 연동되지 않았습니다.</Text>
-                    <br />
-                    <Button
-                      type="primary"
-                      icon={<GoogleOutlined />}
-                      onClick={handleGoogleLogin}
-                      disabled={
-                        !engineSettings.google.oauth2ClientId.trim() || !engineSettings.google.oauth2ClientSecret.trim()
-                      }
-                      style={{ marginTop: 8 }}
-                    >
-                      Google 계정 연동
-                    </Button>
-                  </div>
-                )}
 
-                <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
-                    Google 설정 저장
-                  </Button>
-                </Form.Item>
-              </Form>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} size="large">
+                      Google 설정 저장
+                    </Button>
+                  </Form.Item>
+                </Form>
+              )}
             </Card>
 
             {/* Bing 설정 */}
             <Card
               title={
-                <>
-                  <YahooOutlined style={{ color: '#00809d' }} /> Bing 설정
-                </>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <YahooOutlined style={{ color: '#00809d', marginRight: 8 }} />
+                    Bing 설정
+                  </span>
+                  <Switch
+                    checked={engineUseStates.bing}
+                    onChange={checked => handleEngineUseToggle('bing', checked)}
+                    checkedChildren="사용"
+                    unCheckedChildren="미사용"
+                  />
+                </div>
               }
             >
-              <Form form={bingForm} layout="vertical" onFinish={saveBingSettings} initialValues={engineSettings.bing}>
-                <Form.Item name="use" label="Bing 인덱싱 사용" valuePropName="checked">
-                  <Switch checkedChildren="사용" unCheckedChildren="미사용" />
-                </Form.Item>
+              {engineUseStates.bing && (
+                <Form form={bingForm} layout="vertical" onFinish={saveBingSettings} initialValues={engineSettings.bing}>
+                  <Form.Item
+                    name="apiKey"
+                    label="Bing Webmaster API Key"
+                    help="Bing Webmaster Tools에서 발급받은 API 키"
+                    rules={[{ message: 'API 키를 입력해주세요' }]}
+                  >
+                    <Input.Password placeholder="Bing Webmaster API Key" />
+                  </Form.Item>
 
-                <Form.Item
-                  name="apiKey"
-                  label="Bing Webmaster API Key"
-                  help="Bing Webmaster Tools에서 발급받은 API 키"
-                  rules={[{ message: 'API 키를 입력해주세요' }]}
-                >
-                  <Input.Password placeholder="Bing Webmaster API Key" />
-                </Form.Item>
-
-                <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
-                    Bing 설정 저장
-                  </Button>
-                </Form.Item>
-              </Form>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+                      Bing 설정 저장
+                    </Button>
+                  </Form.Item>
+                </Form>
+              )}
             </Card>
 
             {/* Naver 설정 */}
             <Card
               title={
-                <>
-                  <GlobalOutlined style={{ color: '#03c75a' }} /> Naver 설정
-                </>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <GlobalOutlined style={{ color: '#03c75a', marginRight: 8 }} />
+                    Naver 설정
+                  </span>
+                  <Switch
+                    checked={engineUseStates.naver}
+                    onChange={checked => handleEngineUseToggle('naver', checked)}
+                    checkedChildren="사용"
+                    unCheckedChildren="미사용"
+                  />
+                </div>
               }
             >
-              <Form
-                form={naverForm}
-                layout="vertical"
-                onFinish={saveNaverSettings}
-                initialValues={engineSettings.naver}
-              >
-                <Form.Item name="use" label="Naver 인덱싱 사용" valuePropName="checked">
-                  <Switch checkedChildren="사용" unCheckedChildren="미사용" />
-                </Form.Item>
+              {engineUseStates.naver && (
+                <Form
+                  form={naverForm}
+                  layout="vertical"
+                  onFinish={saveNaverSettings}
+                  initialValues={engineSettings.naver}
+                >
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="naverId"
+                        label="Naver ID"
+                        help="네이버 웹마스터 도구 계정 ID"
+                        rules={[{ message: 'Naver ID를 입력해주세요' }]}
+                      >
+                        <Input placeholder="naver_id" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item
+                        name="password"
+                        label="비밀번호"
+                        help="네이버 계정 비밀번호"
+                        rules={[{ message: '비밀번호를 입력해주세요' }]}
+                      >
+                        <Input.Password placeholder="비밀번호" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="naverId"
-                      label="Naver ID"
-                      help="네이버 웹마스터 도구 계정 ID"
-                      rules={[{ message: 'Naver ID를 입력해주세요' }]}
-                    >
-                      <Input placeholder="naver_id" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="password"
-                      label="비밀번호"
-                      help="네이버 계정 비밀번호"
-                      rules={[{ message: '비밀번호를 입력해주세요' }]}
-                    >
-                      <Input.Password placeholder="비밀번호" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
-                    Naver 설정 저장
-                  </Button>
-                </Form.Item>
-              </Form>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+                      Naver 설정 저장
+                    </Button>
+                  </Form.Item>
+                </Form>
+              )}
             </Card>
 
             {/* Daum 설정 */}
             <Card
               title={
-                <>
-                  <GlobalOutlined style={{ color: '#0066cc' }} /> Daum 설정
-                </>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>
+                    <GlobalOutlined style={{ color: '#0066cc', marginRight: 8 }} />
+                    Daum 설정
+                  </span>
+                  <Switch
+                    checked={engineUseStates.daum}
+                    onChange={checked => handleEngineUseToggle('daum', checked)}
+                    checkedChildren="사용"
+                    unCheckedChildren="미사용"
+                  />
+                </div>
               }
             >
-              <Form form={daumForm} layout="vertical" onFinish={saveDaumSettings} initialValues={engineSettings.daum}>
-                <Form.Item name="use" label="Daum 인덱싱 사용" valuePropName="checked">
-                  <Switch checkedChildren="사용" unCheckedChildren="미사용" />
-                </Form.Item>
+              {engineUseStates.daum && (
+                <Form form={daumForm} layout="vertical" onFinish={saveDaumSettings} initialValues={engineSettings.daum}>
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <Form.Item
+                        name="siteUrl"
+                        label="사이트 URL"
+                        help="Daum에 등록할 사이트 URL"
+                        rules={[{ type: 'url', message: '올바른 URL을 입력해주세요' }]}
+                      >
+                        <Input placeholder="https://example.com" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={12}>
+                      <Form.Item name="password" label="사이트 비밀번호" help="Daum 검색등록용 사이트 비밀번호">
+                        <Input.Password placeholder="사이트 비밀번호" />
+                      </Form.Item>
+                    </Col>
+                  </Row>
 
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="siteUrl"
-                      label="사이트 URL"
-                      help="Daum에 등록할 사이트 URL"
-                      rules={[{ type: 'url', message: '올바른 URL을 입력해주세요' }]}
-                    >
-                      <Input placeholder="https://example.com" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="password" label="사이트 비밀번호" help="Daum 검색등록용 사이트 비밀번호">
-                      <Input.Password placeholder="사이트 비밀번호" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item>
-                  <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
-                    Daum 설정 저장
-                  </Button>
-                </Form.Item>
-              </Form>
+                  <Form.Item>
+                    <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
+                      Daum 설정 저장
+                    </Button>
+                  </Form.Item>
+                </Form>
+              )}
             </Card>
           </Space>
         </TabPane>

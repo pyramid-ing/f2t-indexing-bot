@@ -5,7 +5,6 @@ import styled from 'styled-components'
 import Settings from './Settings'
 import Sidebar from '../components/Sidebar'
 import { getAppStatus } from '../api'
-import FirstRunSetup from '../components/FirstRunSetup'
 import SiteManagement from '../components/SiteManagement'
 import IndexingDashboard from '../components/IndexingDashboard'
 
@@ -65,15 +64,6 @@ const App: React.FC = () => {
       // 에러가 있어도 앱을 시작하되, FirstRunSetup에서 처리
       setAppReady(false)
     }
-  }
-
-  const handleSetupComplete = () => {
-    setAppReady(true)
-  }
-
-  // 앱이 준비되지 않은 경우 FirstRunSetup 표시
-  if (!appReady) {
-    return <FirstRunSetup onSetupComplete={handleSetupComplete} />
   }
 
   return (

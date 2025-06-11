@@ -1,10 +1,12 @@
-import { Controller, Get, Query, Res, Post, Body } from '@nestjs/common'
+import { Controller, Get, Query, Res, Post, Body, Logger } from '@nestjs/common'
 import { Response } from 'express'
-import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
+import { SettingsService } from '../../../shared/settings.service'
 
 @Controller('google-oauth')
 export class GoogleOAuthController {
-  constructor(private readonly databaseInitService: DatabaseInitService) {}
+  private readonly logger = new Logger(GoogleOAuthController.name)
+
+  constructor(private readonly settingsService: SettingsService) {}
 
   @Get('callback')
   async handleCallback(@Query('code') code: string, @Query('error') error: string, @Res() res: Response) {
@@ -154,7 +156,7 @@ export class GoogleOAuthController {
 
   private async processOAuthCallback(code: string) {
     // 현재 저장된 Google 설정에서 Client ID와 Secret 가져오기
-    const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+    const globalSettings = await this.settingsService.getGlobalEngineSettings()
     const { oauth2ClientId, oauth2ClientSecret } = globalSettings.google
 
     if (!oauth2ClientId || !oauth2ClientSecret) {
@@ -175,7 +177,7 @@ export class GoogleOAuthController {
       oauth2TokenExpiry: new Date(tokens.expiresAt).toISOString(),
     }
 
-    await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+    await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
 
     return { tokens, userInfo }
   }
@@ -236,7 +238,7 @@ export class GoogleOAuthController {
   @Post('refresh-token')
   async refreshToken() {
     try {
-      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
       const { oauth2ClientId, oauth2ClientSecret, oauth2RefreshToken } = globalSettings.google
 
       if (!oauth2RefreshToken) {
@@ -252,7 +254,7 @@ export class GoogleOAuthController {
         oauth2TokenExpiry: new Date(newTokens.expiresAt).toISOString(),
       }
 
-      await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+      await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
 
       return {
         success: true,
@@ -294,7 +296,7 @@ export class GoogleOAuthController {
   @Get('status')
   async getOAuthStatus() {
     try {
-      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
       const { oauth2AccessToken, oauth2RefreshToken, oauth2TokenExpiry } = globalSettings.google
 
       if (!oauth2AccessToken) {
@@ -346,7 +348,7 @@ export class GoogleOAuthController {
   @Post('logout')
   async logout() {
     try {
-      const globalSettings = await this.databaseInitService.getGlobalEngineSettings()
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
       const updatedGoogleSettings = {
         ...globalSettings.google,
         oauth2AccessToken: '',
@@ -354,7 +356,7 @@ export class GoogleOAuthController {
         oauth2TokenExpiry: '',
       }
 
-      await this.databaseInitService.updateGlobalGoogleSettings(updatedGoogleSettings)
+      await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
 
       return {
         success: true,

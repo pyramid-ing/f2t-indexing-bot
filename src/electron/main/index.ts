@@ -25,7 +25,7 @@ app.whenReady().then(() => {
   setupUserDataDirectory()
 
   // NestJS 서버 실행 (개발용)
-  nestProcess = spawn('yarn', ['dev'], {
+  nestProcess = spawn('yarn', ['start'], {
     cwd: path.join(__dirname, '../../../backend'), // NestJS 프로젝트 경로
     shell: true,
     stdio: 'inherit',

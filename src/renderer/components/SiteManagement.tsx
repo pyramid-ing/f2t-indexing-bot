@@ -13,6 +13,7 @@ import {
   Typography,
   Tag,
   Tabs,
+  Alert,
 } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined } from '@ant-design/icons'
 import { getAllSiteConfigs, createSiteConfig, updateSiteConfig, deleteSiteConfig, SiteConfig } from '../api'
@@ -35,8 +36,8 @@ const SiteManagement: React.FC = () => {
   const loadSites = async () => {
     try {
       setLoading(true)
-      const data = await getAllSiteConfigs()
-      setSites(data.sites || [])
+      const response = await getAllSiteConfigs()
+      setSites(response.data || [])
     } catch (error) {
       console.error('사이트 목록 로드 실패:', error)
       message.error('사이트 목록을 불러오는데 실패했습니다.')
@@ -116,39 +117,6 @@ const SiteManagement: React.FC = () => {
           WORDPRESS: 'green',
         }
         return <Tag color={colors[type as keyof typeof colors]}>{type}</Tag>
-      },
-    },
-    {
-      title: '활성화된 서비스',
-      key: 'activeServices',
-      render: (record: SiteConfig) => {
-        const services = []
-        if (record.bing?.use)
-          services.push(
-            <Tag key="bing" color="orange">
-              Bing
-            </Tag>,
-          )
-        if (record.google?.use)
-          services.push(
-            <Tag key="google" color="blue">
-              Google
-            </Tag>,
-          )
-        if (record.naver?.use)
-          services.push(
-            <Tag key="naver" color="green">
-              Naver
-            </Tag>,
-          )
-        if (record.daum?.use)
-          services.push(
-            <Tag key="daum" color="purple">
-              Daum
-            </Tag>,
-          )
-
-        return <Space size={4}>{services}</Space>
       },
     },
     {
@@ -239,7 +207,13 @@ const SiteManagement: React.FC = () => {
 
           <Tabs defaultActiveKey="basic">
             <TabPane tab="기본 설정" key="basic">
-              <p>기본 사이트 정보가 설정되었습니다. 검색엔진별 상세 설정은 '설정' 메뉴에서 진행할 수 있습니다.</p>
+              <Alert
+                message="검색엔진 설정 안내"
+                description="검색엔진별 상세 설정(Google, Bing, Naver, Daum)은 '설정' 메뉴의 '검색엔진 설정'에서 전역으로 관리됩니다. 사이트별로 개별 설정할 필요가 없습니다."
+                type="info"
+                showIcon
+                style={{ marginBottom: 16 }}
+              />
             </TabPane>
           </Tabs>
 

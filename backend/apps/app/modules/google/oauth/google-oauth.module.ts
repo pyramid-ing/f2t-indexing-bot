@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common'
 import { GoogleOAuthController } from './google-oauth.controller'
-import { DatabaseInitService } from '@prd/apps/app/shared/database-init.service'
-import { PrismaService } from '@prd/apps/app/shared/prisma.service'
+import { SettingsService } from '../../../shared/settings.service'
+import { PrismaService } from '../../../shared/prisma.service'
 
 @Module({
+  providers: [SettingsService, PrismaService],
   controllers: [GoogleOAuthController],
-  providers: [DatabaseInitService, PrismaService],
 })
-export class GoogleOAuthModule {}
+export class GoogleOauthModule {}
