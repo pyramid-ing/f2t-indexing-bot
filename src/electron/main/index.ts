@@ -3,7 +3,6 @@ import { spawn } from 'child_process'
 import path from 'path'
 import { createWindow } from './window'
 import { registerIpcHandlers } from './ipc'
-import { prisma } from '../repository/prismaClient'
 
 let nestProcess: ReturnType<typeof spawn> | null = null
 
@@ -21,9 +20,7 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    prisma.$disconnect().finally(() => {
-      if (nestProcess) nestProcess.kill()
-      app.quit()
-    })
+    if (nestProcess) nestProcess.kill()
+    app.quit()
   }
 })
