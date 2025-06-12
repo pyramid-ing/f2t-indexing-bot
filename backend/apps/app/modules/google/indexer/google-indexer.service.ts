@@ -89,13 +89,15 @@ export class GoogleIndexerService {
           provider: 'GOOGLE',
           status: 'SUCCESS',
           message: `Type: ${type}`,
-          responseData: response.data,
+          responseData: JSON.stringify(response.data),
         },
       })
 
       this.logger.log(`Google URL 인덱싱 성공: ${url}`)
       return response.data
     } catch (error) {
+      this.logger.error(`Google 색인 요청 실패: ${error.message}`, error.stack)
+
       // 실패 로그 기록
       await this.prisma.indexingLog.create({
         data: {
@@ -103,11 +105,10 @@ export class GoogleIndexerService {
           targetUrl: url,
           provider: 'GOOGLE',
           status: 'FAILED',
-          message: `Type: ${type}, Error: ${error.message}`,
+          message: error.message,
+          responseData: JSON.stringify(error.response?.data || {}),
         },
       })
-
-      this.logger.error(`Google URL 인덱싱 실패: ${url}`, error)
 
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError) {
         throw error
