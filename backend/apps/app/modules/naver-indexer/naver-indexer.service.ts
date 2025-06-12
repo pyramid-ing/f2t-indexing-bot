@@ -626,7 +626,7 @@ export class NaverIndexerService implements OnModuleInit {
   }
 
   /**
-   * 로그인 완료 확인 및 쿠키 저장
+   * 사용자가 브라우저에서 로그인을 완료했는지 확인하고, 성공 시 쿠키를 저장합니다.
    */
   async checkLoginComplete(): Promise<{ success: boolean; message: string }> {
     try {
