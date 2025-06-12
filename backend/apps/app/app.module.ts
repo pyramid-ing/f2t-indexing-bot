@@ -10,6 +10,7 @@ import { GoogleModule } from '@prd/apps/app/modules/google/google.module'
 import { SiteConfigModule } from '@prd/apps/app/modules/site-config/site-config.module'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 import { SettingsModule } from '@prd/apps/app/modules/settings/settings.module'
+import { IndexingModule } from '@prd/apps/app/modules/indexing/indexing.module'
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { SettingsModule } from '@prd/apps/app/modules/settings/settings.module'
     GoogleModule,
     SiteConfigModule,
     SettingsModule,
+    IndexingModule,
   ],
   providers: [
     {

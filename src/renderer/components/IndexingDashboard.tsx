@@ -8,7 +8,6 @@ import {
   Typography,
   Row,
   Col,
-  Statistic,
   Table,
   Tag,
   Modal,
@@ -45,6 +44,7 @@ import {
   openNaverLoginBrowser,
   closeNaverLoginBrowser,
   NaverLoginStatus,
+  checkExistingUrls,
 } from '../api'
 
 const { Title, Text } = Typography
@@ -174,7 +174,68 @@ const IndexingDashboard: React.FC = () => {
       message.error('사이트를 선택해주세요.')
       return
     }
-    executeIndexing({ siteUrl: siteConfig.siteUrl, ...taskValues })
+
+    // Wrap the core logic in an async IIFE to use await
+    ;(async () => {
+      setLoading(true)
+      try {
+        const urlList = Array.isArray(taskValues.urls)
+          ? taskValues.urls
+          : (taskValues.urls as string).split('\\n').filter(u => u.trim() !== '')
+
+        if (urlList.length === 0) {
+          message.error('URL을 입력해주세요.')
+          setLoading(false)
+          return
+        }
+
+        const services = (taskValues.services || []) as any[]
+
+        // 1. Check for existing URLs
+        const existingUrlsByProvider = await checkExistingUrls(urlList, services)
+
+        // 2. Filter URLs for each service
+        const groupedUrlsToSubmit = services.reduce(
+          (acc, service) => {
+            const existingForService = existingUrlsByProvider[service.toUpperCase()] || []
+            const urlsToSubmit = urlList.filter(url => !existingForService.includes(url))
+            if (urlsToSubmit.length > 0) {
+              acc[service] = urlsToSubmit
+            }
+            return acc
+          },
+          {} as Record<string, string[]>,
+        )
+
+        const totalToSubmit = Object.values(groupedUrlsToSubmit).flat().length
+        const totalSkipped = urlList.length - totalToSubmit
+
+        // 3. Notify user and execute
+        if (totalSkipped > 0) {
+          message.info(`이미 성공한 ${totalSkipped}개의 URL을 제외하고 인덱싱을 시작합니다.`)
+        }
+
+        if (totalToSubmit === 0) {
+          message.success('모든 URL이 이미 성공적으로 색인되었습니다. 새로 제출할 URL이 없습니다.')
+          setLoading(false)
+          return
+        }
+
+        const servicesWithUrls = Object.keys(groupedUrlsToSubmit)
+
+        await executeIndexing({
+          siteUrl: siteConfig.siteUrl,
+          urls: urlList, // Pass original full list for task display
+          services: servicesWithUrls,
+          _groupedUrls: groupedUrlsToSubmit,
+        })
+      } catch (error) {
+        console.error('인덱싱 준비 중 오류:', error)
+        message.error(`인덱싱 준비 중 오류가 발생했습니다: ${getErrorMessage(error)}`)
+        setLoading(false)
+      }
+      // setLoading(false) is handled inside executeIndexing's finally block
+    })()
   }
 
   const executeIndexing = async (values: any) => {
@@ -198,7 +259,9 @@ const IndexingDashboard: React.FC = () => {
         const urlsForService = _groupedUrls ? _groupedUrls[service] : urls
         if (!urlsForService || urlsForService.length === 0) continue
 
-        setIndexingTasks(prev => prev.map(t => t.id === taskId ? { ...t, results: { ...t.results, [service]: { status: 'running' } } } : t))
+        setIndexingTasks(prev =>
+          prev.map(t => (t.id === taskId ? { ...t, results: { ...t.results, [service]: { status: 'running' } } } : t)),
+        )
 
         try {
           let result
@@ -217,9 +280,30 @@ const IndexingDashboard: React.FC = () => {
               result = await daumManualIndex({ siteUrl, urlsToIndex: urlsForService })
               break
           }
-          setIndexingTasks(prev => prev.map(t => t.id === taskId ? { ...t, results: { ...t.results, [service]: { status: 'success', data: result } } } : t))
+          setIndexingTasks(prev =>
+            prev.map(t =>
+              t.id === taskId ? { ...t, results: { ...t.results, [service]: { status: 'success', data: result } } } : t,
+            ),
+          )
         } catch (error) {
-          setIndexingTasks(prev => prev.map(t => t.id === taskId ? { ...t, results: { ...t.results, [service]: { status: 'failed', error: getErrorMessage(error), errorDetails: getErrorDetails(error), data: error.response?.data } } } : t))
+          setIndexingTasks(prev =>
+            prev.map(t =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    results: {
+                      ...t.results,
+                      [service]: {
+                        status: 'failed',
+                        error: getErrorMessage(error),
+                        errorDetails: getErrorDetails(error),
+                        data: error.response?.data,
+                      },
+                    },
+                  }
+                : t,
+            ),
+          )
         }
       }
 
@@ -318,26 +402,31 @@ const IndexingDashboard: React.FC = () => {
       if (result.status === 'failed') {
         const detailedResults = result.data?.details?.results || (Array.isArray(result.data) ? result.data : null)
         if (detailedResults) processIndividualResults(detailedResults)
-        else task.urls.forEach((url, urlIndex) => flatList.push({
-          id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
-          service,
-          url,
-          status: 'failed',
-          message: result.error || '요청 실패',
-          rawData: result,
-        }))
+        else
+          task.urls.forEach((url, urlIndex) =>
+            flatList.push({
+              id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
+              service,
+              url,
+              status: 'failed',
+              message: result.error || '요청 실패',
+              rawData: result,
+            }),
+          )
       } else if (result.status === 'success' && result.data) {
         if (Array.isArray(result.data.results)) processIndividualResults(result.data.results)
         else if (Array.isArray(result.data)) processIndividualResults(result.data)
       } else if (result.status === 'running') {
-        task.urls.forEach((url, urlIndex) => flatList.push({
-          id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
-          service,
-          url,
-          status: 'running',
-          message: '진행 중...',
-          rawData: result,
-        }))
+        task.urls.forEach((url, urlIndex) =>
+          flatList.push({
+            id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
+            service,
+            url,
+            status: 'running',
+            message: '진행 중...',
+            rawData: result,
+          }),
+        )
       }
     })
     return flatList
@@ -347,11 +436,14 @@ const IndexingDashboard: React.FC = () => {
     const itemsToReRequest = isSingle && record ? [record] : detailedResults.filter(r => selectedRowKeys.includes(r.id))
     if (itemsToReRequest.length === 0) return message.warning('재요청할 항목을 선택해주세요.')
 
-    const groupedByService = itemsToReRequest.reduce((acc, item) => {
-      if (!acc[item.service]) acc[item.service] = []
-      acc[item.service].push(item.url)
-      return acc
-    }, {} as Record<string, string[]>)
+    const groupedByService = itemsToReRequest.reduce(
+      (acc, item) => {
+        if (!acc[item.service]) acc[item.service] = []
+        acc[item.service].push(item.url)
+        return acc
+      },
+      {} as Record<string, string[]>,
+    )
 
     handleManualIndexing({ urls: [], services: Object.keys(groupedByService) as any, _groupedUrls: groupedByService })
     message.success(`${itemsToReRequest.length}개 항목 재요청 시작.`)
@@ -367,10 +459,18 @@ const IndexingDashboard: React.FC = () => {
   }, [detailedResults, filters])
 
   const taskColumns = [
-    { title: '실행 시간', dataIndex: 'startTime', key: 'startTime', render: (st: number) => new Date(st).toLocaleString() },
+    {
+      title: '실행 시간',
+      dataIndex: 'startTime',
+      key: 'startTime',
+      render: (st: number) => new Date(st).toLocaleString(),
+    },
     { title: '사이트', dataIndex: 'siteUrl', key: 'siteUrl' },
     { title: 'URL 수', dataIndex: 'urls', key: 'urlCount', render: (urls: string[]) => `${urls.length}개` },
-    { title: '상태', dataIndex: 'status', key: 'status',
+    {
+      title: '상태',
+      dataIndex: 'status',
+      key: 'status',
       render: (status: string) => {
         const tagMap: { [key: string]: JSX.Element } = {
           running: <Tag color="processing">실행중</Tag>,
@@ -382,17 +482,74 @@ const IndexingDashboard: React.FC = () => {
       },
     },
     { title: '소요 시간', key: 'duration', render: (_: any, record: IndexingTask) => getExecutionTime(record) },
-    { title: '작업', key: 'action', render: (_: any, record: IndexingTask) => <Button onClick={() => showTaskDetail(record)} icon={<EyeOutlined />}>상세 보기</Button> },
+    {
+      title: '작업',
+      key: 'action',
+      render: (_: any, record: IndexingTask) => (
+        <Button onClick={() => showTaskDetail(record)} icon={<EyeOutlined />}>
+          상세 보기
+        </Button>
+      ),
+    },
   ]
 
   const detailedResultColumns = [
-    { title: '엔진', dataIndex: 'service', key: 'service', width: 120, render: (service: string) => <Space>{getServiceIcon(service)} {service.charAt(0).toUpperCase() + service.slice(1)}</Space> },
-    { title: 'URL', dataIndex: 'url', key: 'url', render: (url: string) => <Text style={{ maxWidth: 400 }} ellipsis={{ tooltip: url }} copyable>{url}</Text> },
-    { title: '상태', dataIndex: 'status', key: 'status', width: 100,
-      render: (status: string) => status === 'success' ? <Tag color="success">성공</Tag> : status === 'failed' ? <Tag color="error">실패</Tag> : <Tag color="processing">진행중</Tag>,
+    {
+      title: '엔진',
+      dataIndex: 'service',
+      key: 'service',
+      width: 120,
+      render: (service: string) => (
+        <Space>
+          {getServiceIcon(service)} {service.charAt(0).toUpperCase() + service.slice(1)}
+        </Space>
+      ),
     },
-    { title: '결과 메시지', dataIndex: 'message', key: 'message', render: (msg: string) => <Text style={{ maxWidth: 300 }} ellipsis={{ tooltip: msg }}>{msg}</Text> },
-    { title: '작업', key: 'action', width: 100, render: (_: any, record: DetailedResult) => record.status === 'failed' ? <Button size="small" onClick={() => handleReRequest(true, record)}>재시도</Button> : null },
+    {
+      title: 'URL',
+      dataIndex: 'url',
+      key: 'url',
+      render: (url: string) => (
+        <Text style={{ maxWidth: 400 }} ellipsis={{ tooltip: url }} copyable>
+          {url}
+        </Text>
+      ),
+    },
+    {
+      title: '상태',
+      dataIndex: 'status',
+      key: 'status',
+      width: 100,
+      render: (status: string) =>
+        status === 'success' ? (
+          <Tag color="success">성공</Tag>
+        ) : status === 'failed' ? (
+          <Tag color="error">실패</Tag>
+        ) : (
+          <Tag color="processing">진행중</Tag>
+        ),
+    },
+    {
+      title: '결과 메시지',
+      dataIndex: 'message',
+      key: 'message',
+      render: (msg: string) => (
+        <Text style={{ maxWidth: 300 }} ellipsis={{ tooltip: msg }}>
+          {msg}
+        </Text>
+      ),
+    },
+    {
+      title: '작업',
+      key: 'action',
+      width: 100,
+      render: (_: any, record: DetailedResult) =>
+        record.status === 'failed' ? (
+          <Button size="small" onClick={() => handleReRequest(true, record)}>
+            재시도
+          </Button>
+        ) : null,
+    },
   ]
 
   const checkNaverLogin = async () => {
@@ -472,7 +629,7 @@ const IndexingDashboard: React.FC = () => {
       <Row gutter={16}>
         <Col span={24}>
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
-            <div style={{marginBottom: '16px'}}>
+            <div style={{ marginBottom: '16px' }}>
               <Text strong>사이트 선택: </Text>
               <Select
                 style={{ width: 300, marginLeft: 8 }}
@@ -490,20 +647,32 @@ const IndexingDashboard: React.FC = () => {
             <Form
               form={form}
               layout="vertical"
-              onFinish={values => handleManualIndexing({
-                urls: values.urls.split('\n').filter((u: string) => u.trim() !== ''),
-                services: values.services,
-              })}
+              onFinish={values =>
+                handleManualIndexing({
+                  urls: values.urls.split('\n').filter((u: string) => u.trim() !== ''),
+                  services: values.services,
+                })
+              }
             >
               <Form.Item name="urls" label="URL 목록" rules={[{ required: true, message: 'URL을 입력해주세요' }]}>
                 <TextArea rows={6} placeholder="한 줄에 하나씩 URL을 입력해주세요." />
               </Form.Item>
-              <Form.Item name="services" label="검색 엔진" rules={[{ required: true, message: '하나 이상의 엔진을 선택해주세요' }]}>
+              <Form.Item
+                name="services"
+                label="검색 엔진"
+                rules={[{ required: true, message: '하나 이상의 엔진을 선택해주세요' }]}
+              >
                 <Checkbox.Group>
                   <Space wrap>
                     {getAvailableServices(globalSettings).map(service => (
-                      <Checkbox key={service} value={service} disabled={service === 'naver' && !naverLoginStatus?.isLoggedIn}>
-                        <Space>{getServiceIcon(service)} {service.charAt(0).toUpperCase() + service.slice(1)}</Space>
+                      <Checkbox
+                        key={service}
+                        value={service}
+                        disabled={service === 'naver' && !naverLoginStatus?.isLoggedIn}
+                      >
+                        <Space>
+                          {getServiceIcon(service)} {service.charAt(0).toUpperCase() + service.slice(1)}
+                        </Space>
                       </Checkbox>
                     ))}
                   </Space>
@@ -516,11 +685,17 @@ const IndexingDashboard: React.FC = () => {
                     <Space>
                       <Text strong>네이버 로그인 상태:</Text>
                       {naverLoginChecking ? (
-                        <Tag icon={<LoadingOutlined />} color="blue">확인 중...</Tag>
+                        <Tag icon={<LoadingOutlined />} color="blue">
+                          확인 중...
+                        </Tag>
                       ) : naverLoginStatus?.isLoggedIn ? (
-                        <Tag icon={<CheckCircleOutlined />} color="success">로그인됨</Tag>
+                        <Tag icon={<CheckCircleOutlined />} color="success">
+                          로그인됨
+                        </Tag>
                       ) : (
-                        <Tag icon={<CloseCircleOutlined />} color="error">로그인 필요</Tag>
+                        <Tag icon={<CloseCircleOutlined />} color="error">
+                          로그인 필요
+                        </Tag>
                       )}
                     </Space>
 
@@ -546,18 +721,24 @@ const IndexingDashboard: React.FC = () => {
                     </Space>
                   </Space>
                   {naverLoginStatus && !naverLoginStatus.isLoggedIn && (
-                     <Alert 
-                       message={naverLoginStatus.message || "네이버 서비스 이용을 위해 로그인이 필요합니다."} 
-                       type="warning" 
-                       showIcon 
-                       style={{marginTop: 12}}
-                     />
+                    <Alert
+                      message={naverLoginStatus.message || '네이버 서비스 이용을 위해 로그인이 필요합니다.'}
+                      type="warning"
+                      showIcon
+                      style={{ marginTop: 12 }}
+                    />
                   )}
                 </div>
               )}
-              
+
               <Form.Item>
-                <Button type="primary" htmlType="submit" loading={loading} icon={<PlayCircleOutlined />} disabled={loading || availableServices.length === 0}>
+                <Button
+                  type="primary"
+                  htmlType="submit"
+                  loading={loading}
+                  icon={<PlayCircleOutlined />}
+                  disabled={loading || availableServices.length === 0}
+                >
                   인덱싱 시작
                 </Button>
               </Form.Item>
@@ -566,31 +747,63 @@ const IndexingDashboard: React.FC = () => {
         </Col>
       </Row>
       <Card title={<Title level={4}>인덱싱 작업 내역</Title>} style={{ marginTop: 16 }}>
-        <Table columns={taskColumns} dataSource={indexingTasks} rowKey="id" loading={loading} size="small" pagination={{ pageSize: 10 }} />
+        <Table
+          columns={taskColumns}
+          dataSource={indexingTasks}
+          rowKey="id"
+          loading={loading}
+          size="small"
+          pagination={{ pageSize: 10 }}
+        />
       </Card>
       <Modal
         title="인덱싱 작업 상세 결과"
         visible={isModalVisible}
         onCancel={() => setIsModalVisible(false)}
-        footer={[<Button key="close" onClick={() => setIsModalVisible(false)}>닫기</Button>]}
+        footer={[
+          <Button key="close" onClick={() => setIsModalVisible(false)}>
+            닫기
+          </Button>,
+        ]}
         width="90vw"
         style={{ top: 20 }}
       >
         {selectedTask && (
           <div>
-            <p><strong>사이트:</strong> {selectedTask.siteUrl}</p>
-            <p><strong>실행 시간:</strong> {new Date(selectedTask.startTime).toLocaleString()}</p>
-            <p><strong>총 소요 시간:</strong> {getExecutionTime(selectedTask)}</p>
+            <p>
+              <strong>사이트:</strong> {selectedTask.siteUrl}
+            </p>
+            <p>
+              <strong>실행 시간:</strong> {new Date(selectedTask.startTime).toLocaleString()}
+            </p>
+            <p>
+              <strong>총 소요 시간:</strong> {getExecutionTime(selectedTask)}
+            </p>
             <Divider />
             <Space style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
               <Space>
-                <Select value={filters.status} onChange={value => setFilters(f => ({ ...f, status: value }))} style={{ width: 120 }}>
+                <Select
+                  value={filters.status}
+                  onChange={value => setFilters(f => ({ ...f, status: value }))}
+                  style={{ width: 120 }}
+                >
                   <Option value="all">전체 상태</Option>
                   <Option value="success">성공</Option>
                   <Option value="failed">실패</Option>
                 </Select>
-                <Select mode="multiple" placeholder="서비스 필터" value={filters.services} onChange={value => setFilters(f => ({ ...f, services: value }))} style={{ minWidth: 200 }} allowClear>
-                  {selectedTask.services.map(s => <Option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</Option>)}
+                <Select
+                  mode="multiple"
+                  placeholder="서비스 필터"
+                  value={filters.services}
+                  onChange={value => setFilters(f => ({ ...f, services: value }))}
+                  style={{ minWidth: 200 }}
+                  allowClear
+                >
+                  {selectedTask.services.map(s => (
+                    <Option key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </Option>
+                  ))}
                 </Select>
               </Space>
               <Button type="primary" onClick={() => handleReRequest(false)} disabled={selectedRowKeys.length === 0}>

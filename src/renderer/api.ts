@@ -1,5 +1,7 @@
 import axios from 'axios'
 
+export type IndexProvider = 'GOOGLE' | 'BING' | 'NAVER' | 'DAUM'
+
 const API_BASE_URL = 'http://localhost:3030'
 
 // 에러 코드 enum
@@ -338,6 +340,26 @@ export async function checkNaverLoginComplete(): Promise<{ success: boolean; mes
 }
 
 export async function closeNaverLoginBrowser(): Promise<{ success: boolean; message: string }> {
-  const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-browser`)
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-login-browser`)
+  return res.data
+}
+
+export const manualIndexing = async (siteUrl: string, urls: string[], services: IndexProvider[], groupedUrls) => {
+  // ... existing code ...
+}
+
+export const checkExistingUrls = async (
+  urls: string[],
+  providers: IndexProvider[],
+): Promise<Record<IndexProvider, string[]>> => {
+  const res = await axios.post(`${API_BASE_URL}/indexing/check-existing`, {
+    urls,
+    providers,
+  })
+  return res.data
+}
+
+export const getIndexingLogCount = async (siteUrl: string) => {
+  const res = await axios.get(`${API_BASE_URL}/indexing-log/count?siteUrl=${siteUrl}`)
   return res.data
 }

@@ -114,17 +114,17 @@ const SiteSettings: React.FC = () => {
       key: 'name',
       width: 200,
       render: (name: string, record: SiteConfig) => (
-         <a href={record.siteUrl} target="_blank" rel="noopener noreferrer">
+        <a href={record.siteUrl} target="_blank" rel="noopener noreferrer">
           <GlobalOutlined style={{ marginRight: 8 }} />
           {name}
         </a>
-      )
+      ),
     },
     {
       title: '사이트 URL',
       dataIndex: 'siteUrl',
       key: 'siteUrl',
-       render: (url: string) => (
+      render: (url: string) => (
         <a href={url} target="_blank" rel="noopener noreferrer">
           {url}
         </a>
@@ -186,7 +186,7 @@ const SiteSettings: React.FC = () => {
           >
             <Input placeholder="내 블로그" size="large" />
           </Form.Item>
-          
+
           <Form.Item
             name="siteUrl"
             label="사이트 URL"
