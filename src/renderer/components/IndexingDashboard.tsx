@@ -498,8 +498,53 @@ const IndexingDashboard: React.FC = () => {
                   </Space>
                 </Checkbox.Group>
               </Form.Item>
-              {naverLoginStatus && !naverLoginStatus.isLoggedIn && globalSettings?.naver.use &&
-                <Alert message="네이버 서비스는 로그인이 필요합니다." type="warning" showIcon style={{marginBottom: 16}}/>}
+
+              {globalSettings?.naver?.use && (
+                <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                  <Space align="center" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Space>
+                      <Text strong>네이버 로그인 상태:</Text>
+                      {naverLoginChecking ? (
+                        <Tag icon={<LoadingOutlined />} color="blue">확인 중...</Tag>
+                      ) : naverLoginStatus?.isLoggedIn ? (
+                        <Tag icon={<CheckCircleOutlined />} color="success">로그인됨</Tag>
+                      ) : (
+                        <Tag icon={<CloseCircleOutlined />} color="error">로그인 필요</Tag>
+                      )}
+                    </Space>
+
+                    <Space>
+                      {naverLoginBrowserOpen ? (
+                        <>
+                          <Button size="small" icon={<LoadingOutlined />} onClick={checkNaverLogin}>
+                            완료 확인
+                          </Button>
+                          <Button size="small" danger onClick={handleCloseNaverBrowser}>
+                            창 닫기
+                          </Button>
+                        </>
+                      ) : naverLoginStatus && !naverLoginStatus.isLoggedIn ? (
+                        <Button size="small" icon={<LoginOutlined />} onClick={handleNaverLogin}>
+                          로그인하기
+                        </Button>
+                      ) : (
+                        <Button size="small" icon={<ReloadOutlined />} onClick={checkNaverLogin}>
+                          새로고침
+                        </Button>
+                      )}
+                    </Space>
+                  </Space>
+                  {naverLoginStatus && !naverLoginStatus.isLoggedIn && (
+                     <Alert 
+                       message={naverLoginStatus.message || "네이버 서비스 이용을 위해 로그인이 필요합니다."} 
+                       type="warning" 
+                       showIcon 
+                       style={{marginTop: 12}}
+                     />
+                  )}
+                </div>
+              )}
+              
               <Form.Item>
                 <Button type="primary" htmlType="submit" loading={loading} icon={<PlayCircleOutlined />} disabled={loading || availableServices.length === 0}>
                   인덱싱 시작
