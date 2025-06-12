@@ -243,71 +243,19 @@ const IndexingDashboard: React.FC = () => {
           }
 
           // 성공 상태 업데이트
-          // Google API의 경우 batchIndexUrls 응답을 분석하여 실패 여부 확인
-          if (service === 'google' && result && result.results && Array.isArray(result.results)) {
-            const failedUrls = result.results.filter((r: any) => !r.success)
-            if (failedUrls.length > 0) {
-              // 일부 또는 전체 URL이 실패한 경우
-              const totalUrls = result.results.length
-              const successUrls = totalUrls - failedUrls.length
-
-              const errorMessage = `${failedUrls.length}/${totalUrls} URL 인덱싱 실패`
-              const errorDetails = failedUrls.map((f: any) => `${f.url}: ${f.error?.message || f.error}`).join(', ')
-              const firstError = failedUrls[0]?.error
-
-              setIndexingTasks(prev =>
-                prev.map(t =>
-                  t.id === taskId
-                    ? {
-                        ...t,
-                        results: {
-                          ...t.results,
-                          [service]: {
-                            status: 'failed', // 일부라도 실패하면 failed
-                            error: errorMessage,
-                            errorDetails,
-                            errorCode: firstError?.code,
-                            errorService: firstError?.service,
-                            data: result, // 전체 결과도 포함
-                            progress: 100,
-                          },
-                        },
-                      }
-                    : t,
-                ),
-              )
-            } else {
-              // 모든 URL이 성공한 경우
-              setIndexingTasks(prev =>
-                prev.map(t =>
-                  t.id === taskId
-                    ? {
-                        ...t,
-                        results: {
-                          ...t.results,
-                          [service]: { status: 'success', data: result, progress: 100 },
-                        },
-                      }
-                    : t,
-                ),
-              )
-            }
-          } else {
-            // 다른 서비스는 기존 로직 유지
-            setIndexingTasks(prev =>
-              prev.map(t =>
-                t.id === taskId
-                  ? {
-                      ...t,
-                      results: {
-                        ...t.results,
-                        [service]: { status: 'success', data: result, progress: 100 },
-                      },
-                    }
-                  : t,
-              ),
-            )
-          }
+          setIndexingTasks(prev =>
+            prev.map(t =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    results: {
+                      ...t.results,
+                      [service]: { status: 'success', data: result, progress: 100 },
+                    },
+                  }
+                : t,
+            ),
+          )
         } catch (error) {
           // 에러 메시지와 상세 정보 추출
           const errorMessage = getErrorMessage(error)

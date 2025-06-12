@@ -258,6 +258,23 @@ export class DaumIndexerService {
       }
       await browser.close()
       this.logger.log('모든 Daum 색인 요청이 완료되었습니다.')
+
+      const failedResults = results.filter(r => r.status === 'error' || r.status === 'fail')
+
+      if (failedResults.length > 0) {
+        throw new DaumSubmissionError(
+          `${failedResults.length}/${urlsToIndex.length}개의 URL 색인 요청에 실패했습니다.`,
+          'manualIndexing',
+          undefined,
+          siteUrl,
+          {
+            failedCount: failedResults.length,
+            totalCount: urlsToIndex.length,
+            failedUrls: failedResults.map(r => ({ url: r.url, error: r.msg, status: r.status })),
+            results,
+          },
+        )
+      }
       return results
     } catch (error) {
       if (error instanceof DaumAuthError || error instanceof DaumSubmissionError || error instanceof DaumConfigError) {
@@ -306,8 +323,31 @@ export class DaumIndexerService {
 
       const results = await this.manualIndexing(options, daumConfig.headless)
 
+      // 실패한 URL 추적
+      const failedUrls = results.filter(result => result.status === 'error' || result.status === 'fail')
+
+      // 실패한 URL이 있으면 에러 throw
+      if (failedUrls.length > 0) {
+        throw new DaumSubmissionError(
+          `${failedUrls.length}/${urls.length} URL Daum 인덱싱 실패`,
+          'indexUrls',
+          undefined,
+          'global',
+          {
+            failedUrls: failedUrls.map(result => ({
+              url: result.url,
+              error: result.msg,
+              status: result.status,
+            })),
+            totalCount: urls.length,
+            failedCount: failedUrls.length,
+            results,
+          },
+        )
+      }
+
       this.logger.log(`Daum 인덱싱 완료: ${results.length}개 URL 처리`)
-      return results
+      return { results }
     } catch (error) {
       this.logger.error('Daum 인덱싱 실패:', error)
 

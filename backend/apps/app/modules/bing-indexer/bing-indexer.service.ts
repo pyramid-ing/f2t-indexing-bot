@@ -85,6 +85,20 @@ export class BingIndexerService {
         },
       })
 
+      if (response.data && response.data.d && response.data.d.ErrorCode) {
+        throw new BingSubmissionError(
+          `Bing API 오류: ${response.data.d.Message}`,
+          'submitUrlToBing',
+          url,
+          siteUrl,
+          {
+            errorCode: response.data.d.ErrorCode,
+            errorMessage: response.data.d.Message,
+            responseData: response.data,
+          },
+        )
+      }
+
       return response.data
     } catch (error) {
       // 실패 로그 기록
@@ -147,6 +161,21 @@ export class BingIndexerService {
           },
         }),
       )
+
+      if (response.data && response.data.d && response.data.d.ErrorCode) {
+        throw new BingSubmissionError(
+          `Bing API 오류: ${response.data.d.Message}`,
+          'submitMultipleUrlsToBing',
+          undefined,
+          siteUrl,
+          {
+            urlCount: urls.length,
+            errorCode: response.data.d.ErrorCode,
+            errorMessage: response.data.d.Message,
+            responseData: response.data,
+          },
+        )
+      }
 
       // 각 URL마다 성공 로그 기록
       for (const url of urls) {
@@ -281,6 +310,7 @@ export class BingIndexerService {
       }
 
       const results = []
+      const failedUrls = []
 
       for (const url of urls) {
         const result = await this.indexSingleUrl(url, bingConfig)
@@ -297,10 +327,34 @@ export class BingIndexerService {
             responseData: JSON.stringify(result),
           },
         })
+
+        // 실패한 URL 추적
+        if (!result.success) {
+          failedUrls.push({
+            url: result.url,
+            error: result.error,
+          })
+        }
+      }
+
+      // 실패한 URL이 있으면 에러 throw
+      if (failedUrls.length > 0) {
+        throw new BingSubmissionError(
+          `${failedUrls.length}/${urls.length} URL Bing 인덱싱 실패`,
+          'indexUrls',
+          undefined,
+          'global',
+          {
+            failedUrls,
+            totalCount: urls.length,
+            failedCount: failedUrls.length,
+            results,
+          },
+        )
       }
 
       this.logger.log(`Bing 인덱싱 완료: ${results.length}개 URL`)
-      return results
+      return { results }
     } catch (error) {
       this.logger.error('Bing 인덱싱 실패:', error)
 
