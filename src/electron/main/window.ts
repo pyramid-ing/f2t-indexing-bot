@@ -25,10 +25,6 @@ export function createWindow() {
   mainWindow.on('closed', () => {
     mainWindow = null
   })
-
-  if (process.env.ELECTRON_DEBUG) {
-    mainWindow.webContents.openDevTools()
-  }
 }
 
 export function getMainWindow(): BrowserWindow | null {
