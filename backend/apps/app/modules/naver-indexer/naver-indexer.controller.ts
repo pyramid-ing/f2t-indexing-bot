@@ -7,7 +7,7 @@ export class NaverIndexerController {
 
   @Post('manual-index')
   async manualIndex(@Body() body: NaverIndexerOptions & { headless?: boolean }) {
-    const results = await this.naverIndexerService.manualIndexing(body, body.headless ?? true)
+    const results = await this.naverIndexerService.manualIndexing(body, body.headless)
     return { results }
   }
 

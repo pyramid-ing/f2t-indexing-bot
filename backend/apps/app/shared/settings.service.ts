@@ -25,7 +25,7 @@ export class SettingsService {
             oauth2TokenExpiry: '',
           },
           bing: { use: false, apiKey: '' },
-          naver: { use: false, naverId: '', password: '' },
+          naver: { use: false, naverId: '', password: '', headless: true },
           daum: { use: false, siteUrl: '', password: '' },
         }
 

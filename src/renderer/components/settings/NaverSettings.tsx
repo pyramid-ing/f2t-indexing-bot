@@ -8,6 +8,7 @@ interface NaverEngineSettings {
   use: boolean
   naverId: string
   password: string
+  headless: boolean
 }
 
 interface NaverSettingsProps {
@@ -83,75 +84,37 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, onToggl
               </Col>
             </Row>
 
-            <div
-              style={{
-                backgroundColor: '#fff2f0',
-                border: '1px solid #ffccc7',
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 16,
-              }}
-            >
-              <Text strong style={{ color: '#cf1322' }}>
-                🔐 수동 로그인 필요
-              </Text>
-              <div style={{ marginTop: 8 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  네이버는 보안상 캡챠 인증이 필요할 수 있습니다.
-                  <br />
-                  자동 로그인 시도 후 캡챠나 추가 인증이 요구되면 수동 로그인 창이 열립니다.
-                  <br />
-                  수동으로 로그인을 완료한 후 자동으로 세션이 저장됩니다.
-                </Text>
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: '#e6f7ff',
-                border: '1px solid #91d5ff',
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 16,
-              }}
-            >
-              <Text strong style={{ color: '#0050b3' }}>
-                📋 네이버 서치어드바이저 설정
-              </Text>
-              <div style={{ marginTop: 8 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  1.{' '}
-                  <a href="https://searchadvisor.naver.com" target="_blank" rel="noopener noreferrer">
-                    네이버 서치어드바이저
-                  </a>
-                  에 로그인
-                  <br />
-                  2. 웹사이트 등록 및 소유권 확인
-                  <br />
-                  3. 요청 {'>'} 수집요청에서 URL 등록 가능
-                  <br />
-                  4. 일일 등록 한도: 약 1,000개 URL
-                </Text>
-              </div>
-            </div>
+            <Row gutter={16}>
+              <Col span={24}>
+                <Form.Item
+                  name="headless"
+                  label="브라우저 모드"
+                  help="창숨김: 백그라운드에서 실행 (빠름), 창보기: 브라우저 창을 표시 (과정 확인 가능)"
+                  valuePropName="checked"
+                >
+                  <Switch checkedChildren="창숨김" unCheckedChildren="창보기" />
+                </Form.Item>
+              </Col>
+            </Row>
 
             <div
               style={{
                 backgroundColor: '#fff7e6',
                 border: '1px solid #ffd666',
                 borderRadius: 8,
-                padding: 12,
+                padding: 16,
+                marginBottom: 24,
               }}
             >
               <Text strong style={{ color: '#d48806' }}>
-                ⚠️ 보안 주의사항
+                📊 네이버 등록 제한사항
               </Text>
-              <div style={{ marginTop: 4 }}>
+              <div style={{ marginTop: 8 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                  • 계정 정보는 로컬에 암호화되어 저장됩니다
+                  • 하루 최대 50개 URL 등록 가능
                   <br />
-                  • 2단계 인증 활성화 시 앱 비밀번호를 사용하세요
-                  <br />• 의심스러운 로그인 알림이 오면 정상적인 접근입니다
+                  • 크롤링 방식으로 실패하는 경우가 종종 있습니다. 이 경우 확인해서 재등록이 필요합니다
+                  <br />• 주기적으로 수동 로그인이 필요합니다 (자동 로그인 제한)
                 </Text>
               </div>
             </div>

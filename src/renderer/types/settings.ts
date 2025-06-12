@@ -37,6 +37,7 @@ export interface NaverEngineSettings {
   use: boolean
   naverId: string
   password: string
+  headless: boolean
 }
 
 export interface DaumEngineSettings {

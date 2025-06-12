@@ -14,6 +14,7 @@ import DaumSettings from '../components/settings/DaumSettings'
 import NaverSettings from '../components/settings/NaverSettings'
 import BingSettings from '../components/settings/BingSettings'
 import GoogleSettings from '../components/settings/GoogleSettings'
+import IndexingSettingsComponent from '../components/settings/IndexingSettings'
 
 const { Title } = Typography
 const { TabPane } = Tabs
@@ -58,6 +59,7 @@ const Settings: React.FC = () => {
       use: false,
       naverId: '',
       password: '',
+      headless: true,
     },
     daum: {
       use: false,
@@ -255,6 +257,10 @@ const Settings: React.FC = () => {
               onToggleUse={toggleDaumUse}
               loading={loading}
             />
+          </TabPane>
+
+          <TabPane tab="인덱싱 설정" key="indexing">
+            <IndexingSettingsComponent settings={indexingSettings} onSave={saveIndexingSettings} loading={loading} />
           </TabPane>
         </Tabs>
       </Card>

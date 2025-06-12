@@ -29,6 +29,7 @@ export interface GlobalEngineSettings {
     use: boolean
     naverId: string
     password: string
+    headless: boolean
   }
   daum: {
     use: boolean
