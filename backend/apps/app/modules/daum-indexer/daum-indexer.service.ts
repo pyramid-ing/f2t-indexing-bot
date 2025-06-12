@@ -6,6 +6,7 @@ import path from 'path'
 import { Page } from 'puppeteer'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 import { SettingsService } from '../../shared/settings.service'
+import { DaumAuthError, DaumSubmissionError, DaumConfigError } from '../../../filters/error.types'
 
 puppeteer.use(StealthPlugin())
 
@@ -25,20 +26,31 @@ export class DaumIndexerService {
   ) {}
 
   private async getDaumConfig(siteUrl: string) {
-    const globalSettings = await this.settingsService.getGlobalEngineSettings()
+    try {
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
 
-    if (!globalSettings.daum || !globalSettings.daum.use) {
-      throw new Error('Daum 색인이 비활성화되어 있습니다.')
-    }
+      if (!globalSettings.daum || !globalSettings.daum.use) {
+        throw new DaumConfigError('Daum 색인이 비활성화되어 있습니다.', 'getDaumConfig', 'indexing_service', {
+          enabled: false,
+        })
+      }
 
-    if (!globalSettings.daum.password) {
-      throw new Error('Daum 비밀번호가 설정되지 않았습니다.')
-    }
+      if (!globalSettings.daum.password) {
+        throw new DaumConfigError('Daum 비밀번호가 설정되지 않았습니다.', 'getDaumConfig', 'password', {
+          hasPassword: false,
+        })
+      }
 
-    return {
-      siteUrl: globalSettings.daum.siteUrl || siteUrl,
-      password: globalSettings.daum.password,
-      headless: globalSettings.daum.headless ?? true, // 기본값은 true
+      return {
+        siteUrl: globalSettings.daum.siteUrl || siteUrl,
+        password: globalSettings.daum.password,
+        headless: globalSettings.daum.headless ?? true, // 기본값은 true
+      }
+    } catch (error) {
+      if (error instanceof DaumConfigError) {
+        throw error
+      }
+      throw new DaumConfigError(`Daum 설정 조회 실패: ${error.message}`, 'getDaumConfig', 'settings_fetch')
     }
   }
 
@@ -78,149 +90,234 @@ export class DaumIndexerService {
   ): Promise<{ url: string; status: string; msg: string }[]> {
     const { urlsToIndex, siteUrl } = options
 
-    // DB에서 Daum 설정 가져오기
-    const dbConfig = await this.getDaumConfig(siteUrl)
-    const daumSiteUrl = dbConfig.siteUrl
-    const pin = options.pin || dbConfig.password
-    const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
+    try {
+      // DB에서 Daum 설정 가져오기
+      const dbConfig = await this.getDaumConfig(siteUrl)
+      const daumSiteUrl = dbConfig.siteUrl
+      const pin = options.pin || dbConfig.password
+      const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
 
-    const launchOptions: any = {
-      headless: useHeadless,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-blink-features=AutomationControlled',
-        '--lang=ko-KR,ko',
-      ],
-      defaultViewport: { width: 1280, height: 900 },
-    }
-    if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
-      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
-    }
-    const browser = await puppeteer.launch(launchOptions)
-    const page = await browser.newPage()
-    await page.setExtraHTTPHeaders({
-      'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-    })
-
-    let loggedIn = false
-    if (await this.loadCookies(page, daumSiteUrl)) {
-      await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-      await this.sleep(2000)
-      const isLoginPage = await page.evaluate(() => {
-        return !!document.querySelector('form.form_register input#authSiteUrl')
-      })
-      if (!isLoginPage) {
-        loggedIn = true
-        this.logger.log('쿠키로 로그인 세션 복원 성공')
+      const launchOptions: any = {
+        headless: useHeadless,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-blink-features=AutomationControlled',
+          '--lang=ko-KR,ko',
+        ],
+        defaultViewport: { width: 1280, height: 900 },
       }
-    }
-    if (!loggedIn) {
-      await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-      await this.sleep(2000)
-      const isLoginPage = await page.evaluate(() => {
-        return !!document.querySelector('form.form_register input#authSiteUrl')
-      })
-      if (isLoginPage) {
-        if (!daumSiteUrl || !pin) {
-          await browser.close()
-          throw new Error('로그인 필요: siteUrl, pin 값을 설정하거나 입력하세요.')
-        }
-        await page.type('#authSiteUrl', daumSiteUrl, { delay: 20 })
-        await page.type('#authPinCode', pin, { delay: 20 })
-        await page.click('button.btn_register')
-        await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 })
-        this.logger.log('다음 로그인 완료')
-        if (page.url().includes('/dashboard')) {
+      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+        launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
+      }
+
+      let browser
+      let page
+      try {
+        browser = await puppeteer.launch(launchOptions)
+        page = await browser.newPage()
+        await page.setExtraHTTPHeaders({
+          'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
+        })
+      } catch (error) {
+        throw new DaumSubmissionError(`브라우저 초기화 실패: ${error.message}`, 'manualIndexing', undefined, siteUrl, {
+          headless: useHeadless,
+          executablePath: launchOptions.executablePath,
+        })
+      }
+
+      let loggedIn = false
+      try {
+        if (await this.loadCookies(page, daumSiteUrl)) {
           await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
           await this.sleep(2000)
+          const isLoginPage = await page.evaluate(() => {
+            return !!document.querySelector('form.form_register input#authSiteUrl')
+          })
+          if (!isLoginPage) {
+            loggedIn = true
+            this.logger.log('쿠키로 로그인 세션 복원 성공')
+          }
         }
-        await this.saveCookies(page, daumSiteUrl)
-      } else {
-        this.logger.warn('로그인 폼이 감지되지 않음, 이미 로그인된 상태일 수 있음')
-      }
-    }
-
-    const results: { url: string; status: string; msg: string }[] = []
-
-    for (const url of urlsToIndex) {
-      try {
-        await page.waitForSelector('#collectReqUrl', { timeout: 10000 })
-        await page.evaluate(() => {
-          const input = document.querySelector('#collectReqUrl') as HTMLInputElement
-          if (input) input.value = ''
+        if (!loggedIn) {
+          await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
+          await this.sleep(2000)
+          const isLoginPage = await page.evaluate(() => {
+            return !!document.querySelector('form.form_register input#authSiteUrl')
+          })
+          if (isLoginPage) {
+            if (!daumSiteUrl || !pin) {
+              await browser.close()
+              throw new DaumAuthError('로그인 필요: siteUrl, pin 값을 설정하거나 입력하세요.', 'manualIndexing', {
+                hasSiteUrl: !!daumSiteUrl,
+                hasPin: !!pin,
+              })
+            }
+            await page.type('#authSiteUrl', daumSiteUrl, { delay: 20 })
+            await page.type('#authPinCode', pin, { delay: 20 })
+            await page.click('button.btn_register')
+            await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 })
+            this.logger.log('다음 로그인 완료')
+            if (page.url().includes('/dashboard')) {
+              await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
+              await this.sleep(2000)
+            }
+            await this.saveCookies(page, daumSiteUrl)
+          } else {
+            this.logger.warn('로그인 폼이 감지되지 않음, 이미 로그인된 상태일 수 있음')
+          }
+        }
+      } catch (error) {
+        await browser.close()
+        if (error instanceof DaumAuthError) {
+          throw error
+        }
+        throw new DaumAuthError(`Daum 로그인 실패: ${error.message}`, 'manualIndexing', {
+          daumSiteUrl,
+          hasPin: !!pin,
         })
-        await page.type('#collectReqUrl', url, { delay: 2 })
-        await page.click('.btn_result')
-        let isSuccess = false
-        let msg = ''
-        const timeoutMs = 10000
-        const pollInterval = 300
-        const start = Date.now()
-        while (Date.now() - start < timeoutMs) {
-          isSuccess = await page.evaluate(() => {
-            const layer = document.querySelector('.webmaster_layer.layer_collect')
-            return layer && !layer.classList.contains('hide')
+      }
+
+      const results: { url: string; status: string; msg: string }[] = []
+
+      for (const url of urlsToIndex) {
+        try {
+          await page.waitForSelector('#collectReqUrl', { timeout: 10000 })
+          await page.evaluate(() => {
+            const input = document.querySelector('#collectReqUrl') as HTMLInputElement
+            if (input) input.value = ''
           })
-          if (isSuccess) break
-          await this.sleep(pollInterval)
-        }
+          await page.type('#collectReqUrl', url, { delay: 2 })
+          await page.click('.btn_result')
+          let isSuccess = false
+          let msg = ''
+          const timeoutMs = 10000
+          const pollInterval = 300
+          const start = Date.now()
+          while (Date.now() - start < timeoutMs) {
+            isSuccess = await page.evaluate(() => {
+              const layer = document.querySelector('.webmaster_layer.layer_collect')
+              return layer && !layer.classList.contains('hide')
+            })
+            if (isSuccess) break
+            await this.sleep(pollInterval)
+          }
 
-        let result
-        if (isSuccess) {
-          msg = '수집요청 완료'
-          result = { url, status: 'success', msg }
-          await page.click('.btn_confirm')
-          await this.sleep(500)
+          let result
+          if (isSuccess) {
+            msg = '수집요청 완료'
+            result = { url, status: 'success', msg }
+            await page.click('.btn_confirm')
+            await this.sleep(500)
 
-          // 성공 로그 기록
-          await this.prisma.indexingLog.create({
-            data: {
-              siteUrl: 'global', // 전역 설정이므로 임시값
-              targetUrl: url,
-              provider: 'DAUM',
-              status: 'SUCCESS',
-              message: msg,
-              responseData: JSON.stringify(result),
-            },
-          })
-        } else {
-          msg = '수집요청 실패 또는 레이어 미노출'
-          result = { url, status: 'fail', msg }
+            // 성공 로그 기록
+            await this.prisma.indexingLog.create({
+              data: {
+                siteUrl: 'global', // 전역 설정이므로 임시값
+                targetUrl: url,
+                provider: 'DAUM',
+                status: 'SUCCESS',
+                message: msg,
+                responseData: JSON.stringify(result),
+              },
+            })
+          } else {
+            msg = '수집요청 실패 또는 레이어 미노출'
+            result = { url, status: 'fail', msg }
 
-          // 실패 로그 기록
+            // 실패 로그 기록
+            await this.prisma.indexingLog.create({
+              data: {
+                siteUrl: 'global', // 전역 설정이므로 임시값
+                targetUrl: url,
+                provider: 'DAUM',
+                status: 'FAILED',
+                message: msg,
+                responseData: JSON.stringify(result),
+              },
+            })
+          }
+          results.push(result)
+          await this.sleep(1000)
+        } catch (e: any) {
+          const result = { url, status: 'error', msg: `[에러] ${e?.message || e}` }
+          results.push(result)
+
+          // 에러 로그 기록
           await this.prisma.indexingLog.create({
             data: {
               siteUrl: 'global', // 전역 설정이므로 임시값
               targetUrl: url,
               provider: 'DAUM',
               status: 'FAILED',
-              message: msg,
+              message: result.msg,
               responseData: JSON.stringify(result),
             },
           })
         }
-        results.push(result)
-        await this.sleep(1000)
-      } catch (e: any) {
-        const result = { url, status: 'error', msg: `[에러] ${e?.message || e}` }
-        results.push(result)
+      }
+      await browser.close()
+      this.logger.log('모든 Daum 색인 요청이 완료되었습니다.')
+      return results
+    } catch (error) {
+      if (error instanceof DaumAuthError || error instanceof DaumSubmissionError || error instanceof DaumConfigError) {
+        throw error
+      }
+      throw new DaumSubmissionError(
+        `Daum 색인 요청 중 에러 발생: ${error.message}`,
+        'manualIndexing',
+        undefined,
+        siteUrl,
+        {
+          urlsToIndex,
+          options,
+          headless,
+        },
+      )
+    }
+  }
 
-        // 에러 로그 기록
-        await this.prisma.indexingLog.create({
-          data: {
-            siteUrl: 'global', // 전역 설정이므로 임시값
-            targetUrl: url,
-            provider: 'DAUM',
-            status: 'FAILED',
-            message: result.msg,
-            responseData: JSON.stringify(result),
-          },
+  async indexUrls(urls: string[]): Promise<any> {
+    try {
+      this.logger.log(`Daum 인덱싱 시작: ${urls.length}개 URL`)
+
+      // 전역 Daum 설정 조회
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      const daumConfig = globalSettings.daum
+
+      if (!daumConfig.use) {
+        throw new DaumConfigError('Daum 인덱싱이 비활성화되어 있습니다.', 'indexUrls', 'indexing_service', {
+          enabled: false,
         })
       }
+
+      if (!daumConfig.password) {
+        throw new DaumConfigError('Daum 비밀번호가 설정되지 않았습니다.', 'indexUrls', 'password', {
+          hasPassword: false,
+        })
+      }
+
+      // 임시 사이트 URL 사용 (전역 설정이므로)
+      const options: DaumIndexerOptions = {
+        siteUrl: daumConfig.siteUrl || 'global-site',
+        urlsToIndex: urls,
+        pin: daumConfig.password,
+      }
+
+      const results = await this.manualIndexing(options, daumConfig.headless)
+
+      this.logger.log(`Daum 인덱싱 완료: ${results.length}개 URL 처리`)
+      return results
+    } catch (error) {
+      this.logger.error('Daum 인덱싱 실패:', error)
+
+      if (error instanceof DaumAuthError || error instanceof DaumSubmissionError || error instanceof DaumConfigError) {
+        throw error
+      }
+
+      throw new DaumSubmissionError(`Daum 인덱싱 실패: ${error.message}`, 'indexUrls', undefined, 'global', {
+        urlCount: urls.length,
+      })
     }
-    await browser.close()
-    this.logger.log('모든 Daum 색인 요청이 완료되었습니다.')
-    return results
   }
 }

@@ -44,6 +44,31 @@ export enum ErrorCode {
   GOOGLE_OAUTH_CONFIG_MISSING = 'GOOGLE_OAUTH_CONFIG_MISSING',
   GOOGLE_SERVICE_ACCOUNT_INVALID = 'GOOGLE_SERVICE_ACCOUNT_INVALID',
 
+  // Bing API 에러들
+  BING_AUTH_FAILED = 'BING_AUTH_FAILED',
+  BING_API_KEY_MISSING = 'BING_API_KEY_MISSING',
+  BING_API_KEY_INVALID = 'BING_API_KEY_INVALID',
+  BING_API_QUOTA_EXCEEDED = 'BING_API_QUOTA_EXCEEDED',
+  BING_SUBMISSION_FAILED = 'BING_SUBMISSION_FAILED',
+  BING_INVALID_URL = 'BING_INVALID_URL',
+  BING_SITE_NOT_VERIFIED = 'BING_SITE_NOT_VERIFIED',
+
+  // Naver API 에러들
+  NAVER_AUTH_FAILED = 'NAVER_AUTH_FAILED',
+  NAVER_LOGIN_REQUIRED = 'NAVER_LOGIN_REQUIRED',
+  NAVER_SESSION_EXPIRED = 'NAVER_SESSION_EXPIRED',
+  NAVER_SUBMISSION_FAILED = 'NAVER_SUBMISSION_FAILED',
+  NAVER_SITE_NOT_REGISTERED = 'NAVER_SITE_NOT_REGISTERED',
+  NAVER_BROWSER_ERROR = 'NAVER_BROWSER_ERROR',
+  NAVER_PAGE_NOT_FOUND = 'NAVER_PAGE_NOT_FOUND',
+
+  // Daum API 에러들
+  DAUM_AUTH_FAILED = 'DAUM_AUTH_FAILED',
+  DAUM_SUBMISSION_FAILED = 'DAUM_SUBMISSION_FAILED',
+  DAUM_INVALID_URL = 'DAUM_INVALID_URL',
+  DAUM_SITE_NOT_REGISTERED = 'DAUM_SITE_NOT_REGISTERED',
+  DAUM_REQUEST_FAILED = 'DAUM_REQUEST_FAILED',
+
   // 일반 에러들
   VALIDATION_ERROR = 'VALIDATION_ERROR',
   NOT_FOUND = 'NOT_FOUND',
@@ -139,9 +164,114 @@ export class GoogleBloggerError extends ServiceError {
 }
 
 export class GoogleConfigError extends ServiceError {
-  constructor(message: string, operation: string, configType: string, additionalInfo?: Record<string, any>) {
-    super(ErrorCode.GOOGLE_OAUTH_CONFIG_MISSING, message, 'Google Config', operation, { configType, ...additionalInfo })
+  constructor(message: string, operation: string, configType?: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.GOOGLE_OAUTH_CONFIG_MISSING, message, 'Google Config', operation, {
+      configType,
+      ...additionalInfo,
+    })
     this.name = 'GoogleConfigError'
+  }
+}
+
+// Bing 관련 에러 클래스들
+export class BingAuthError extends ServiceError {
+  constructor(message: string, operation: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.BING_AUTH_FAILED, message, 'Bing', operation, additionalInfo)
+    this.name = 'BingAuthError'
+  }
+}
+
+export class BingSubmissionError extends ServiceError {
+  constructor(
+    message: string,
+    operation: string,
+    url?: string,
+    siteUrl?: string,
+    additionalInfo?: Record<string, any>,
+  ) {
+    super(ErrorCode.BING_SUBMISSION_FAILED, message, 'Bing Webmaster', operation, {
+      url,
+      siteUrl,
+      ...additionalInfo,
+    })
+    this.name = 'BingSubmissionError'
+  }
+}
+
+export class BingConfigError extends ServiceError {
+  constructor(message: string, operation: string, configType?: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.BING_API_KEY_MISSING, message, 'Bing Config', operation, { configType, ...additionalInfo })
+    this.name = 'BingConfigError'
+  }
+}
+
+// Naver 관련 에러 클래스들
+export class NaverAuthError extends ServiceError {
+  constructor(message: string, operation: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.NAVER_AUTH_FAILED, message, 'Naver', operation, additionalInfo)
+    this.name = 'NaverAuthError'
+  }
+}
+
+export class NaverLoginError extends ServiceError {
+  constructor(message: string, operation: string, loginRequired: boolean = true, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.NAVER_LOGIN_REQUIRED, message, 'Naver Webmaster', operation, {
+      loginRequired,
+      ...additionalInfo,
+    })
+    this.name = 'NaverLoginError'
+  }
+}
+
+export class NaverSubmissionError extends ServiceError {
+  constructor(
+    message: string,
+    operation: string,
+    url?: string,
+    siteUrl?: string,
+    additionalInfo?: Record<string, any>,
+  ) {
+    super(ErrorCode.NAVER_SUBMISSION_FAILED, message, 'Naver Webmaster', operation, {
+      url,
+      siteUrl,
+      ...additionalInfo,
+    })
+    this.name = 'NaverSubmissionError'
+  }
+}
+
+export class NaverBrowserError extends ServiceError {
+  constructor(message: string, operation: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.NAVER_BROWSER_ERROR, message, 'Naver Browser', operation, additionalInfo)
+    this.name = 'NaverBrowserError'
+  }
+}
+
+// Daum 관련 에러 클래스들
+export class DaumAuthError extends ServiceError {
+  constructor(message: string, operation: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.DAUM_AUTH_FAILED, message, 'Daum', operation, additionalInfo)
+    this.name = 'DaumAuthError'
+  }
+}
+
+export class DaumSubmissionError extends ServiceError {
+  constructor(
+    message: string,
+    operation: string,
+    url?: string,
+    siteUrl?: string,
+    additionalInfo?: Record<string, any>,
+  ) {
+    super(ErrorCode.DAUM_SUBMISSION_FAILED, message, 'Daum Search', operation, { url, siteUrl, ...additionalInfo })
+    this.name = 'DaumSubmissionError'
+  }
+}
+
+export class DaumConfigError extends ServiceError {
+  constructor(message: string, operation: string, configType?: string, additionalInfo?: Record<string, any>) {
+    super(ErrorCode.DAUM_REQUEST_FAILED, message, 'Daum Config', operation, { configType, ...additionalInfo })
+    this.name = 'DaumConfigError'
   }
 }
 

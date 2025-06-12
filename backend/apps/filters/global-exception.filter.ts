@@ -12,6 +12,16 @@ import {
   GoogleIndexerError,
   GoogleBloggerError,
   GoogleConfigError,
+  BingAuthError,
+  BingSubmissionError,
+  BingConfigError,
+  NaverAuthError,
+  NaverLoginError,
+  NaverSubmissionError,
+  NaverBrowserError,
+  DaumAuthError,
+  DaumSubmissionError,
+  DaumConfigError,
   ErrorCode,
 } from './error.types'
 
@@ -95,6 +105,122 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode = HttpStatus.BAD_REQUEST
       message = exception.message
       error = 'Google 설정 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    }
+    // Bing 관련 에러들
+    else if (exception instanceof BingAuthError) {
+      statusCode = HttpStatus.UNAUTHORIZED
+      message = exception.message
+      error = 'Bing 인증 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof BingSubmissionError) {
+      statusCode = HttpStatus.BAD_GATEWAY
+      message = exception.message
+      error = 'Bing 제출 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof BingConfigError) {
+      statusCode = HttpStatus.BAD_REQUEST
+      message = exception.message
+      error = 'Bing 설정 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    }
+    // Naver 관련 에러들
+    else if (exception instanceof NaverAuthError) {
+      statusCode = HttpStatus.UNAUTHORIZED
+      message = exception.message
+      error = 'Naver 인증 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof NaverLoginError) {
+      statusCode = HttpStatus.UNAUTHORIZED
+      message = exception.message
+      error = 'Naver 로그인 필요'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof NaverSubmissionError) {
+      statusCode = HttpStatus.BAD_GATEWAY
+      message = exception.message
+      error = 'Naver 제출 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof NaverBrowserError) {
+      statusCode = HttpStatus.INTERNAL_SERVER_ERROR
+      message = exception.message
+      error = 'Naver 브라우저 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    }
+    // Daum 관련 에러들
+    else if (exception instanceof DaumAuthError) {
+      statusCode = HttpStatus.UNAUTHORIZED
+      message = exception.message
+      error = 'Daum 인증 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof DaumSubmissionError) {
+      statusCode = HttpStatus.BAD_GATEWAY
+      message = exception.message
+      error = 'Daum 제출 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof DaumConfigError) {
+      statusCode = HttpStatus.BAD_REQUEST
+      message = exception.message
+      error = 'Daum 설정 오류'
       code = exception.code
       service = exception.service
       operation = exception.operation
@@ -190,30 +316,49 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     switch (code) {
       case ErrorCode.GOOGLE_AUTH_FAILED:
       case ErrorCode.GOOGLE_TOKEN_EXPIRED:
+      case ErrorCode.BING_AUTH_FAILED:
+      case ErrorCode.NAVER_AUTH_FAILED:
+      case ErrorCode.NAVER_LOGIN_REQUIRED:
+      case ErrorCode.NAVER_SESSION_EXPIRED:
+      case ErrorCode.DAUM_AUTH_FAILED:
       case ErrorCode.UNAUTHORIZED:
         return HttpStatus.UNAUTHORIZED
 
       case ErrorCode.GOOGLE_TOKEN_INVALID:
       case ErrorCode.GOOGLE_API_PERMISSION_DENIED:
+      case ErrorCode.BING_API_KEY_INVALID:
+      case ErrorCode.BING_SITE_NOT_VERIFIED:
       case ErrorCode.FORBIDDEN:
         return HttpStatus.FORBIDDEN
 
       case ErrorCode.GOOGLE_OAUTH_CONFIG_MISSING:
+      case ErrorCode.BING_API_KEY_MISSING:
+      case ErrorCode.BING_INVALID_URL:
+      case ErrorCode.NAVER_SITE_NOT_REGISTERED:
+      case ErrorCode.DAUM_INVALID_URL:
+      case ErrorCode.DAUM_SITE_NOT_REGISTERED:
       case ErrorCode.VALIDATION_ERROR:
         return HttpStatus.BAD_REQUEST
 
+      case ErrorCode.NAVER_PAGE_NOT_FOUND:
       case ErrorCode.NOT_FOUND:
         return HttpStatus.NOT_FOUND
 
       case ErrorCode.GOOGLE_API_QUOTA_EXCEEDED:
+      case ErrorCode.BING_API_QUOTA_EXCEEDED:
         return HttpStatus.TOO_MANY_REQUESTS
 
       case ErrorCode.GOOGLE_INDEXER_FAILED:
       case ErrorCode.GOOGLE_BLOGGER_API_FAILED:
+      case ErrorCode.BING_SUBMISSION_FAILED:
+      case ErrorCode.NAVER_SUBMISSION_FAILED:
+      case ErrorCode.DAUM_SUBMISSION_FAILED:
+      case ErrorCode.DAUM_REQUEST_FAILED:
       case ErrorCode.EXTERNAL_API_ERROR:
         return HttpStatus.BAD_GATEWAY
 
       case ErrorCode.GOOGLE_SERVICE_ACCOUNT_INVALID:
+      case ErrorCode.NAVER_BROWSER_ERROR:
       case ErrorCode.INTERNAL_SERVER_ERROR:
       default:
         return HttpStatus.INTERNAL_SERVER_ERROR
