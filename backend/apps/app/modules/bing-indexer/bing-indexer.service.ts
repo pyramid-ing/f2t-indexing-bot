@@ -179,7 +179,7 @@ export class BingIndexerService {
             targetUrl: url,
             provider: 'BING',
             status: 'SUCCESS',
-            responseData: response.data,
+            responseData: JSON.stringify(response.data),
           },
         })
       }
@@ -195,6 +195,7 @@ export class BingIndexerService {
             provider: 'BING',
             status: 'FAILED',
             message: error.message,
+            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
           },
         })
       }
@@ -216,7 +217,11 @@ export class BingIndexerService {
           'submitMultipleUrlsToBing',
           undefined,
           siteUrl,
-          { urlCount: urls.length, responseStatus: 403, responseData: error.response?.data },
+          {
+            urlCount: urls.length,
+            responseStatus: 403,
+            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
+          },
         )
       } else if (error.response?.status === 429) {
         throw new BingSubmissionError(
@@ -224,7 +229,11 @@ export class BingIndexerService {
           'submitMultipleUrlsToBing',
           undefined,
           siteUrl,
-          { urlCount: urls.length, responseStatus: 429, responseData: error.response?.data },
+          {
+            urlCount: urls.length,
+            responseStatus: 429,
+            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
+          },
         )
       }
 
@@ -236,7 +245,7 @@ export class BingIndexerService {
         {
           urlCount: urls.length,
           responseStatus: error.response?.status,
-          responseData: error.response?.data,
+          responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
           axiosCode: error.code,
         },
       )
@@ -278,7 +287,7 @@ export class BingIndexerService {
       throw new BingSubmissionError(`Bing URL 상태 조회 실패: ${error.message}`, 'getUrlInfo', undefined, siteUrl, {
         urlCount: urls.length,
         responseStatus: error.response?.status,
-        responseData: error.response?.data,
+        responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
       })
     }
   }
