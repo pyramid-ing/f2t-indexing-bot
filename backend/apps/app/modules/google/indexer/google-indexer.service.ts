@@ -82,25 +82,29 @@ export class GoogleIndexerService {
       const response = await firstValueFrom(this.httpService.post(this.googleIndexingUrl, payload, { headers }))
 
       // 성공 로그 기록
-      await this.prisma.createIndexingLog({
-        siteUrl,
-        targetUrl: url,
-        provider: 'GOOGLE',
-        status: 'SUCCESS',
-        message: `Type: ${type}`,
-        responseData: response.data,
+      await this.prisma.indexingLog.create({
+        data: {
+          siteUrl,
+          targetUrl: url,
+          provider: 'GOOGLE',
+          status: 'SUCCESS',
+          message: `Type: ${type}`,
+          responseData: response.data,
+        },
       })
 
       this.logger.log(`Google URL 인덱싱 성공: ${url}`)
       return response.data
     } catch (error) {
       // 실패 로그 기록
-      await this.prisma.createIndexingLog({
-        siteUrl,
-        targetUrl: url,
-        provider: 'GOOGLE',
-        status: 'FAILED',
-        message: `Type: ${type}, Error: ${error.message}`,
+      await this.prisma.indexingLog.create({
+        data: {
+          siteUrl,
+          targetUrl: url,
+          provider: 'GOOGLE',
+          status: 'FAILED',
+          message: `Type: ${type}, Error: ${error.message}`,
+        },
       })
 
       this.logger.error(`Google URL 인덱싱 실패: ${url}`, error)

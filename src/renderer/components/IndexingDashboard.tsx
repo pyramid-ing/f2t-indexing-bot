@@ -243,19 +243,71 @@ const IndexingDashboard: React.FC = () => {
           }
 
           // 성공 상태 업데이트
-          setIndexingTasks(prev =>
-            prev.map(t =>
-              t.id === taskId
-                ? {
-                    ...t,
-                    results: {
-                      ...t.results,
-                      [service]: { status: 'success', data: result, progress: 100 },
-                    },
-                  }
-                : t,
-            ),
-          )
+          // Google API의 경우 batchIndexUrls 응답을 분석하여 실패 여부 확인
+          if (service === 'google' && result && result.results && Array.isArray(result.results)) {
+            const failedUrls = result.results.filter((r: any) => !r.success)
+            if (failedUrls.length > 0) {
+              // 일부 또는 전체 URL이 실패한 경우
+              const totalUrls = result.results.length
+              const successUrls = totalUrls - failedUrls.length
+
+              const errorMessage = `${failedUrls.length}/${totalUrls} URL 인덱싱 실패`
+              const errorDetails = failedUrls.map((f: any) => `${f.url}: ${f.error?.message || f.error}`).join(', ')
+              const firstError = failedUrls[0]?.error
+
+              setIndexingTasks(prev =>
+                prev.map(t =>
+                  t.id === taskId
+                    ? {
+                        ...t,
+                        results: {
+                          ...t.results,
+                          [service]: {
+                            status: 'failed', // 일부라도 실패하면 failed
+                            error: errorMessage,
+                            errorDetails,
+                            errorCode: firstError?.code,
+                            errorService: firstError?.service,
+                            data: result, // 전체 결과도 포함
+                            progress: 100,
+                          },
+                        },
+                      }
+                    : t,
+                ),
+              )
+            } else {
+              // 모든 URL이 성공한 경우
+              setIndexingTasks(prev =>
+                prev.map(t =>
+                  t.id === taskId
+                    ? {
+                        ...t,
+                        results: {
+                          ...t.results,
+                          [service]: { status: 'success', data: result, progress: 100 },
+                        },
+                      }
+                    : t,
+                ),
+              )
+            }
+          } else {
+            // 다른 서비스는 기존 로직 유지
+            setIndexingTasks(prev =>
+              prev.map(t =>
+                t.id === taskId
+                  ? {
+                      ...t,
+                      results: {
+                        ...t.results,
+                        [service]: { status: 'success', data: result, progress: 100 },
+                      },
+                    }
+                  : t,
+              ),
+            )
+          }
         } catch (error) {
           // 에러 메시지와 상세 정보 추출
           const errorMessage = getErrorMessage(error)
@@ -908,6 +960,51 @@ const IndexingDashboard: React.FC = () => {
                         {result.status === 'success' && result.data && (
                           <div>
                             <Text type="success">✓ 성공적으로 처리되었습니다</Text>
+
+                            {/* Google API의 경우 개별 URL 결과 표시 */}
+                            {service === 'google' && result.data.results && Array.isArray(result.data.results) && (
+                              <div style={{ marginTop: 8 }}>
+                                <Text strong>URL별 상세 결과:</Text>
+                                <div style={{ marginTop: 4 }}>
+                                  {result.data.results.map((urlResult: any, index: number) => (
+                                    <div
+                                      key={index}
+                                      style={{
+                                        padding: 6,
+                                        borderLeft: `3px solid ${urlResult.success ? '#52c41a' : '#ff4d4f'}`,
+                                        backgroundColor: urlResult.success ? '#f6ffed' : '#fff2f0',
+                                        marginBottom: 4,
+                                        paddingLeft: 8,
+                                        borderRadius: 4,
+                                      }}
+                                    >
+                                      <div style={{ fontSize: '12px' }}>
+                                        <Text code style={{ fontSize: '11px' }}>
+                                          {urlResult.url}
+                                        </Text>
+                                        <div style={{ marginTop: 2 }}>
+                                          {urlResult.success ? (
+                                            <Text type="success">✓ 성공</Text>
+                                          ) : (
+                                            <div>
+                                              <Text type="danger">✗ 실패</Text>
+                                              {urlResult.error && (
+                                                <div style={{ marginTop: 2, fontSize: '10px' }}>
+                                                  <Text type="secondary">
+                                                    {urlResult.error.message || JSON.stringify(urlResult.error)}
+                                                  </Text>
+                                                </div>
+                                              )}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
                             <pre
                               style={{
                                 fontSize: 12,
