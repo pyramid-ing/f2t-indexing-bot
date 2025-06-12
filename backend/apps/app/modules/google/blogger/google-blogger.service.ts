@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { HttpService } from '@nestjs/axios'
 import { firstValueFrom } from 'rxjs'
 import { SettingsService } from '../../../shared/settings.service'
+import { GoogleBloggerError, GoogleTokenError, GoogleAuthError, GoogleConfigError } from '@prd/apps/filters/error.types'
 
 export interface BloggerOptions {
   blogId?: string
@@ -42,11 +43,18 @@ export class GoogleBloggerService {
   private async getAccessToken(): Promise<string> {
     try {
       const globalSettings = await this.settingsService.getGlobalEngineSettings()
+
+      if (!globalSettings.google || !globalSettings.google.use) {
+        throw new GoogleConfigError('Google 서비스가 비활성화되어 있습니다.', 'getAccessToken', 'oauth_service')
+      }
+
       const { oauth2AccessToken, oauth2RefreshToken, oauth2TokenExpiry, oauth2ClientId, oauth2ClientSecret } =
         globalSettings.google
 
       if (!oauth2AccessToken) {
-        throw new Error('Google OAuth 토큰이 없습니다. 먼저 로그인해주세요.')
+        throw new GoogleAuthError('Google OAuth 토큰이 없습니다. 먼저 로그인해주세요.', 'getAccessToken', {
+          hasRefreshToken: !!oauth2RefreshToken,
+        })
       }
 
       // 토큰 만료 확인
@@ -55,7 +63,7 @@ export class GoogleBloggerService {
 
       if (isExpired && oauth2RefreshToken) {
         // 토큰 자동 갱신
-        console.log('Google 토큰 만료 감지, 자동 갱신 시도...')
+        this.logger.log('Google 토큰 만료 감지, 자동 갱신 시도...')
         try {
           const newTokens = await this.refreshAccessToken(oauth2RefreshToken, oauth2ClientId, oauth2ClientSecret)
 
@@ -67,17 +75,27 @@ export class GoogleBloggerService {
           }
 
           await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
-          console.log('Google 토큰이 자동으로 갱신되었습니다.')
+          this.logger.log('Google 토큰이 자동으로 갱신되었습니다.')
 
           return newTokens.accessToken
         } catch (refreshError) {
-          throw new Error(`Google 토큰 갱신 실패: ${refreshError.message}. 다시 로그인해주세요.`)
+          throw new GoogleTokenError(
+            `Google 토큰 갱신 실패: ${refreshError.message}. 다시 로그인해주세요.`,
+            'refreshAccessToken',
+            true,
+            { originalError: refreshError.message },
+          )
         }
       }
 
       return oauth2AccessToken
     } catch (error) {
-      throw new Error(`Google 인증 토큰 가져오기 실패: ${error.message}`)
+      if (error instanceof GoogleConfigError || error instanceof GoogleAuthError || error instanceof GoogleTokenError) {
+        throw error
+      }
+      throw new GoogleAuthError(`Google 인증 토큰 가져오기 실패: ${error.message}`, 'getAccessToken', {
+        originalError: error.message,
+      })
     }
   }
 
@@ -85,28 +103,40 @@ export class GoogleBloggerService {
    * Refresh Token으로 Access Token 갱신
    */
   private async refreshAccessToken(refreshToken: string, clientId: string, clientSecret: string) {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: refreshToken,
-        grant_type: 'refresh_token',
-      }),
-    })
+    try {
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error_description || 'Token 갱신 실패')
-    }
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new GoogleTokenError(errorData.error_description || 'Token 갱신 실패', 'refreshAccessToken', false, {
+          httpStatus: response.status,
+          errorData,
+        })
+      }
 
-    const data = await response.json()
-    return {
-      accessToken: data.access_token,
-      expiresAt: Date.now() + data.expires_in * 1000,
+      const data = await response.json()
+      return {
+        accessToken: data.access_token,
+        expiresAt: Date.now() + data.expires_in * 1000,
+      }
+    } catch (error) {
+      if (error instanceof GoogleTokenError) {
+        throw error
+      }
+      throw new GoogleTokenError(`토큰 갱신 중 네트워크 오류: ${error.message}`, 'refreshAccessToken', false, {
+        originalError: error.message,
+      })
     }
   }
 
@@ -127,9 +157,39 @@ export class GoogleBloggerService {
           },
         }),
       )
+
+      this.logger.log(`블로그 정보 조회 성공: ${blogUrl}`)
       return response.data
     } catch (error) {
-      throw new Error(`블로그 정보 조회 실패: ${error.response?.data?.error?.message || error.message}`)
+      this.logger.error(`블로그 정보 조회 실패: ${blogUrl}`, error)
+
+      if (error instanceof GoogleAuthError || error instanceof GoogleTokenError) {
+        throw error
+      }
+
+      if (error.response?.status === 401) {
+        throw new GoogleAuthError('Google API 인증이 실패했습니다. 토큰을 확인해주세요.', 'getBlogByUrl', {
+          blogUrl,
+          responseStatus: 401,
+        })
+      } else if (error.response?.status === 404) {
+        throw new GoogleBloggerError(`블로그를 찾을 수 없습니다: ${blogUrl}`, 'getBlogByUrl', undefined, undefined, {
+          blogUrl,
+          responseStatus: 404,
+        })
+      }
+
+      throw new GoogleBloggerError(
+        `블로그 정보 조회 실패: ${error.response?.data?.error?.message || error.message}`,
+        'getBlogByUrl',
+        undefined,
+        undefined,
+        {
+          blogUrl,
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+        },
+      )
     }
   }
 
@@ -150,7 +210,9 @@ export class GoogleBloggerService {
       }
 
       if (!finalBlogId) {
-        throw new Error('blogId 또는 blogUrl이 필요합니다.')
+        throw new GoogleBloggerError('blogId 또는 blogUrl이 필요합니다.', 'getBlogPosts', undefined, undefined, {
+          providedOptions: options,
+        })
       }
 
       const params: any = {
@@ -171,9 +233,43 @@ export class GoogleBloggerService {
         }),
       )
 
+      this.logger.log(`블로그 게시물 조회 성공: ${finalBlogId} (${response.data.items?.length || 0}개)`)
       return response.data
     } catch (error) {
-      throw new Error(`블로그 게시물 조회 실패: ${error.response?.data?.error?.message || error.message}`)
+      this.logger.error(`블로그 게시물 조회 실패: ${blogId || blogUrl}`, error)
+
+      if (
+        error instanceof GoogleAuthError ||
+        error instanceof GoogleTokenError ||
+        error instanceof GoogleBloggerError
+      ) {
+        throw error
+      }
+
+      if (error.response?.status === 401) {
+        throw new GoogleAuthError('Google API 인증이 실패했습니다.', 'getBlogPosts', { blogId, blogUrl })
+      } else if (error.response?.status === 404) {
+        throw new GoogleBloggerError(
+          `블로그를 찾을 수 없습니다: ${blogId || blogUrl}`,
+          'getBlogPosts',
+          blogId,
+          undefined,
+          { blogUrl, responseStatus: 404 },
+        )
+      }
+
+      throw new GoogleBloggerError(
+        `블로그 게시물 조회 실패: ${error.response?.data?.error?.message || error.message}`,
+        'getBlogPosts',
+        blogId,
+        undefined,
+        {
+          blogUrl,
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+          requestOptions: options,
+        },
+      )
     }
   }
 
@@ -191,9 +287,34 @@ export class GoogleBloggerService {
           },
         }),
       )
+
+      this.logger.log(`게시물 조회 성공: ${blogId}/${postId}`)
       return response.data
     } catch (error) {
-      throw new Error(`게시물 조회 실패: ${error.response?.data?.error?.message || error.message}`)
+      this.logger.error(`게시물 조회 실패: ${blogId}/${postId}`, error)
+
+      if (error instanceof GoogleAuthError || error instanceof GoogleTokenError) {
+        throw error
+      }
+
+      if (error.response?.status === 401) {
+        throw new GoogleAuthError('Google API 인증이 실패했습니다.', 'getBlogPost', { blogId, postId })
+      } else if (error.response?.status === 404) {
+        throw new GoogleBloggerError(`게시물을 찾을 수 없습니다: ${postId}`, 'getBlogPost', blogId, postId, {
+          responseStatus: 404,
+        })
+      }
+
+      throw new GoogleBloggerError(
+        `게시물 조회 실패: ${error.response?.data?.error?.message || error.message}`,
+        'getBlogPost',
+        blogId,
+        postId,
+        {
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+        },
+      )
     }
   }
 

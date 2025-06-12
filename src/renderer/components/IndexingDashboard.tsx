@@ -30,6 +30,7 @@ import {
   LoadingOutlined,
   EyeOutlined,
   LoginOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons'
 import {
   getAllSiteConfigs,
@@ -44,6 +45,8 @@ import {
   checkNaverLoginComplete,
   closeNaverLoginBrowser,
   NaverLoginStatus,
+  getErrorMessage,
+  getErrorDetails,
 } from '../api'
 
 const { Title, Text } = Typography
@@ -55,7 +58,18 @@ interface IndexingTask {
   urls: string[]
   services: ('bing' | 'google' | 'naver' | 'daum')[]
   status: 'pending' | 'running' | 'completed' | 'failed'
-  results?: Record<string, { status: 'success' | 'failed' | 'running'; data?: any; error?: string; progress?: number }>
+  results?: Record<
+    string,
+    {
+      status: 'success' | 'failed' | 'running'
+      data?: any
+      error?: string
+      errorDetails?: string
+      errorCode?: string
+      errorService?: string
+      progress?: number
+    }
+  >
   startTime: number
   endTime?: number
 }
@@ -243,6 +257,12 @@ const IndexingDashboard: React.FC = () => {
             ),
           )
         } catch (error) {
+          // 에러 메시지와 상세 정보 추출
+          const errorMessage = getErrorMessage(error)
+          const errorDetails = getErrorDetails(error)
+          const errorCode = error.response?.data?.code
+          const errorService = error.response?.data?.service
+
           // 실패 상태 업데이트
           setIndexingTasks(prev =>
             prev.map(t =>
@@ -251,7 +271,14 @@ const IndexingDashboard: React.FC = () => {
                     ...t,
                     results: {
                       ...t.results,
-                      [service]: { status: 'failed', error: error.message, progress: 100 },
+                      [service]: {
+                        status: 'failed',
+                        error: errorMessage,
+                        errorDetails,
+                        errorCode,
+                        errorService,
+                        progress: 100,
+                      },
                     },
                   }
                 : t,
@@ -370,7 +397,13 @@ const IndexingDashboard: React.FC = () => {
       render: (record: IndexingTask) => (
         <Space size="large">
           {record.services.includes('google') && (
-            <Tooltip title={`Google: ${record.results?.google?.status || 'pending'}`}>
+            <Tooltip
+              title={
+                record.results?.google?.status === 'failed'
+                  ? `Google: 실패 - ${record.results.google.error}`
+                  : `Google: ${record.results?.google?.status || 'pending'}`
+              }
+            >
               <Space size={4}>
                 <GoogleOutlined style={{ color: '#4285f4' }} />
                 {getServiceStatusIcon('google', record.results)}
@@ -378,7 +411,13 @@ const IndexingDashboard: React.FC = () => {
             </Tooltip>
           )}
           {record.services.includes('bing') && (
-            <Tooltip title={`Bing: ${record.results?.bing?.status || 'pending'}`}>
+            <Tooltip
+              title={
+                record.results?.bing?.status === 'failed'
+                  ? `Bing: 실패 - ${record.results.bing.error}`
+                  : `Bing: ${record.results?.bing?.status || 'pending'}`
+              }
+            >
               <Space size={4}>
                 <YahooOutlined style={{ color: '#00809d' }} />
                 {getServiceStatusIcon('bing', record.results)}
@@ -386,7 +425,13 @@ const IndexingDashboard: React.FC = () => {
             </Tooltip>
           )}
           {record.services.includes('naver') && (
-            <Tooltip title={`Naver: ${record.results?.naver?.status || 'pending'}`}>
+            <Tooltip
+              title={
+                record.results?.naver?.status === 'failed'
+                  ? `Naver: 실패 - ${record.results.naver.error}`
+                  : `Naver: ${record.results?.naver?.status || 'pending'}`
+              }
+            >
               <Space size={4}>
                 <GlobalOutlined style={{ color: '#03c75a' }} />
                 {getServiceStatusIcon('naver', record.results)}
@@ -394,7 +439,13 @@ const IndexingDashboard: React.FC = () => {
             </Tooltip>
           )}
           {record.services.includes('daum') && (
-            <Tooltip title={`Daum: ${record.results?.daum?.status || 'pending'}`}>
+            <Tooltip
+              title={
+                record.results?.daum?.status === 'failed'
+                  ? `Daum: 실패 - ${record.results.daum.error}`
+                  : `Daum: ${record.results?.daum?.status || 'pending'}`
+              }
+            >
               <Space size={4}>
                 <GlobalOutlined style={{ color: '#0066cc' }} />
                 {getServiceStatusIcon('daum', record.results)}
@@ -874,7 +925,65 @@ const IndexingDashboard: React.FC = () => {
                         )}
                         {result.status === 'failed' && (
                           <div>
-                            <Text type="danger">✗ 실패: {result.error}</Text>
+                            <Alert
+                              message={
+                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                  <div>
+                                    <ExclamationCircleOutlined style={{ color: '#ff4d4f', marginRight: 8 }} />
+                                    <Text type="danger" strong>
+                                      인덱싱 실패
+                                    </Text>
+                                  </div>
+
+                                  {result.errorService && result.errorCode && (
+                                    <div>
+                                      <Text type="secondary">서비스: </Text>
+                                      <Tag color="red">{result.errorService}</Tag>
+                                      <Text type="secondary" style={{ marginLeft: 8 }}>
+                                        에러 코드:{' '}
+                                      </Text>
+                                      <Tag color="orange">{result.errorCode}</Tag>
+                                    </div>
+                                  )}
+
+                                  <div>
+                                    <Text strong>오류 메시지:</Text>
+                                    <div
+                                      style={{
+                                        marginTop: 4,
+                                        padding: 8,
+                                        background: '#fff2f0',
+                                        borderRadius: 4,
+                                        border: '1px solid #ffccc7',
+                                      }}
+                                    >
+                                      <Text type="danger">{result.error}</Text>
+                                    </div>
+                                  </div>
+
+                                  {result.errorDetails && (
+                                    <div>
+                                      <Text strong>상세 정보:</Text>
+                                      <div
+                                        style={{
+                                          marginTop: 4,
+                                          padding: 8,
+                                          background: '#fafafa',
+                                          borderRadius: 4,
+                                          border: '1px solid #d9d9d9',
+                                        }}
+                                      >
+                                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                                          {result.errorDetails}
+                                        </Text>
+                                      </div>
+                                    </div>
+                                  )}
+                                </Space>
+                              }
+                              type="error"
+                              style={{ marginTop: 8 }}
+                            />
                           </div>
                         )}
                         {result.status === 'running' && (

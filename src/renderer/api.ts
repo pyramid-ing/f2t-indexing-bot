@@ -2,6 +2,96 @@ import axios from 'axios'
 
 const API_BASE_URL = 'http://localhost:3030'
 
+// 에러 코드 enum
+export enum ErrorCode {
+  // Google API 에러들
+  GOOGLE_AUTH_FAILED = 'GOOGLE_AUTH_FAILED',
+  GOOGLE_TOKEN_EXPIRED = 'GOOGLE_TOKEN_EXPIRED',
+  GOOGLE_TOKEN_INVALID = 'GOOGLE_TOKEN_INVALID',
+  GOOGLE_API_QUOTA_EXCEEDED = 'GOOGLE_API_QUOTA_EXCEEDED',
+  GOOGLE_API_PERMISSION_DENIED = 'GOOGLE_API_PERMISSION_DENIED',
+  GOOGLE_INDEXER_FAILED = 'GOOGLE_INDEXER_FAILED',
+  GOOGLE_BLOGGER_API_FAILED = 'GOOGLE_BLOGGER_API_FAILED',
+  GOOGLE_OAUTH_CONFIG_MISSING = 'GOOGLE_OAUTH_CONFIG_MISSING',
+  GOOGLE_SERVICE_ACCOUNT_INVALID = 'GOOGLE_SERVICE_ACCOUNT_INVALID',
+
+  // 일반 에러들
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  NOT_FOUND = 'NOT_FOUND',
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  FORBIDDEN = 'FORBIDDEN',
+  INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
+  EXTERNAL_API_ERROR = 'EXTERNAL_API_ERROR',
+}
+
+// 정규화된 에러 응답 타입
+export interface ErrorResponse {
+  success: false
+  statusCode: number
+  timestamp: string
+  path: string
+  error: string
+  message: string
+  code?: ErrorCode
+  service?: string
+  operation?: string
+  details?: {
+    stack?: string[]
+    name?: string
+    url?: string
+    method?: string
+    response?: any
+    code?: string
+    category?: string
+    postData?: any
+    ffmpegError?: string
+    inputData?: any
+    siteUrl?: string
+    blogId?: string
+    postId?: string
+    configType?: string
+    isExpired?: boolean
+    additionalInfo?: Record<string, any>
+  }
+}
+
+// 에러 메시지 생성 헬퍼 함수
+export function getErrorMessage(error: any): string {
+  if (error.response?.data) {
+    const errorData = error.response.data as ErrorResponse
+
+    // 정규화된 에러 구조인 경우
+    if (errorData.code && errorData.service && errorData.operation) {
+      return `[${errorData.service}/${errorData.operation}] ${errorData.message}`
+    }
+
+    // 기본 에러 메시지
+    return errorData.message || error.message
+  }
+
+  return error.message || '알 수 없는 오류가 발생했습니다.'
+}
+
+// 에러 상세 정보 생성 헬퍼 함수
+export function getErrorDetails(error: any): string | undefined {
+  if (error.response?.data?.details?.additionalInfo) {
+    const details = error.response.data.details.additionalInfo
+    const detailStrings = []
+
+    for (const [key, value] of Object.entries(details)) {
+      if (typeof value === 'boolean') {
+        detailStrings.push(`${key}: ${value ? '있음' : '없음'}`)
+      } else if (typeof value === 'string' || typeof value === 'number') {
+        detailStrings.push(`${key}: ${value}`)
+      }
+    }
+
+    return detailStrings.length > 0 ? detailStrings.join(', ') : undefined
+  }
+
+  return undefined
+}
+
 // 사이트 설정 관련
 export interface SiteConfig {
   siteUrl: string

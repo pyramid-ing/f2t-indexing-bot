@@ -1,7 +1,19 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common'
 import { HttpAdapterHost } from '@nestjs/core'
 import { AxiosError } from 'axios'
-import { BlogPostError, QuizCrawlingError, VideoGenerationError, ErrorResponse } from './error.types'
+import {
+  BlogPostError,
+  QuizCrawlingError,
+  VideoGenerationError,
+  ErrorResponse,
+  ServiceError,
+  GoogleAuthError,
+  GoogleTokenError,
+  GoogleIndexerError,
+  GoogleBloggerError,
+  GoogleConfigError,
+  ErrorCode,
+} from './error.types'
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -16,9 +28,83 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR
     let message = 'Internal server error'
     let error = 'Unknown Error'
+    let code: ErrorCode | undefined
+    let service: string | undefined
+    let operation: string | undefined
     let details = null
 
-    if (exception instanceof QuizCrawlingError) {
+    // 정규화된 에러 처리
+    if (exception instanceof ServiceError) {
+      statusCode = this.getStatusCodeForServiceError(exception.code)
+      message = exception.message
+      error = exception.name
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    }
+    // Google 특화 에러들
+    else if (exception instanceof GoogleAuthError) {
+      statusCode = HttpStatus.UNAUTHORIZED
+      message = exception.message
+      error = 'Google 인증 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof GoogleTokenError) {
+      statusCode = exception.details.additionalInfo?.isExpired ? HttpStatus.UNAUTHORIZED : HttpStatus.FORBIDDEN
+      message = exception.message
+      error = 'Google 토큰 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof GoogleIndexerError) {
+      statusCode = HttpStatus.BAD_GATEWAY
+      message = exception.message
+      error = 'Google 인덱싱 실패'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof GoogleBloggerError) {
+      statusCode = HttpStatus.BAD_GATEWAY
+      message = exception.message
+      error = 'Google Blogger API 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    } else if (exception instanceof GoogleConfigError) {
+      statusCode = HttpStatus.BAD_REQUEST
+      message = exception.message
+      error = 'Google 설정 오류'
+      code = exception.code
+      service = exception.service
+      operation = exception.operation
+      details = {
+        ...exception.details,
+        stack: this.formatStackTrace(exception.stack),
+      }
+    }
+    // 기존 에러들
+    else if (exception instanceof QuizCrawlingError) {
       statusCode = HttpStatus.BAD_GATEWAY
       message = exception.message
       error = exception.name
@@ -80,18 +166,58 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       path: httpAdapter.getRequestUrl(ctx.getRequest()),
       error,
       message,
+      code,
+      service,
+      operation,
       details,
     }
 
-    // 에러 로깅
+    // 에러 로깅 (구조화된 로그)
     this.logger.error({
-      message: `[${error}] ${message}`,
+      message: `[${service || 'Unknown'}/${operation || 'Unknown'}] ${error}: ${message}`,
       path: responseBody.path,
+      code,
+      service,
+      operation,
       details: responseBody.details,
       stack: exception instanceof Error ? exception.stack : undefined,
     })
 
     httpAdapter.reply(ctx.getResponse(), responseBody, statusCode)
+  }
+
+  private getStatusCodeForServiceError(code: ErrorCode): number {
+    switch (code) {
+      case ErrorCode.GOOGLE_AUTH_FAILED:
+      case ErrorCode.GOOGLE_TOKEN_EXPIRED:
+      case ErrorCode.UNAUTHORIZED:
+        return HttpStatus.UNAUTHORIZED
+
+      case ErrorCode.GOOGLE_TOKEN_INVALID:
+      case ErrorCode.GOOGLE_API_PERMISSION_DENIED:
+      case ErrorCode.FORBIDDEN:
+        return HttpStatus.FORBIDDEN
+
+      case ErrorCode.GOOGLE_OAUTH_CONFIG_MISSING:
+      case ErrorCode.VALIDATION_ERROR:
+        return HttpStatus.BAD_REQUEST
+
+      case ErrorCode.NOT_FOUND:
+        return HttpStatus.NOT_FOUND
+
+      case ErrorCode.GOOGLE_API_QUOTA_EXCEEDED:
+        return HttpStatus.TOO_MANY_REQUESTS
+
+      case ErrorCode.GOOGLE_INDEXER_FAILED:
+      case ErrorCode.GOOGLE_BLOGGER_API_FAILED:
+      case ErrorCode.EXTERNAL_API_ERROR:
+        return HttpStatus.BAD_GATEWAY
+
+      case ErrorCode.GOOGLE_SERVICE_ACCOUNT_INVALID:
+      case ErrorCode.INTERNAL_SERVER_ERROR:
+      default:
+        return HttpStatus.INTERNAL_SERVER_ERROR
+    }
   }
 
   private getAxiosErrorMessage(error: AxiosError): string {
@@ -120,7 +246,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         const match = line.match(/\((.+)\)/)
         if (match) {
           const path = match[1]
-          const projectPath = path.split('/lucky-quiz/').pop()
+          const projectPath = path.split('/f2t-indexing-bot/').pop()
           return projectPath ? `at ${projectPath}` : line
         }
         return line

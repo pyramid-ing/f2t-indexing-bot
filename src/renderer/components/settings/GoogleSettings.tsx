@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Card, Form, Input, Button, Switch, message, Typography, Row, Col, Divider, Avatar } from 'antd'
 import { GoogleOutlined, SaveOutlined } from '@ant-design/icons'
 import { startGoogleLogin, getGoogleAuthStatus, logoutGoogle } from '../../utils/googleAuth'
+import { getErrorMessage, getErrorDetails } from '../../api'
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -46,6 +47,8 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
       setGoogleUserInfo(status.userInfo)
     } catch (error) {
       console.error('Google 인증 상태 확인 실패:', error)
+      const errorMessage = getErrorMessage(error)
+      console.log('인증 상태 확인 실패:', errorMessage)
       setIsGoogleLoggedIn(false)
       setGoogleUserInfo(null)
     }
@@ -61,7 +64,15 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
         setTimeout(checkGoogleAuthStatus, 1000)
       }
     } catch (error) {
-      message.error('Google 설정 저장에 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     }
   }
 
@@ -103,7 +114,15 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
       }
     } catch (error: any) {
       console.error('Google 로그인 실패:', error)
-      message.error(error.message || 'Google 로그인에 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     }
   }
 
@@ -115,7 +134,15 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
       message.success(result.message || 'Google 계정 연동이 해제되었습니다.')
     } catch (error: any) {
       console.error('Google 로그아웃 실패:', error)
-      message.error(error.message || 'Google 로그아웃에 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     }
   }
 

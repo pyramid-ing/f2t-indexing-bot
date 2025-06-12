@@ -1,6 +1,7 @@
 import { Controller, Get, Query, Res, Post, Body, Logger } from '@nestjs/common'
 import { Response } from 'express'
 import { SettingsService } from '../../../shared/settings.service'
+import { GoogleAuthError, GoogleConfigError, GoogleTokenError } from '@prd/apps/filters/error.types'
 
 @Controller('google-oauth')
 export class GoogleOAuthController {
@@ -12,6 +13,7 @@ export class GoogleOAuthController {
   async handleCallback(@Query('code') code: string, @Query('error') error: string, @Res() res: Response) {
     if (error) {
       // OAuth 인증 실패
+      this.logger.error(`OAuth 인증 실패: ${error}`)
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -35,6 +37,7 @@ export class GoogleOAuthController {
 
     if (!code) {
       // 인증 코드가 없음
+      this.logger.error('OAuth 콜백에서 인증 코드를 받지 못함')
       return res.send(`
         <!DOCTYPE html>
         <html>
@@ -60,6 +63,7 @@ export class GoogleOAuthController {
       // 서버에서 자동으로 토큰 교환 및 저장 처리
       await this.processOAuthCallback(code)
 
+      this.logger.log('OAuth 인증 완료 - 성공 페이지 반환')
       // 성공 페이지 반환
       return res.send(`
         <!DOCTYPE html>
@@ -116,7 +120,12 @@ export class GoogleOAuthController {
         </html> 
       `)
     } catch (error) {
-      console.error('OAuth 콜백 처리 오류:', error)
+      this.logger.error('OAuth 콜백 처리 오류:', error)
+
+      const errorMessage =
+        error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError
+          ? `${error.service} ${error.operation}: ${error.message}`
+          : error.message
 
       return res.send(`
         <!DOCTYPE html>
@@ -127,7 +136,7 @@ export class GoogleOAuthController {
         </head>
         <body>
           <h1>OAuth 처리 오류</h1>
-          <p>토큰 처리 중 오류가 발생했습니다: ${error.message}</p>
+          <p>토큰 처리 중 오류가 발생했습니다: ${errorMessage}</p>
           <p>이 창을 닫고 다시 시도해주세요.</p>
           <script>
             setTimeout(() => {
@@ -150,73 +159,125 @@ export class GoogleOAuthController {
         userInfo: result.userInfo,
       }
     } catch (error) {
-      throw new Error(`토큰 교환 실패: ${error.message}`)
+      this.logger.error('토큰 교환 실패:', error)
+
+      if (error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError) {
+        throw error
+      }
+
+      throw new GoogleAuthError(`토큰 교환 실패: ${error.message}`, 'exchangeTokens', {
+        code: body.code ? '***provided***' : 'missing',
+      })
     }
   }
 
   private async processOAuthCallback(code: string) {
-    // 현재 저장된 Google 설정에서 Client ID와 Secret 가져오기
-    const globalSettings = await this.settingsService.getGlobalEngineSettings()
-    const { oauth2ClientId, oauth2ClientSecret } = globalSettings.google
+    try {
+      // 현재 저장된 Google 설정에서 Client ID와 Secret 가져오기
+      const globalSettings = await this.settingsService.getGlobalEngineSettings()
 
-    if (!oauth2ClientId || !oauth2ClientSecret) {
-      throw new Error('OAuth2 Client ID 또는 Client Secret이 설정되지 않았습니다.')
+      if (!globalSettings.google) {
+        throw new GoogleConfigError('Google 설정이 존재하지 않습니다.', 'processOAuthCallback', 'global_settings')
+      }
+
+      const { oauth2ClientId, oauth2ClientSecret } = globalSettings.google
+
+      if (!oauth2ClientId || !oauth2ClientSecret) {
+        throw new GoogleConfigError(
+          'OAuth2 Client ID 또는 Client Secret이 설정되지 않았습니다.',
+          'processOAuthCallback',
+          'oauth_credentials',
+          {
+            hasClientId: !!oauth2ClientId,
+            hasClientSecret: !!oauth2ClientSecret,
+          },
+        )
+      }
+
+      // Google OAuth2 토큰 교환
+      const tokens = await this.exchangeCodeForTokens(code, oauth2ClientId, oauth2ClientSecret)
+
+      // 사용자 정보 가져오기
+      const userInfo = await this.getGoogleUserInfo(tokens.accessToken)
+
+      // DB에 토큰 저장
+      const updatedGoogleSettings = {
+        ...globalSettings.google,
+        oauth2AccessToken: tokens.accessToken,
+        oauth2RefreshToken: tokens.refreshToken,
+        oauth2TokenExpiry: new Date(tokens.expiresAt).toISOString(),
+      }
+
+      await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
+
+      this.logger.log('OAuth 토큰 저장 완료')
+      return { tokens, userInfo }
+    } catch (error) {
+      if (error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError) {
+        throw error
+      }
+
+      throw new GoogleAuthError(`OAuth 콜백 처리 실패: ${error.message}`, 'processOAuthCallback', {
+        hasCode: !!code,
+        originalError: error.message,
+      })
     }
-
-    // Google OAuth2 토큰 교환
-    const tokens = await this.exchangeCodeForTokens(code, oauth2ClientId, oauth2ClientSecret)
-
-    // 사용자 정보 가져오기
-    const userInfo = await this.getGoogleUserInfo(tokens.accessToken)
-
-    // DB에 토큰 저장
-    const updatedGoogleSettings = {
-      ...globalSettings.google,
-      oauth2AccessToken: tokens.accessToken,
-      oauth2RefreshToken: tokens.refreshToken,
-      oauth2TokenExpiry: new Date(tokens.expiresAt).toISOString(),
-    }
-
-    await this.settingsService.updateGlobalGoogleSettings(updatedGoogleSettings)
-
-    return { tokens, userInfo }
   }
 
   private async exchangeCodeForTokens(code: string, clientId: string, clientSecret: string) {
-    const requestBody = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      grant_type: 'authorization_code',
-      redirect_uri: 'http://localhost:3030/google-oauth/callback',
-    })
+    try {
+      const requestBody = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: 'http://localhost:3030/google-oauth/callback',
+      })
 
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: requestBody,
-    })
+      const response = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: requestBody,
+      })
 
-    if (!response.ok) {
-      const errorData = await response.json()
-      let errorMessage = '토큰 교환 실패'
-      if (errorData.error === 'invalid_client') {
-        errorMessage = 'Client ID 또는 Client Secret이 잘못되었습니다.'
-      } else if (errorData.error === 'invalid_grant') {
-        errorMessage = '인증 코드가 잘못되었거나 만료되었습니다.'
-      } else if (errorData.error_description) {
-        errorMessage = errorData.error_description
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new GoogleTokenError(
+          `토큰 교환 실패: ${errorData.error_description || errorData.error}`,
+          'exchangeCodeForTokens',
+          false,
+          {
+            httpStatus: response.status,
+            errorData,
+          },
+        )
       }
-      throw new Error(errorMessage)
-    }
 
-    const data = await response.json()
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      expiresAt: Date.now() + data.expires_in * 1000,
+      const data = await response.json()
+
+      if (!data.access_token) {
+        throw new GoogleTokenError('Google에서 유효한 액세스 토큰을 받지 못했습니다.', 'exchangeCodeForTokens', false, {
+          responseData: data,
+        })
+      }
+
+      this.logger.log('Google 토큰 교환 성공')
+      return {
+        accessToken: data.access_token,
+        refreshToken: data.refresh_token,
+        expiresAt: Date.now() + data.expires_in * 1000,
+        scope: data.scope,
+      }
+    } catch (error) {
+      if (error instanceof GoogleTokenError) {
+        throw error
+      }
+
+      throw new GoogleTokenError(`토큰 교환 중 네트워크 오류: ${error.message}`, 'exchangeCodeForTokens', false, {
+        originalError: error.message,
+      })
     }
   }
 

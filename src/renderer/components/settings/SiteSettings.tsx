@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react'
 import { Card, Table, Button, Modal, Form, Input, Space, Popconfirm, message, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined } from '@ant-design/icons'
-import { getAllSiteConfigs, createSiteConfig, updateSiteConfig, deleteSiteConfig, SiteConfig } from '../../api'
+import {
+  getAllSiteConfigs,
+  createSiteConfig,
+  updateSiteConfig,
+  deleteSiteConfig,
+  SiteConfig,
+  getErrorMessage,
+  getErrorDetails,
+} from '../../api'
 
 const { Title } = Typography
 
@@ -23,7 +31,15 @@ const SiteSettings: React.FC = () => {
       setSites(response.data || [])
     } catch (error) {
       console.error('사이트 목록 로드 실패:', error)
-      message.error('사이트 목록을 불러오는데 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     } finally {
       setLoading(false)
     }
@@ -48,7 +64,15 @@ const SiteSettings: React.FC = () => {
       loadSites()
     } catch (error) {
       console.error('사이트 삭제 실패:', error)
-      message.error('사이트 삭제에 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     }
   }
 
@@ -70,7 +94,15 @@ const SiteSettings: React.FC = () => {
       loadSites()
     } catch (error) {
       console.error('사이트 저장 실패:', error)
-      message.error('사이트 저장에 실패했습니다.')
+      const errorMessage = getErrorMessage(error)
+      const errorDetails = getErrorDetails(error)
+
+      let displayMessage = errorMessage
+      if (errorDetails) {
+        displayMessage += ` (${errorDetails})`
+      }
+
+      message.error(displayMessage)
     }
   }
 
