@@ -86,17 +86,11 @@ export class BingIndexerService {
       })
 
       if (response.data && response.data.d && response.data.d.ErrorCode) {
-        throw new BingSubmissionError(
-          `Bing API 오류: ${response.data.d.Message}`,
-          'submitUrlToBing',
-          url,
-          siteUrl,
-          {
-            errorCode: response.data.d.ErrorCode,
-            errorMessage: response.data.d.Message,
-            responseData: response.data,
-          },
-        )
+        throw new BingSubmissionError(`Bing API 오류: ${response.data.d.Message}`, 'submitUrlToBing', url, siteUrl, {
+          errorCode: response.data.d.ErrorCode,
+          errorMessage: response.data.d.Message,
+          responseData: response.data,
+        })
       }
 
       return response.data

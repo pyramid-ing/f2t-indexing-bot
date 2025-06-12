@@ -79,6 +79,7 @@ const SiteSettings: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       const siteData: SiteConfig = {
+        name: values.name,
         siteUrl: values.siteUrl,
       }
 
@@ -108,12 +109,23 @@ const SiteSettings: React.FC = () => {
 
   const columns = [
     {
+      title: '사이트 이름',
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+      render: (name: string, record: SiteConfig) => (
+         <a href={record.siteUrl} target="_blank" rel="noopener noreferrer">
+          <GlobalOutlined style={{ marginRight: 8 }} />
+          {name}
+        </a>
+      )
+    },
+    {
       title: '사이트 URL',
       dataIndex: 'siteUrl',
       key: 'siteUrl',
-      render: (url: string) => (
+       render: (url: string) => (
         <a href={url} target="_blank" rel="noopener noreferrer">
-          <GlobalOutlined style={{ marginRight: 8 }} />
           {url}
         </a>
       ),
@@ -167,6 +179,14 @@ const SiteSettings: React.FC = () => {
         width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleSave}>
+          <Form.Item
+            name="name"
+            label="사이트 이름"
+            rules={[{ required: true, message: '사이트 이름을 입력해주세요' }]}
+          >
+            <Input placeholder="내 블로그" size="large" />
+          </Form.Item>
+          
           <Form.Item
             name="siteUrl"
             label="사이트 URL"
