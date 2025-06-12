@@ -157,6 +157,16 @@ export class DaumIndexerService {
             await page.type('#authPinCode', pin, { delay: 20 })
             await page.click('button.btn_register')
             await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 })
+
+            // 로그인 실패 확인 (로그인 페이지로 돌아왔는지)
+            if (page.url().startsWith('https://webmaster.daum.net/login')) {
+              await browser.close()
+              throw new DaumAuthError('Daum 로그인 실패: URL 또는 PIN 코드가 올바르지 않습니다.', 'manualIndexing', {
+                daumSiteUrl,
+                hasPin: !!pin,
+              })
+            }
+
             this.logger.log('다음 로그인 완료')
             if (page.url().includes('/dashboard')) {
               await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
