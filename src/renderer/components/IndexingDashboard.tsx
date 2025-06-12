@@ -458,7 +458,13 @@ const IndexingDashboard: React.FC = () => {
       {} as Record<string, string[]>,
     )
 
-    handleManualIndexing({ urls: [], services: Object.keys(groupedByService) as any, _groupedUrls: groupedByService })
+    const allUrlsToReRequest = Array.from(new Set(itemsToReRequest.map(item => item.url)))
+
+    handleManualIndexing({
+      urls: allUrlsToReRequest,
+      services: Object.keys(groupedByService) as any,
+      _groupedUrls: groupedByService,
+    })
     message.success(`${itemsToReRequest.length}개 항목 재요청 시작.`)
     if (!isSingle) setSelectedRowKeys([])
   }
