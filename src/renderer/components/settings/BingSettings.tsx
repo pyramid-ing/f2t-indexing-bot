@@ -64,56 +64,6 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, onToggleU
             >
               <Input.Password placeholder="********************************" size="large" />
             </Form.Item>
-
-            <div
-              style={{
-                backgroundColor: '#e6f7ff',
-                border: '1px solid #91d5ff',
-                borderRadius: 8,
-                padding: 16,
-                marginBottom: 16,
-              }}
-            >
-              <Text strong style={{ color: '#0050b3' }}>
-                📋 Bing API Key 획득 방법
-              </Text>
-              <div style={{ marginTop: 8 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  1.{' '}
-                  <a href="https://www.bing.com/webmasters" target="_blank" rel="noopener noreferrer">
-                    Bing Webmaster Tools
-                  </a>
-                  에 로그인
-                  <br />
-                  2. 사이트 추가 및 소유권 확인
-                  <br />
-                  3. Settings {'>'} API Access에서 API Key 생성
-                  <br />
-                  4. 생성된 API Key를 위 필드에 입력
-                </Text>
-              </div>
-            </div>
-
-            <div
-              style={{
-                backgroundColor: '#fff7e6',
-                border: '1px solid #ffd666',
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <Text strong style={{ color: '#d48806' }}>
-                ⚠️ 주의사항
-              </Text>
-              <div style={{ marginTop: 4 }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                  • API 요청 제한: 일일 10,000회
-                  <br />
-                  • URL 제출 후 즉시 색인되지 않을 수 있습니다
-                  <br />• API Key는 안전한 곳에 보관하세요
-                </Text>
-              </div>
-            </div>
           </div>
 
           <Form.Item>
