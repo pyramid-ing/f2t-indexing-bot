@@ -87,7 +87,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, onToggleU
                   help="다음 검색등록 시 설정한 PIN코드"
                   rules={[{ required: true, message: 'PIN코드를 입력해주세요' }]}
                 >
-                  <Input.Password placeholder="abc12345" size="large" maxLength={12} />
+                  <Input.Password placeholder="abc12345" size="large"/>
                 </Form.Item>
               </Col>
             </Row>
