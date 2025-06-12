@@ -1,12 +1,6 @@
 import React from 'react'
 import { Layout, Menu } from 'antd'
-import {
-  DashboardOutlined,
-  GlobalOutlined,
-  SettingOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-} from '@ant-design/icons'
+import { DashboardOutlined, SettingOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons'
 import styled from 'styled-components'
 
 const { Sider } = Layout
@@ -55,11 +49,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, o
       key: '/dashboard',
       icon: <DashboardOutlined />,
       label: '대시보드',
-    },
-    {
-      key: '/sites',
-      icon: <GlobalOutlined />,
-      label: '사이트 관리',
     },
     {
       key: '/settings',

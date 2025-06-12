@@ -3,8 +3,6 @@ import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 
 export interface SiteConfigData {
   siteUrl: string
-  blogType: 'TISTORY' | 'BLOGGER' | 'WORDPRESS'
-  indexingUrls: string[]
 }
 
 @Injectable()
@@ -16,8 +14,6 @@ export class SiteConfigService {
       return await (this.prisma as any).site.create({
         data: {
           siteUrl: data.siteUrl,
-          blogType: data.blogType,
-          indexingUrls: JSON.stringify(data.indexingUrls),
         },
       })
     } catch (error) {
@@ -40,8 +36,6 @@ export class SiteConfigService {
     return {
       id: site.id,
       siteUrl: site.siteUrl,
-      blogType: site.blogType,
-      indexingUrls: JSON.parse(site.indexingUrls),
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
     }
@@ -56,19 +50,9 @@ export class SiteConfigService {
       throw new Error('사이트를 찾을 수 없습니다.')
     }
 
-    const updateData: any = {}
-
-    if (updates.blogType) {
-      updateData.blogType = updates.blogType
-    }
-
-    if (updates.indexingUrls) {
-      updateData.indexingUrls = JSON.stringify(updates.indexingUrls)
-    }
-
     return await (this.prisma as any).site.update({
       where: { siteUrl },
-      data: updateData,
+      data: { siteUrl: updates.siteUrl || site.siteUrl },
     })
   }
 
@@ -96,8 +80,6 @@ export class SiteConfigService {
     return sites.map((site: any) => ({
       id: site.id,
       siteUrl: site.siteUrl,
-      blogType: site.blogType,
-      indexingUrls: JSON.parse(site.indexingUrls),
       createdAt: site.createdAt,
       updatedAt: site.updatedAt,
     }))

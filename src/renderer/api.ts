@@ -5,8 +5,6 @@ const API_BASE_URL = 'http://localhost:3030'
 // 사이트 설정 관련
 export interface SiteConfig {
   siteUrl: string
-  blogType: 'TISTORY' | 'BLOGGER' | 'WORDPRESS'
-  indexingUrls: string[]
 }
 
 // 전역 엔진 설정 인터페이스

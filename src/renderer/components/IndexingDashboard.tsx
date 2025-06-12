@@ -141,7 +141,7 @@ const IndexingDashboard: React.FC = () => {
     }
 
     form.setFieldsValue({
-      urls: siteConfig.indexingUrls.join('\n'),
+      urls: '', // 미리 설정된 URL이 없으므로 빈 문자열로 시작
       services: availableServices, // 기본으로 모든 활성화된 서비스 선택
     })
     setModalVisible(true)
@@ -527,7 +527,7 @@ const IndexingDashboard: React.FC = () => {
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={6}>
           <Card>
-            <Statistic title="등록된 사이트" value={sites.length} prefix={<GlobalOutlined />} />
+            <Statistic title="총 등록 사이트" value={sites.length} prefix={<ReloadOutlined />} />
           </Card>
         </Col>
         <Col span={6}>
@@ -550,7 +550,7 @@ const IndexingDashboard: React.FC = () => {
         </Col>
         <Col span={6}>
           <Card>
-            <Statistic title="총 인덱싱 URL" value={siteConfig?.indexingUrls.length || 0} prefix={<ReloadOutlined />} />
+            <Statistic title="활성화된 서비스" value={getAvailableServices().length} prefix={<ReloadOutlined />} />
           </Card>
         </Col>
       </Row>
@@ -568,7 +568,7 @@ const IndexingDashboard: React.FC = () => {
             >
               {sites.map(site => (
                 <Select.Option key={site.siteUrl} value={site.siteUrl}>
-                  {site.siteUrl} ({site.blogType})
+                  {site.siteUrl}
                 </Select.Option>
               ))}
             </Select>

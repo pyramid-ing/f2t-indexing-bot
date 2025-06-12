@@ -1,28 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Card,
-  Table,
-  Button,
-  Modal,
-  Form,
-  Input,
-  Select,
-  Space,
-  Popconfirm,
-  message,
-  Typography,
-  Tag,
-  Tabs,
-  Alert,
-} from 'antd'
+import { Card, Table, Button, Modal, Form, Input, Space, Popconfirm, message, Typography } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, GlobalOutlined } from '@ant-design/icons'
-import { getAllSiteConfigs, createSiteConfig, updateSiteConfig, deleteSiteConfig, SiteConfig } from '../api'
+import { getAllSiteConfigs, createSiteConfig, updateSiteConfig, deleteSiteConfig, SiteConfig } from '../../api'
 
 const { Title } = Typography
-const { TextArea } = Input
-const { TabPane } = Tabs
 
-const SiteManagement: React.FC = () => {
+const SiteSettings: React.FC = () => {
   const [sites, setSites] = useState<SiteConfig[]>([])
   const [loading, setLoading] = useState(false)
   const [modalVisible, setModalVisible] = useState(false)
@@ -54,10 +37,7 @@ const SiteManagement: React.FC = () => {
 
   const handleEdit = (site: SiteConfig) => {
     setEditingSite(site)
-    form.setFieldsValue({
-      ...site,
-      indexingUrls: site.indexingUrls.join('\n'),
-    })
+    form.setFieldsValue(site)
     setModalVisible(true)
   }
 
@@ -75,8 +55,7 @@ const SiteManagement: React.FC = () => {
   const handleSave = async (values: any) => {
     try {
       const siteData: SiteConfig = {
-        ...values,
-        indexingUrls: values.indexingUrls.split('\n').filter((url: string) => url.trim()),
+        siteUrl: values.siteUrl,
       }
 
       if (editingSite) {
@@ -102,31 +81,15 @@ const SiteManagement: React.FC = () => {
       key: 'siteUrl',
       render: (url: string) => (
         <a href={url} target="_blank" rel="noopener noreferrer">
-          <GlobalOutlined /> {url}
+          <GlobalOutlined style={{ marginRight: 8 }} />
+          {url}
         </a>
       ),
     },
     {
-      title: '블로그 타입',
-      dataIndex: 'blogType',
-      key: 'blogType',
-      render: (type: string) => {
-        const colors = {
-          TISTORY: 'orange',
-          BLOGGER: 'blue',
-          WORDPRESS: 'green',
-        }
-        return <Tag color={colors[type as keyof typeof colors]}>{type}</Tag>
-      },
-    },
-    {
-      title: 'URL 개수',
-      key: 'urlCount',
-      render: (record: SiteConfig) => record.indexingUrls.length,
-    },
-    {
       title: '작업',
       key: 'actions',
+      width: 120,
       render: (record: SiteConfig) => (
         <Space>
           <Button icon={<EditOutlined />} size="small" onClick={() => handleEdit(record)}>
@@ -148,76 +111,64 @@ const SiteManagement: React.FC = () => {
   ]
 
   return (
-    <div>
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Title level={3}>사이트 관리</Title>
+    <Card title="사이트 관리" style={{ marginBottom: 24 }}>
+      <div style={{ marginBottom: 16, textAlign: 'right' }}>
         <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
           사이트 추가
         </Button>
       </div>
 
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={sites}
-          rowKey="siteUrl"
-          loading={loading}
-          locale={{ emptyText: '등록된 사이트가 없습니다.' }}
-        />
-      </Card>
+      <Table
+        columns={columns}
+        dataSource={sites}
+        rowKey="siteUrl"
+        loading={loading}
+        locale={{ emptyText: '등록된 사이트가 없습니다.' }}
+        pagination={{ pageSize: 10 }}
+      />
 
       <Modal
         title={editingSite ? '사이트 수정' : '사이트 추가'}
-        visible={modalVisible}
+        open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={800}
+        width={600}
       >
         <Form form={form} layout="vertical" onFinish={handleSave}>
           <Form.Item
             name="siteUrl"
             label="사이트 URL"
-            rules={[{ required: true, message: '사이트 URL을 입력해주세요' }]}
+            rules={[
+              { required: true, message: '사이트 URL을 입력해주세요' },
+              { type: 'url', message: '올바른 URL 형식을 입력해주세요' },
+            ]}
           >
-            <Input placeholder="https://example.com" disabled={!!editingSite} />
+            <Input placeholder="https://example.com" disabled={!!editingSite} size="large" />
           </Form.Item>
 
-          <Form.Item
-            name="blogType"
-            label="블로그 타입"
-            rules={[{ required: true, message: '블로그 타입을 선택해주세요' }]}
+          <div
+            style={{
+              backgroundColor: '#e6f7ff',
+              border: '1px solid #91d5ff',
+              borderRadius: 8,
+              padding: 16,
+              marginBottom: 16,
+            }}
           >
-            <Select placeholder="블로그 타입 선택">
-              <Select.Option value="TISTORY">티스토리</Select.Option>
-              <Select.Option value="BLOGGER">블로거</Select.Option>
-              <Select.Option value="WORDPRESS">워드프레스</Select.Option>
-            </Select>
-          </Form.Item>
+            <Typography.Text strong style={{ color: '#0050b3' }}>
+              💡 사이트 등록 안내
+            </Typography.Text>
+            <div style={{ marginTop: 8 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                • 블로그 타입에 관계없이 URL만으로 사이트를 관리합니다
+                <br />
+                • 인덱싱할 URL은 인덱싱 실행 시점에 입력하므로 미리 설정할 필요가 없습니다
+                <br />• 검색엔진별 상세 설정은 각 엔진 탭에서 전역으로 관리됩니다
+              </Typography.Text>
+            </div>
+          </div>
 
-          <Form.Item
-            name="indexingUrls"
-            label="인덱싱 URL 목록"
-            rules={[{ required: true, message: '최소 하나의 URL을 입력해주세요' }]}
-          >
-            <TextArea
-              rows={6}
-              placeholder={`한 줄에 하나씩 URL을 입력해주세요.\n예시:\nhttps://example.com/post1\nhttps://example.com/post2`}
-            />
-          </Form.Item>
-
-          <Tabs defaultActiveKey="basic">
-            <TabPane tab="기본 설정" key="basic">
-              <Alert
-                message="검색엔진 설정 안내"
-                description="검색엔진별 상세 설정(Google, Bing, Naver, Daum)은 '설정' 메뉴의 '검색엔진 설정'에서 전역으로 관리됩니다. 사이트별로 개별 설정할 필요가 없습니다."
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-              />
-            </TabPane>
-          </Tabs>
-
-          <div style={{ textAlign: 'right', marginTop: 16 }}>
+          <div style={{ textAlign: 'right', marginTop: 24 }}>
             <Space>
               <Button onClick={() => setModalVisible(false)}>취소</Button>
               <Button type="primary" htmlType="submit">
@@ -227,8 +178,8 @@ const SiteManagement: React.FC = () => {
           </div>
         </Form>
       </Modal>
-    </div>
+    </Card>
   )
 }
 
-export default SiteManagement
+export default SiteSettings

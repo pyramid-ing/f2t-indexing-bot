@@ -9,6 +9,7 @@ import {
   updateGlobalDaumSettings,
 } from '../api'
 import { GlobalEngineSettings } from '../types/settings'
+import SiteSettings from '../components/settings/SiteSettings'
 import DaumSettings from '../components/settings/DaumSettings'
 import NaverSettings from '../components/settings/NaverSettings'
 import BingSettings from '../components/settings/BingSettings'
@@ -19,7 +20,7 @@ const { TabPane } = Tabs
 
 const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('google')
+  const [activeTab, setActiveTab] = useState('sites')
 
   const [engineSettings, setEngineSettings] = useState<GlobalEngineSettings>({
     google: {
@@ -162,6 +163,10 @@ const Settings: React.FC = () => {
 
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
+          <TabPane tab="사이트 관리" key="sites">
+            <SiteSettings />
+          </TabPane>
+
           <TabPane tab="Google" key="google">
             <GoogleSettings
               settings={engineSettings.google}

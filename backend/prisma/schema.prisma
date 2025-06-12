@@ -22,21 +22,12 @@ model Auth {
   updatedAt DateTime @updatedAt
 }
 
-// 사이트 설정 모델 (검색엔진별 설정은 전역 설정으로 이동)
+// 사이트 설정 모델 (간소화됨)
 model Site {
-  id            Int       @id @default(autoincrement())
-  siteUrl       String    @unique
-  blogType      BlogType
-  indexingUrls  String    // JSON 배열로 저장
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-// 블로그 타입 enum
-enum BlogType {
-  TISTORY
-  BLOGGER
-  WORDPRESS
+  id        Int      @id @default(autoincrement())
+  siteUrl   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // 색인 작업 로그

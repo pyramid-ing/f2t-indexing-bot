@@ -5,7 +5,6 @@ import styled from 'styled-components'
 import Settings from './Settings'
 import Sidebar from '../components/Sidebar'
 import { getAppStatus } from '../api'
-import SiteManagement from '../components/SiteManagement'
 import IndexingDashboard from '../components/IndexingDashboard'
 
 const { Header, Content } = Layout
@@ -83,7 +82,6 @@ const App: React.FC = () => {
         <StyledContent>
           <Routes>
             <Route path="/dashboard" element={<IndexingDashboard />} />
-            <Route path="/sites" element={<SiteManagement />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/" element={<IndexingDashboard />} />
           </Routes>
