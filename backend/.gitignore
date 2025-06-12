@@ -13,6 +13,8 @@ apps/temp
 /temp
 /puppeteer_data
 
+./static/cookies/*
+
 # Logs
 logs
 *.log

@@ -113,11 +113,22 @@ const IndexingDashboard: React.FC = () => {
   }, [])
 
   useEffect(() => {
-    // 네이버가 활성화되어 있으면 로그인 상태 확인
     if (globalSettings?.naver?.use) {
       checkNaverLogin()
     }
   }, [globalSettings])
+
+  useEffect(() => {
+    // 네이버 로그아웃 상태가 되면, 폼에서 네이버 선택을 자동으로 해제
+    if (naverLoginStatus && !naverLoginStatus.isLoggedIn) {
+      const currentServices = form.getFieldValue('services') as string[]
+      if (currentServices?.includes('naver')) {
+        form.setFieldsValue({
+          services: currentServices.filter(s => s !== 'naver'),
+        })
+      }
+    }
+  }, [naverLoginStatus, form])
 
   const loadSites = async () => {
     try {
