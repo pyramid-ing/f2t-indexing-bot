@@ -250,6 +250,7 @@ const IndexingDashboard: React.FC = () => {
       status: 'running',
       results: {},
       startTime: Date.now(),
+      _groupedUrls,
     }
     setIndexingTasks(prev => [newTask, ...prev])
     if (!_groupedUrls) form.resetFields(['urls']) // Reset form only for new tasks
@@ -414,7 +415,19 @@ const IndexingDashboard: React.FC = () => {
             }),
           )
       } else if (result.status === 'success' && result.data) {
-        if (Array.isArray(result.data.results)) processIndividualResults(result.data.results)
+        if (service === 'bing' && result.data.success) {
+          const urlsForService = task._groupedUrls?.[service] || task.urls
+          urlsForService.forEach((url, urlIndex) => {
+            flatList.push({
+              id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
+              service,
+              url,
+              status: 'success',
+              message: result.data.message || '요청 성공',
+              rawData: result.data,
+            })
+          })
+        } else if (Array.isArray(result.data.results)) processIndividualResults(result.data.results)
         else if (Array.isArray(result.data)) processIndividualResults(result.data)
       } else if (result.status === 'running') {
         task.urls.forEach((url, urlIndex) =>

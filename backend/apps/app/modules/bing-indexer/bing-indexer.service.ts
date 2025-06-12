@@ -81,7 +81,7 @@ export class BingIndexerService {
           targetUrl: url,
           provider: 'BING',
           status: 'SUCCESS',
-          responseData: response.data,
+          responseData: JSON.stringify(response.data),
         },
       })
 
@@ -103,6 +103,7 @@ export class BingIndexerService {
           provider: 'BING',
           status: 'FAILED',
           message: error.message,
+          responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
         },
       })
 

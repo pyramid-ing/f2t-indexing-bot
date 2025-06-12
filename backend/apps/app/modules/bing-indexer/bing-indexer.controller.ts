@@ -7,7 +7,7 @@ export class BingIndexerController {
 
   @Post('manual-index')
   async manualIndex(@Body() body: BingIndexerOptions): Promise<any> {
-    const results = await this.bingIndexerService.manualIndexing(body)
-    return { results }
+    await this.bingIndexerService.manualIndexing(body)
+    return { success: true, message: 'Bing 색인 요청에 성공했습니다.' }
   }
 }
