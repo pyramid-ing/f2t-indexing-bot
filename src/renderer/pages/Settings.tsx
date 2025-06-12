@@ -8,37 +8,18 @@ import {
   updateGlobalNaverSettings,
   updateGlobalDaumSettings,
 } from '../api'
-import { AppSettings, IndexingSettings, GlobalEngineSettings } from '../types/settings'
-import GeneralSettings from '../components/settings/GeneralSettings'
+import { GlobalEngineSettings } from '../types/settings'
 import DaumSettings from '../components/settings/DaumSettings'
 import NaverSettings from '../components/settings/NaverSettings'
 import BingSettings from '../components/settings/BingSettings'
 import GoogleSettings from '../components/settings/GoogleSettings'
-import IndexingSettingsComponent from '../components/settings/IndexingSettings'
 
 const { Title } = Typography
 const { TabPane } = Tabs
 
 const Settings: React.FC = () => {
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('general')
-
-  // 각 설정별 state
-  const [appSettings, setAppSettings] = useState<AppSettings>({
-    appVersion: '1.0.0',
-    initialized: true,
-    setupCompleted: true,
-    theme: 'light',
-    language: 'ko',
-    firstRun: false,
-  })
-
-  const [indexingSettings, setIndexingSettings] = useState<IndexingSettings>({
-    defaultDelay: 2000,
-    maxRetries: 3,
-    batchSize: 10,
-    enableLogging: true,
-  })
+  const [activeTab, setActiveTab] = useState('google')
 
   const [engineSettings, setEngineSettings] = useState<GlobalEngineSettings>({
     google: {
@@ -77,23 +58,6 @@ const Settings: React.FC = () => {
     try {
       setLoading(true)
 
-      // 앱 상태 로드
-      const response = await fetch('http://localhost:3030/settings/status')
-      const responseData = await response.json()
-      const data = responseData.data || responseData
-
-      if (data) {
-        const settings: AppSettings = {
-          appVersion: data.appVersion || '1.0.0',
-          initialized: data.initialized || true,
-          setupCompleted: data.setupCompleted || true,
-          theme: 'light',
-          language: 'ko',
-          firstRun: data.firstRun || false,
-        }
-        setAppSettings(settings)
-      }
-
       // 전역 엔진 설정 로드
       try {
         const engineResponse = await getGlobalSettings()
@@ -106,28 +70,6 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error('설정 로드 실패:', error)
       message.error('설정을 불러오는데 실패했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 일반 설정 저장
-  const saveAppSettings = async (values: AppSettings) => {
-    setLoading(true)
-    try {
-      setAppSettings(values)
-      // 실제 저장 API 호출이 필요하면 여기에 추가
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 인덱싱 설정 저장
-  const saveIndexingSettings = async (values: IndexingSettings) => {
-    setLoading(true)
-    try {
-      setIndexingSettings(values)
-      // 실제 저장 API 호출이 필요하면 여기에 추가
     } finally {
       setLoading(false)
     }
@@ -220,10 +162,6 @@ const Settings: React.FC = () => {
 
       <Card>
         <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
-          <TabPane tab="일반 설정" key="general">
-            <GeneralSettings settings={appSettings} onSave={saveAppSettings} loading={loading} />
-          </TabPane>
-
           <TabPane tab="Google" key="google">
             <GoogleSettings
               settings={engineSettings.google}
@@ -258,10 +196,6 @@ const Settings: React.FC = () => {
               onToggleUse={toggleDaumUse}
               loading={loading}
             />
-          </TabPane>
-
-          <TabPane tab="인덱싱 설정" key="indexing">
-            <IndexingSettingsComponent settings={indexingSettings} onSave={saveIndexingSettings} loading={loading} />
           </TabPane>
         </Tabs>
       </Card>
