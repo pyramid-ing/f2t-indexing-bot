@@ -65,6 +65,7 @@ const Settings: React.FC = () => {
       use: false,
       siteUrl: '',
       password: '',
+      headless: true,
     },
   })
 

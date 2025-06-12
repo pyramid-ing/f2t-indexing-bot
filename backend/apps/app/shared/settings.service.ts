@@ -26,7 +26,7 @@ export class SettingsService {
           },
           bing: { use: false, apiKey: '' },
           naver: { use: false, naverId: '', password: '', headless: true },
-          daum: { use: false, siteUrl: '', password: '' },
+          daum: { use: false, siteUrl: '', password: '', headless: true },
         }
 
         await (this.prisma as any).settings.create({

@@ -38,6 +38,7 @@ export class DaumIndexerService {
     return {
       siteUrl: globalSettings.daum.siteUrl || siteUrl,
       password: globalSettings.daum.password,
+      headless: globalSettings.daum.headless ?? true, // 기본값은 true
     }
   }
 
@@ -73,7 +74,7 @@ export class DaumIndexerService {
 
   async manualIndexing(
     options: DaumIndexerOptions,
-    headless: boolean = true,
+    headless?: boolean,
   ): Promise<{ url: string; status: string; msg: string }[]> {
     const { urlsToIndex, siteUrl } = options
 
@@ -81,9 +82,10 @@ export class DaumIndexerService {
     const dbConfig = await this.getDaumConfig(siteUrl)
     const daumSiteUrl = dbConfig.siteUrl
     const pin = options.pin || dbConfig.password
+    const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
 
     const launchOptions: any = {
-      headless,
+      headless: useHeadless,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',

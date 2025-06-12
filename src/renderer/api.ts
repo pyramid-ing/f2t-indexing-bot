@@ -35,6 +35,7 @@ export interface GlobalEngineSettings {
     use: boolean
     siteUrl: string
     password: string
+    headless: boolean
   }
 }
 

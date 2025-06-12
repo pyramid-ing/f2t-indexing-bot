@@ -44,6 +44,7 @@ export interface DaumEngineSettings {
   use: boolean
   siteUrl: string
   password: string
+  headless: boolean
 }
 
 // 전체 엔진 설정 타입

@@ -7,7 +7,7 @@ export class DaumIndexerController {
 
   @Post('manual-index')
   async manualIndex(@Body() body: DaumIndexerOptions & { headless?: boolean }) {
-    const results = await this.daumIndexerService.manualIndexing(body, body.headless ?? true)
+    const results = await this.daumIndexerService.manualIndexing(body, body.headless)
     return { results }
   }
 }
