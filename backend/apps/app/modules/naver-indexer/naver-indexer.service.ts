@@ -558,54 +558,70 @@ export class NaverIndexerService implements OnModuleInit {
    * 수동 로그인을 위한 브라우저 창 열기
    */
   async openLoginBrowser(): Promise<{ success: boolean; message: string }> {
-    try {
-      // 기존 브라우저가 열려있다면 닫기
-      if (this.loginBrowser) {
-        await this.closeBrowser()
+    if (this.loginBrowser) {
+      this.logger.warn('이미 네이버 로그인 브라우저가 열려 있습니다.')
+      try {
+        // 이미 열려있는 페이지를 활성화 시도
+        await this.loginPage?.bringToFront()
+        return { success: true, message: '기존 로그인 창을 활성화했습니다.' }
+      } catch (e) {
+        // 무시하고 새로 열기
       }
+    }
 
-      const naverConfig = await this.getNaverConfig()
+    try {
+      const { naverId, password, headless } = await this.getNaverConfig()
 
       const launchOptions: any = {
-        headless: false, // 사용자가 수동으로 로그인할 수 있도록 브라우저 창 표시
+        headless: false, // 로그인 창은 항상 보여줘야 함
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-blink-features=AutomationControlled',
+          '--window-size=600,800',
           '--lang=ko-KR,ko',
         ],
-        defaultViewport: { width: 1280, height: 900 },
+        defaultViewport: null,
       }
-
       if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
       }
 
       this.loginBrowser = await puppeteer.launch(launchOptions)
-      this.loginPage = await this.loginBrowser.newPage()
+      this.loginPage = (await this.loginBrowser.pages())[0]
 
-      await this.loginPage.setExtraHTTPHeaders({
-        'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
-      })
+      await this.loginPage.setExtraHTTPHeaders({ 'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7' })
       await this.loginPage.emulateTimezone('Asia/Seoul')
 
-      // 네이버 로그인 페이지로 이동
-      await this.loginPage.goto('https://nid.naver.com/nidlogin.login?mode=form&url=https://searchadvisor.naver.com/', {
-        waitUntil: 'networkidle2',
+      await this.loginPage.goto('https://nid.naver.com/nidlogin.login', { waitUntil: 'networkidle2' })
+
+      // ID와 비밀번호 자동 입력
+      await this.loginPage.waitForSelector('#id', { timeout: 10000 })
+      await this.loginPage.type('#id', naverId, { delay: 50 })
+
+      await this.loginPage.waitForSelector('#pw', { timeout: 10000 })
+      await this.loginPage.type('#pw', password, { delay: 50 })
+
+      this.loginBrowser.on('disconnected', () => {
+        this.logger.log('네이버 로그인 브라우저가 사용자에 의해 닫혔습니다.')
+        this.loginBrowser = null
+        this.loginPage = null
       })
 
-      this.logger.log('네이버 수동 로그인 브라우저를 열었습니다.')
-
-      return {
-        success: true,
-        message: '네이버 로그인 페이지가 열렸습니다. 수동으로 로그인해주세요.',
-      }
+      return { success: true, message: '네이버 로그인 창을 열었습니다. ID/PW를 확인하고 로그인해주세요.' }
     } catch (error) {
-      this.logger.error('네이버 로그인 브라우저 열기 실패:', error)
-      return {
-        success: false,
-        message: `브라우저 열기 실패: ${error.message}`,
+      if (this.loginBrowser) {
+        await this.loginBrowser.close()
+        this.loginBrowser = null
+        this.loginPage = null
       }
+      this.logger.error(`네이버 로그인 브라우저 열기 실패: ${error.message}`)
+
+      if (error instanceof NaverAuthError) {
+        throw error
+      }
+
+      throw new NaverBrowserError(`네이버 로그인 브라우저를 여는 데 실패했습니다: ${error.message}`, 'openLoginBrowser')
     }
   }
 
