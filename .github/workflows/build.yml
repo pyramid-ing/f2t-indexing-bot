@@ -41,15 +41,11 @@ jobs:
       - name: Generate Prisma Client
         run: yarn --cwd backend prisma generate
 
-      # 6. GH_TOKEN 설정
-      - name: Set GitHub Token
-        run: echo "GH_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
-
       # 7. Electron 빌드 (package-win 스크립트 실행)
       - name: Build Windows App
-        run: |
-          $env:GH_TOKEN="${{ secrets.GH_TOKEN }}"
-          yarn package-win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: yarn package-win
         shell: pwsh
 
       # 8. 빌드된 파일 업로드

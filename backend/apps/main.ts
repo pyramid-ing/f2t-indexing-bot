@@ -66,7 +66,7 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '10mb' }))
 
   const HOST = configService.get<string>('HOST') || '0.0.0.0'
-  const PORT = configService.get<number>('PORT') || 3000
+  const PORT = configService.get<number>('PORT') || 3030
 
   await app.listen(PORT, HOST, () => {
     logLogo()
