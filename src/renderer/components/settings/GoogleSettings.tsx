@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Form, Input, Button, Switch, message, Typography, Row, Col, Divider, Avatar } from 'antd'
+import { Card, Form, Input, Button, Switch, message, Typography, Divider } from 'antd'
 import { GoogleOutlined, SaveOutlined } from '@ant-design/icons'
 import { startGoogleLogin, getGoogleAuthStatus, logoutGoogle } from '../../utils/googleAuth'
 import { getErrorMessage, getErrorDetails } from '../../api'

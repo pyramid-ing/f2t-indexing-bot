@@ -1,5 +1,5 @@
 import { BrowserWindow } from 'electron'
-import * as path from 'path'
+import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -8,16 +8,18 @@ export function createWindow() {
     width: 1280,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      preload: path.join(__dirname, '../preload/index.mjs'),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
     },
   })
 
-  if (process.env.ELECTRON_DEBUG) {
+  if (process.env.NODE_ENV === 'development' || process.env.ELECTRON_DEBUG) {
     console.log('Loading dev server at http://localhost:8080')
     mainWindow.loadURL('http://localhost:8080')
   } else {
-    const indexPath = path.resolve(require('electron').app.getAppPath(), 'dist/renderer/index.html')
+    const indexPath = path.join(__dirname, '..', 'renderer', 'index.html')
     mainWindow.loadFile(indexPath)
   }
 

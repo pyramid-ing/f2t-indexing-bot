@@ -1,7 +1,8 @@
 {
   "name": "f2t-indexing-bot",
   "version": "1.0.0",
-  "main": "dist/electron/main",
+  "type": "module",
+  "main": "dist/electron/main/index.js",
   "description": "",
   "author": {
     "name": "Iron",
@@ -49,11 +50,11 @@
   "scripts": {
     "lint": "eslint \"{src,test}/**/*.{ts,tsx}\" --fix && yarn --cwd ./backend lint",
     "start": "concurrently \"yarn start:renderer\" \"wait-on tcp:8080 && yarn start:main\"",
-    "start:main": "tsc -p tsconfig.electron.json && electron .",
+    "start:main": "cross-env NODE_OPTIONS=--experimental-modules tsc -p tsconfig.electron.json && electron .",
     "start:renderer": "cross-env NODE_ENV=development webpack serve --config webpack.config.js",
     "debug": "rimraf dist/* && concurrently \"yarn debug:renderer\" \"wait-on tcp:8080 && yarn debug:main\"",
     "debug:renderer": "cross-env ELECTRON_DEBUG=true NODE_ENV=development webpack serve --config webpack.config.js",
-    "debug:main": "tsc -p tsconfig.electron.json && cross-env ELECTRON_DEBUG=true electron --inspect=9228 . --remote-debugging-port=9222",
+    "debug:main": "cross-env NODE_OPTIONS=--experimental-modules tsc -p tsconfig.electron.json && cross-env ELECTRON_DEBUG=true electron --inspect=9228 . --remote-debugging-port=9222",
     "clean": "rimraf dist/*",
     "build": "yarn clean && yarn --cwd backend prisma migrate deploy && yarn --cwd backend prisma db seed && yarn build:main && yarn build:renderer && yarn --cwd backend build",
     "build:main": "tsc -p tsconfig.electron.prod.json",

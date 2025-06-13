@@ -1,36 +1,3 @@
-export class QuizCrawlingError extends Error {
-  constructor(
-    message: string,
-    public readonly url?: string,
-    public readonly category?: string,
-  ) {
-    super(message)
-    this.name = 'QuizCrawlingError'
-  }
-}
-
-export class BlogPostError extends Error {
-  constructor(
-    message: string,
-    public readonly category?: string,
-    public readonly postData?: any,
-  ) {
-    super(message)
-    this.name = 'BlogPostError'
-  }
-}
-
-export class VideoGenerationError extends Error {
-  constructor(
-    message: string,
-    public readonly ffmpegError?: string,
-    public readonly inputData?: any,
-  ) {
-    super(message)
-    this.name = 'VideoGenerationError'
-  }
-}
-
 // 정규화된 에러 클래스들
 export enum ErrorCode {
   // Google API 에러들
@@ -303,5 +270,44 @@ export interface ErrorResponse {
     configType?: string
     isExpired?: boolean
     additionalInfo?: Record<string, any>
+  }
+}
+
+// 블로그 포스트 관련 에러
+export class BlogPostError extends Error {
+  public readonly category: string
+  public readonly postData: any
+
+  constructor(message: string, category: string, postData?: any) {
+    super(message)
+    this.name = 'BlogPostError'
+    this.category = category
+    this.postData = postData
+  }
+}
+
+// 퀴즈 크롤링 관련 에러
+export class QuizCrawlingError extends Error {
+  public readonly url: string
+  public readonly category: string
+
+  constructor(message: string, url: string, category: string) {
+    super(message)
+    this.name = 'QuizCrawlingError'
+    this.url = url
+    this.category = category
+  }
+}
+
+// 비디오 생성 관련 에러
+export class VideoGenerationError extends Error {
+  public readonly ffmpegError: string
+  public readonly inputData: any
+
+  constructor(message: string, ffmpegError: string, inputData?: any) {
+    super(message)
+    this.name = 'VideoGenerationError'
+    this.ffmpegError = ffmpegError
+    this.inputData = inputData
   }
 }

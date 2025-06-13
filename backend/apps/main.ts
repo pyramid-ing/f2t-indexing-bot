@@ -1,6 +1,7 @@
 import { BadRequestException, Logger, ValidationError, ValidationPipe } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import * as bodyParser from 'body-parser'
+import * as portfinder from 'portfinder'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
@@ -9,7 +10,6 @@ import { AppModule } from '@prd/apps/app/app.module'
 import { environment } from '@prd/apps/environments/environment'
 import { utilities as nestWinstonModuleUtilities, WinstonModule } from 'nest-winston'
 import winston from 'winston'
-import { ConfigService } from '@nestjs/config'
 import { HttpAdapterHost } from '@nestjs/core'
 import { GlobalExceptionFilter } from '@prd/apps/filters/global-exception.filter'
 
@@ -32,16 +32,12 @@ async function bootstrap() {
       }),
     ],
   })
+
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger({
       instance,
     }),
   })
-
-  const appInstance = app.getHttpAdapter().getInstance()
-
-  const configApp = await NestFactory.create(AppModule)
-  const configService = configApp.get<ConfigService>(ConfigService)
 
   app.enableCors()
   // app.enableVersioning({
@@ -65,13 +61,18 @@ async function bootstrap() {
   // Support 10mb csv/json files for importing activities
   app.use(bodyParser.json({ limit: '10mb' }))
 
-  const HOST = configService.get<string>('HOST') || '0.0.0.0'
-  const PORT = configService.get<number>('PORT') || 3030
+  // ConfigService를 사용한 정적 포트 할당 대신 portfinder로 동적 포트를 찾습니다.
+  const port = await portfinder.getPortPromise({
+    port: 3030,
+    stopPort: 3080,
+  })
+  const host = '0.0.0.0'
 
-  await app.listen(PORT, HOST, () => {
+  await app.listen(port, host, () => {
     logLogo()
-    Logger.log(`Listening at http://${HOST}:${PORT}`)
-    Logger.log('')
+    Logger.log(`Listening at http://${host}:${port}`)
+    // Electron 메인 프로세스가 포트를 감지할 수 있도록 표준 출력으로 로그를 남깁니다.
+    console.log(`BACKEND_PORT=${port}`)
   })
 }
 
