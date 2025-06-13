@@ -47,7 +47,6 @@
     }
   },
   "scripts": {
-    "postinstall": "yarn --cwd backend prisma generate",
     "lint": "eslint \"{src,test}/**/*.{ts,tsx}\" --fix && yarn --cwd ./backend lint",
     "start": "concurrently \"yarn start:renderer\" \"wait-on tcp:8080 && yarn start:main\"",
     "start:main": "tsc -p tsconfig.electron.json && electron .",

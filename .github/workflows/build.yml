@@ -25,29 +25,34 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('yarn.lock') }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
             ${{ runner.os }}-yarn-
 
-      # 4. Yarn 설정 및 의존성 설치
+      # 4. Yarn 설정 및 의존성 설치 (루트 및 백엔드)
       - name: Install dependencies
         run: |
           yarn config set registry https://registry.npmjs.org
           yarn config set network-timeout 600000
           yarn install
+          yarn --cwd backend install
 
-      # 5. GH_TOKEN 설정
+      # 5. Prisma Generate 실행
+      - name: Generate Prisma Client
+        run: yarn --cwd backend prisma generate
+
+      # 6. GH_TOKEN 설정
       - name: Set GitHub Token
         run: echo "GH_TOKEN=${{ secrets.GH_TOKEN }}" >> $GITHUB_ENV
 
-      # 6. Electron 빌드 (package-win 스크립트 실행)
+      # 7. Electron 빌드 (package-win 스크립트 실행)
       - name: Build Windows App
         run: |
           $env:GH_TOKEN="${{ secrets.GH_TOKEN }}"
           yarn package-win
         shell: pwsh
 
-      # 7. 빌드된 파일 업로드
+      # 8. 빌드된 파일 업로드
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
