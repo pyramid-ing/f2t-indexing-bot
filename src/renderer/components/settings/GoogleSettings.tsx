@@ -202,83 +202,83 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
             </Form.Item>
           </div>
 
-          {/* OAuth2 섹션 */}
-          <div style={{ marginBottom: 24 }}>
-            <Divider orientation="left">
-              <Text strong style={{ color: '#52c41a' }}>
-                🔐 OAuth2 설정
-              </Text>
-            </Divider>
-            <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
-              Google Blogger API 및 사용자 인증을 위한 OAuth2 클라이언트 정보
-            </Text>
+          {/*/!* OAuth2 섹션 *!/*/}
+          {/*<div style={{ marginBottom: 24 }}>*/}
+          {/*  <Divider orientation="left">*/}
+          {/*    <Text strong style={{ color: '#52c41a' }}>*/}
+          {/*      🔐 OAuth2 설정*/}
+          {/*    </Text>*/}
+          {/*  </Divider>*/}
+          {/*  <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>*/}
+          {/*    Google Blogger API 및 사용자 인증을 위한 OAuth2 클라이언트 정보*/}
+          {/*  </Text>*/}
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="oauth2ClientId"
-                  label="OAuth2 Client ID"
-                  help="Google Cloud Console > APIs & Services > Credentials에서 생성한 OAuth 2.0 클라이언트 ID"
-                >
-                  <Input placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com" size="large" />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="oauth2ClientSecret"
-                  label="OAuth2 Client Secret"
-                  help="OAuth 2.0 클라이언트의 비밀번호"
-                >
-                  <Input.Password placeholder="GOCSPX-********************************" size="large" />
-                </Form.Item>
-              </Col>
-            </Row>
+          {/*  <Row gutter={16}>*/}
+          {/*    <Col span={12}>*/}
+          {/*      <Form.Item*/}
+          {/*        name="oauth2ClientId"*/}
+          {/*        label="OAuth2 Client ID"*/}
+          {/*        help="Google Cloud Console > APIs & Services > Credentials에서 생성한 OAuth 2.0 클라이언트 ID"*/}
+          {/*      >*/}
+          {/*        <Input placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com" size="large" />*/}
+          {/*      </Form.Item>*/}
+          {/*    </Col>*/}
+          {/*    <Col span={12}>*/}
+          {/*      <Form.Item*/}
+          {/*        name="oauth2ClientSecret"*/}
+          {/*        label="OAuth2 Client Secret"*/}
+          {/*        help="OAuth 2.0 클라이언트의 비밀번호"*/}
+          {/*      >*/}
+          {/*        <Input.Password placeholder="GOCSPX-********************************" size="large" />*/}
+          {/*      </Form.Item>*/}
+          {/*    </Col>*/}
+          {/*  </Row>*/}
 
-            {/* OAuth 로그인 상태 */}
-            <div
-              style={{
-                backgroundColor: isGoogleLoggedIn ? '#f6ffed' : '#fff2f0',
-                border: `1px solid ${isGoogleLoggedIn ? '#b7eb8f' : '#ffccc7'}`,
-                borderRadius: 8,
-                padding: 16,
-                marginTop: 16,
-              }}
-            >
-              <Text strong style={{ color: isGoogleLoggedIn ? '#389e0d' : '#cf1322' }}>
-                {isGoogleLoggedIn ? '✅ Google 계정 연동됨' : '❌ Google 계정 연동 필요'}
-              </Text>
-              {isGoogleLoggedIn && googleUserInfo ? (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <Avatar src={googleUserInfo.picture} size={40} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 500 }}>{googleUserInfo.name}</div>
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {googleUserInfo.email}
-                      </Text>
-                    </div>
-                    <Button type="link" danger onClick={handleGoogleLogout}>
-                      연동 해제
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ marginBottom: 8 }}>
-                    <Text type="secondary">Google Blogger API 사용을 위해 계정 연동이 필요합니다.</Text>
-                  </div>
-                  <Button
-                    type="primary"
-                    icon={<GoogleOutlined />}
-                    onClick={handleGoogleLogin}
-                    disabled={!settings.oauth2ClientId?.trim() || !settings.oauth2ClientSecret?.trim()}
-                  >
-                    Google 계정 연동
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          {/*  /!* OAuth 로그인 상태 *!/*/}
+          {/*  <div*/}
+          {/*    style={{*/}
+          {/*      backgroundColor: isGoogleLoggedIn ? '#f6ffed' : '#fff2f0',*/}
+          {/*      border: `1px solid ${isGoogleLoggedIn ? '#b7eb8f' : '#ffccc7'}`,*/}
+          {/*      borderRadius: 8,*/}
+          {/*      padding: 16,*/}
+          {/*      marginTop: 16,*/}
+          {/*    }}*/}
+          {/*  >*/}
+          {/*    <Text strong style={{ color: isGoogleLoggedIn ? '#389e0d' : '#cf1322' }}>*/}
+          {/*      {isGoogleLoggedIn ? '✅ Google 계정 연동됨' : '❌ Google 계정 연동 필요'}*/}
+          {/*    </Text>*/}
+          {/*    {isGoogleLoggedIn && googleUserInfo ? (*/}
+          {/*      <div style={{ marginTop: 12 }}>*/}
+          {/*        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>*/}
+          {/*          <Avatar src={googleUserInfo.picture} size={40} />*/}
+          {/*          <div style={{ flex: 1 }}>*/}
+          {/*            <div style={{ fontWeight: 500 }}>{googleUserInfo.name}</div>*/}
+          {/*            <Text type="secondary" style={{ fontSize: 12 }}>*/}
+          {/*              {googleUserInfo.email}*/}
+          {/*            </Text>*/}
+          {/*          </div>*/}
+          {/*          <Button type="link" danger onClick={handleGoogleLogout}>*/}
+          {/*            연동 해제*/}
+          {/*          </Button>*/}
+          {/*        </div>*/}
+          {/*      </div>*/}
+          {/*    ) : (*/}
+          {/*      <div style={{ marginTop: 12 }}>*/}
+          {/*        <div style={{ marginBottom: 8 }}>*/}
+          {/*          <Text type="secondary">Google Blogger API 사용을 위해 계정 연동이 필요합니다.</Text>*/}
+          {/*        </div>*/}
+          {/*        <Button*/}
+          {/*          type="primary"*/}
+          {/*          icon={<GoogleOutlined />}*/}
+          {/*          onClick={handleGoogleLogin}*/}
+          {/*          disabled={!settings.oauth2ClientId?.trim() || !settings.oauth2ClientSecret?.trim()}*/}
+          {/*        >*/}
+          {/*          Google 계정 연동*/}
+          {/*        </Button>*/}
+          {/*      </div>*/}
+          {/*    )}*/}
+          {/*  </div>*/}
+          {/*</div>*/}
 
           <Form.Item>
             <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading} size="large">
