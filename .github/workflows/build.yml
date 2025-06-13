@@ -52,5 +52,5 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 검색색인_플
+          name: f2t-search-indexing-app
           path: release/
