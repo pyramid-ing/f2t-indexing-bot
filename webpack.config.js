@@ -5,7 +5,8 @@ const webpack = require('webpack')
 
 const isProduction = process.env.NODE_ENV === 'production'
 
-const config = {
+// 렌더러 설정
+const rendererConfig = {
   mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
   entry: path.join(__dirname, 'src/renderer/index.tsx'),
   target: 'web',
@@ -90,4 +91,33 @@ const config = {
   },
 }
 
-module.exports = config
+// preload 스크립트 설정
+const preloadConfig = {
+  mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
+  entry: path.join(__dirname, 'src/electron/preload/index.ts'),
+  target: 'electron-preload',
+  devtool: isProduction ? false : 'source-map',
+  output: {
+    path: path.join(__dirname, 'dist/electron/preload'),
+    filename: 'index.js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        use: {
+          loader: 'ts-loader',
+          options: {
+            configFile: path.join(__dirname, 'tsconfig.electron.json'),
+          },
+        },
+      },
+    ],
+  },
+  resolve: {
+    extensions: ['.tsx', '.ts', '.js', '.jsx'],
+  },
+}
+
+module.exports = [rendererConfig, preloadConfig]

@@ -4,12 +4,8 @@ import path from 'path'
 let mainWindow: BrowserWindow | null = null
 
 export function createWindow() {
-  // 개발 모드에서는 소스 디렉토리의 preload 스크립트를 사용
-  const preloadPath =
-    process.env.NODE_ENV === 'development' || process.env.ELECTRON_DEBUG
-      ? path.join(__dirname, '..', '..', 'electron', 'preload', 'index.ts')
-      : path.join(__dirname, '..', 'preload', 'index.js')
-
+  // preload 스크립트 경로 설정
+  const preloadPath = path.join(__dirname, '..', 'preload', 'index.js')
   console.log('Preload script path:', preloadPath)
 
   mainWindow = new BrowserWindow({
