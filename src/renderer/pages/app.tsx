@@ -1,31 +1,41 @@
-import React, { useEffect, useState } from 'react'
-import { Layout } from 'antd'
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom'
+import React from 'react'
+import { Layout, Menu } from 'antd'
+import { Route, Routes, NavLink } from 'react-router-dom'
 import styled from 'styled-components'
-import Settings from './Settings'
-import Sidebar from '../components/Sidebar'
-import { getAppStatus } from '../api'
-import IndexingDashboard from '../components/IndexingDashboard'
+import SettingsPage from './Settings'
+import IndexingDashboardPage from './IndexingDashboardPage'
+import { HomeOutlined, SettingOutlined } from '@ant-design/icons'
 
-const { Header, Content } = Layout
+const { Sider, Header, Content } = Layout
 
 const StyledLayout = styled(Layout)`
   min-height: 100vh;
-  background-color: #ffffff;
 `
 
 const StyledHeader = styled(Header)`
-  padding: 0;
-  background: #ffffff;
-  border-bottom: 1px solid #ddd;
+  padding: 0 24px;
+  background: #fff;
+  font-size: 18px;
+  font-weight: bold;
 `
 
 const StyledContent = styled(Content)`
+  margin: 24px 16px;
+  padding: 24px;
+  background: #fff;
+  min-height: 280px;
+`
+
+const Logo = styled.div`
+  height: 32px;
   margin: 16px;
-  background-color: #ffffff;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  border-radius: 4px;
 `
 
 interface AppStatus {
@@ -37,53 +47,25 @@ interface AppStatus {
 }
 
 const App: React.FC = () => {
-  const [appReady, setAppReady] = useState(false)
-  const [appVersion, setAppVersion] = useState('1.0.0')
-  const [collapsed, setCollapsed] = useState(false)
-  const navigate = useNavigate()
-  const location = useLocation()
-
-  useEffect(() => {
-    checkAppStatus()
-  }, [])
-
-  useEffect(() => {
-    if (appReady && location.pathname === '/') {
-      navigate('/dashboard')
-    }
-  }, [appReady, location, navigate])
-
-  const checkAppStatus = async () => {
-    try {
-      const status = await getAppStatus()
-      setAppVersion(status.appVersion || '1.0.0')
-      setAppReady(true)
-    } catch (error) {
-      console.error('앱 상태 확인 실패:', error)
-      // 에러가 있어도 앱을 시작하되, FirstRunSetup에서 처리
-      setAppReady(false)
-    }
-  }
-
   return (
     <StyledLayout>
-      <Sidebar
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        selectedKey={location.pathname}
-        onMenuClick={key => navigate(key)}
-        appVersion={appVersion}
-      />
-
+      <Sider width={200}>
+        <Logo>F2T 인덱싱</Logo>
+        <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline">
+          <Menu.Item key="1" icon={<HomeOutlined />}>
+            <NavLink to="/">인덱싱 대시보드</NavLink>
+          </Menu.Item>
+          <Menu.Item key="2" icon={<SettingOutlined />}>
+            <NavLink to="/settings">설정</NavLink>
+          </Menu.Item>
+        </Menu>
+      </Sider>
       <Layout>
-        <StyledHeader>
-          <div style={{ padding: '0 20px', color: '#333', fontSize: '16px', fontWeight: 'bold' }}>F2T 인덱싱 봇</div>
-        </StyledHeader>
+        <StyledHeader>F2T 인덱싱 봇</StyledHeader>
         <StyledContent>
           <Routes>
-            <Route path="/dashboard" element={<IndexingDashboard />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/" element={<IndexingDashboard />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/" element={<IndexingDashboardPage />} />
           </Routes>
         </StyledContent>
       </Layout>
