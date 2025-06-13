@@ -1,3 +1,3 @@
 export const appState = {
-  backendPort: null as number | null,
+  backendPort: process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT, 10) : 3030,
 }

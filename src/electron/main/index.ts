@@ -1,13 +1,9 @@
 import { app, BrowserWindow } from 'electron'
 import { spawn, ChildProcess } from 'child_process'
-import path, { dirname } from 'path'
-import { createWindow } from './window.js'
-import { registerIpcHandlers } from './ipc.js'
-import { fileURLToPath } from 'url'
-import { appState } from './state.js'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+import path from 'path'
+import { createWindow } from './window'
+import { registerIpcHandlers } from './ipc'
+import { appState } from './state'
 
 let backendProcess: ChildProcess | null = null
 
@@ -25,9 +21,15 @@ function setupUserDataDirectory() {
 
 function startBackend() {
   return new Promise<number>((resolve, reject) => {
-    const backendPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'backend', 'main.js')
-      : path.join(__dirname, '..', '..', '..', 'backend', 'dist', 'apps', 'main.js')
+    // 개발 모드에서는 백엔드를 시작하지 않음
+    if (!app.isPackaged) {
+      console.log('개발 모드: 백엔드는 별도로 실행해야 합니다.')
+      console.log(`기본 백엔드 포트: ${appState.backendPort}`)
+      return resolve(appState.backendPort)
+    }
+
+    const backendPath = path.join(process.resourcesPath, 'backend', 'main.js')
+    console.log(`프로덕션 모드: 백엔드 시작 (${backendPath})`)
 
     backendProcess = spawn('node', [backendPath])
 

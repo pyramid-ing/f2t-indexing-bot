@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Layout, Menu } from 'antd'
 import { Route, Routes, NavLink } from 'react-router-dom'
 import styled from 'styled-components'
@@ -47,6 +47,18 @@ interface AppStatus {
 }
 
 const App: React.FC = () => {
+  useEffect(() => {
+    // 백엔드 포트 확인
+    window.electronAPI
+      .getBackendPort()
+      .then(port => {
+        console.log('백엔드 포트:', port)
+      })
+      .catch(error => {
+        console.error('백엔드 포트 확인 실패:', error)
+      })
+  }, [])
+
   return (
     <StyledLayout>
       <Sider width={200}>

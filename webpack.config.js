@@ -1,13 +1,14 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const CopyWebpackPlugin = require('copy-webpack-plugin')
+const webpack = require('webpack')
 
 const isProduction = process.env.NODE_ENV === 'production'
 
 const config = {
   mode: process.env.NODE_ENV === 'development' ? 'development' : 'production',
   entry: path.join(__dirname, 'src/renderer/index.tsx'),
-  target: 'electron-renderer',
+  target: 'web',
   devtool: isProduction ? false : 'source-map', // 프로덕션에서는 소스맵 비활성화
   output: {
     path: path.join(__dirname, 'dist/renderer'),
@@ -41,8 +42,14 @@ const config = {
     alias: {
       '@': path.resolve(__dirname, 'src/'),
     },
+    fallback: {
+      events: require.resolve('events/'),
+    },
   },
   plugins: [
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+    }),
     new HtmlWebpackPlugin({
       template: path.join(__dirname, 'src/renderer/index.html'),
       filename: 'index.html',

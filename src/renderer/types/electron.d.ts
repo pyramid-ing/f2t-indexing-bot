@@ -6,5 +6,8 @@ export interface IElectronAPI {
 declare global {
   interface Window {
     electronAPI: IElectronAPI
+    global: Window & typeof globalThis
   }
 }
+
+declare let global: Window & typeof globalThis
