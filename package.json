@@ -36,14 +36,18 @@
       "build/**/*",
       "dist/electron/**/*",
       "dist/renderer/**/*",
+      "dist/backend/**/*",
       "package.json",
-      "!**/*.map"
+      "!**/*.map",
+      "backend/prisma/db.sqlite",
+      "backend/prisma/migrations/*.sql"
     ],
     "directories": {
       "output": "release"
     }
   },
   "scripts": {
+    "postinstall": "yarn --cwd backend prisma generate",
     "lint": "eslint \"{src,test}/**/*.{ts,tsx}\" --fix && yarn --cwd ./backend lint",
     "start": "concurrently \"yarn start:renderer\" \"wait-on tcp:8080 && yarn start:main\"",
     "start:main": "tsc -p tsconfig.electron.json && electron .",
@@ -52,7 +56,7 @@
     "debug:renderer": "cross-env ELECTRON_DEBUG=true NODE_ENV=development webpack serve --config webpack.config.js",
     "debug:main": "tsc -p tsconfig.electron.json && cross-env ELECTRON_DEBUG=true electron --inspect=9228 . --remote-debugging-port=9222",
     "clean": "rimraf dist/*",
-    "build": "yarn clean && yarn build:main && yarn build:renderer",
+    "build": "yarn clean && yarn --cwd backend prisma migrate deploy && yarn --cwd backend prisma db seed && yarn build:main && yarn build:renderer && yarn --cwd backend build",
     "build:main": "tsc -p tsconfig.electron.prod.json",
     "build:renderer": "cross-env NODE_ENV=production webpack --config webpack.config.js --mode production",
     "package": "yarn build && electron-builder",

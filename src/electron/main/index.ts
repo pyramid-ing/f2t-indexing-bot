@@ -6,12 +6,10 @@ import { registerIpcHandlers } from './ipc'
 
 let nestProcess: ReturnType<typeof spawn> | null = null
 
-// 사용자별 데이터 디렉토리 설정
 function setupUserDataDirectory() {
   const userDataPath = app.getPath('userData')
   const dbPath = path.join(userDataPath, 'db.sqlite')
 
-  // 환경변수 설정
   process.env.NODE_ENV = app.isPackaged ? 'production' : 'development'
   process.env.USER_DATA_PATH = userDataPath
   process.env.DATABASE_URL = `file:${dbPath}`
@@ -21,17 +19,14 @@ function setupUserDataDirectory() {
 }
 
 app.whenReady().then(() => {
-  // 사용자별 데이터 디렉토리 설정
   setupUserDataDirectory()
 
-  // NestJS 서버 실행 (프로덕션 모드에서만)
   if (app.isPackaged) {
     console.log('🚀 프로덕션 모드: NestJS 서버 실행')
-    nestProcess = spawn('yarn', ['start'], {
-      cwd: path.join(__dirname, '../../../backend'), // NestJS 프로젝트 경로
-      shell: true,
+    const backendPath = path.join(__dirname, '..', 'backend', 'main.js')
+    nestProcess = spawn('node', [backendPath], {
       stdio: 'inherit',
-      env: { ...process.env }, // 설정된 환경변수 전달
+      env: { ...process.env },
     })
   } else {
     console.log('🔧 개발 모드: NestJS 서버는 별도로 실행해주세요 (npm run dev)')
