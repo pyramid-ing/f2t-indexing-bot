@@ -89,7 +89,15 @@ const IndexingDashboard: React.FC = () => {
   const [urls, setUrls] = useState<string>('')
   const [selectedServices, setSelectedServices] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [indexingTasks, setIndexingTasks] = useState<IndexingTask[]>([])
+  const [indexingTasks, setIndexingTasks] = useState<IndexingTask[]>(() => {
+    // localStorage에서 불러오기 (초기 마운트 시)
+    try {
+      const saved = localStorage.getItem('indexingTasks')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedTask, setSelectedTask] = useState<IndexingTask | null>(null)
   const [globalSettings, setGlobalSettings] = useState<any>(null)
@@ -129,6 +137,10 @@ const IndexingDashboard: React.FC = () => {
       }
     }
   }, [naverLoginStatus, form])
+
+  useEffect(() => {
+    localStorage.setItem('indexingTasks', JSON.stringify(indexingTasks))
+  }, [indexingTasks])
 
   const loadSites = async () => {
     try {
