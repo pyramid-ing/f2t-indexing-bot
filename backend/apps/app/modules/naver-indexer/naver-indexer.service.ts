@@ -5,7 +5,7 @@ import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import fs from 'fs'
 import path from 'path'
-import type { Page, Browser } from 'puppeteer'
+import type { Page, Browser } from 'puppeteer-core'
 import { ConfigService } from '@nestjs/config'
 import { PrismaService } from '@prd/apps/app/shared/prisma.service'
 import { SettingsService } from '../../shared/settings.service'
@@ -131,7 +131,7 @@ export class NaverIndexerService implements OnModuleInit {
         ],
         defaultViewport: { width: 1280, height: 900 },
       }
-      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
       }
 
@@ -487,7 +487,7 @@ export class NaverIndexerService implements OnModuleInit {
         defaultViewport: { width: 1280, height: 900 },
       }
 
-      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
       }
 
@@ -583,7 +583,7 @@ export class NaverIndexerService implements OnModuleInit {
         ],
         defaultViewport: null,
       }
-      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
       }
 

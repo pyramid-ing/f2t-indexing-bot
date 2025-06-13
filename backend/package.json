@@ -45,7 +45,7 @@
     "nest-winston": "^1.10.2",
     "portfinder": "^1.0.37",
     "prisma": "^6.9.0",
-    "puppeteer": "^23.2.2",
+    "puppeteer-core": "^23.7.1",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "reflect-metadata": "0.1.13",
@@ -82,5 +82,8 @@
   },
   "engines": {
     "node": ">=18.x"
+  },
+  "config": {
+    "PUPPETEER_SKIP_DOWNLOAD": "true"
   }
 }
