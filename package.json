@@ -19,7 +19,11 @@
     ],
     "mac": {
       "icon": "build/icon.icns",
-      "category": "your.app.category.type"
+      "category": "your.app.category.type",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
     },
     "win": {
       "icon": "build/icon.ico",
@@ -30,7 +34,9 @@
     },
     "asar": true,
     "asarUnpack": [
-      "files/**/*"
+      "files/**/*",
+      "dist/backend/**/*",
+      "backend/prisma/**/*"
     ],
     "files": [
       "build/**/*",

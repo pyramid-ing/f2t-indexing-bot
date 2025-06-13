@@ -31,42 +31,59 @@ function startBackend() {
     const backendPath = path.join(process.resourcesPath, 'backend', 'main.js')
     console.log(`프로덕션 모드: 백엔드 시작 (${backendPath})`)
 
-    backendProcess = spawn('node', [backendPath])
-
-    const handleData = (data: Buffer) => {
-      const output = data.toString()
-      console.log(`[Backend STDOUT]: ${output.trim()}`)
-      const match = output.match(/BACKEND_PORT=(\d+)/)
-      if (match && match[1]) {
-        const port = parseInt(match[1], 10)
-        console.log(`✅ 백엔드 포트 감지: ${port}`)
-        appState.backendPort = port
-        resolve(port)
-        backendProcess?.stdout?.removeListener('data', handleData)
+    try {
+      // 백엔드 파일이 존재하는지 확인
+      const fs = require('fs')
+      if (!fs.existsSync(backendPath)) {
+        console.error(`❌ 백엔드 파일이 존재하지 않습니다: ${backendPath}`)
+        reject(new Error(`Backend file not found: ${backendPath}`))
+        return
       }
+
+      backendProcess = spawn('node', [backendPath])
+
+      const handleData = (data: Buffer) => {
+        const output = data.toString()
+        console.log(`[Backend STDOUT]: ${output.trim()}`)
+        const match = output.match(/BACKEND_PORT=(\d+)/)
+        if (match && match[1]) {
+          const port = parseInt(match[1], 10)
+          console.log(`✅ 백엔드 포트 감지: ${port}`)
+          appState.backendPort = port
+          resolve(port)
+          backendProcess?.stdout?.removeListener('data', handleData)
+        }
+      }
+
+      backendProcess.stdout?.on('data', handleData)
+
+      backendProcess.stderr?.on('data', data => {
+        console.error(`[Backend STDERR]: ${data.toString().trim()}`)
+      })
+
+      backendProcess.on('close', code => {
+        console.log(`Backend process exited with code ${code}`)
+        if (code !== 0 && code !== null) {
+          reject(new Error(`Backend process exited with non-zero code: ${code}`))
+        }
+      })
+
+      backendProcess.on('error', err => {
+        console.error('[Backend ERROR]:', err)
+        reject(err)
+      })
+    } catch (error) {
+      console.error('백엔드 프로세스 시작 중 오류:', error)
+      reject(error)
     }
-
-    backendProcess.stdout?.on('data', handleData)
-
-    backendProcess.stderr?.on('data', data => {
-      console.error(`[Backend STDERR]: ${data.toString().trim()}`)
-    })
-
-    backendProcess.on('close', code => {
-      console.log(`Backend process exited with code ${code}`)
-      if (code !== 0 && code !== null) {
-        reject(new Error(`Backend process exited with non-zero code: ${code}`))
-      }
-    })
-
-    backendProcess.on('error', err => {
-      console.error('[Backend ERROR]:', err)
-      reject(err)
-    })
   })
 }
 
 app.whenReady().then(async () => {
+  console.log('앱 시작...')
+  console.log('앱 경로:', app.getAppPath())
+  console.log('리소스 경로:', process.resourcesPath)
+  
   setupUserDataDirectory()
 
   try {
