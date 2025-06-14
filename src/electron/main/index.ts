@@ -136,6 +136,50 @@ async function runPrismaMigration(): Promise<void> {
   })
 }
 
+async function generatePrismaClient(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('Prisma 클라이언트 생성 중...')
+
+    const command = app.isPackaged ? 'prisma' : 'npx'
+    const args = app.isPackaged ? ['generate'] : ['prisma', 'generate']
+    const backendDir = path.join(app.getAppPath(), 'backend')
+
+    console.log(`작업 디렉토리: ${backendDir}`)
+
+    const generateProcess = spawn(command, args, {
+      env: {
+        ...process.env,
+        NODE_ENV: app.isPackaged ? 'production' : 'development',
+      },
+      cwd: backendDir,
+    })
+
+    generateProcess.stdout?.on('data', data => {
+      console.log(`[Generate STDOUT]: ${data.toString().trim()}`)
+    })
+
+    generateProcess.stderr?.on('data', data => {
+      console.error(`[Generate STDERR]: ${data.toString().trim()}`)
+    })
+
+    generateProcess.on('close', code => {
+      if (code === 0) {
+        console.log('✅ Prisma 클라이언트가 생성되었습니다.')
+        resolve()
+      } else {
+        const error = new Error(`Prisma 클라이언트 생성이 실패했습니다. (Exit code: ${code})`)
+        console.error(error)
+        reject(error)
+      }
+    })
+
+    generateProcess.on('error', err => {
+      console.error('Prisma 클라이언트 생성 중 오류:', err)
+      reject(err)
+    })
+  })
+}
+
 function startBackend() {
   return new Promise<number>((resolve, reject) => {
     const backendPath = app.isPackaged
@@ -207,10 +251,14 @@ app.whenReady().then(async () => {
     // DB가 비어있으면 마이그레이션 후 시드 데이터 추가
     if (isDatabaseEmpty(dbPath)) {
       console.log('빈 DB가 감지되었습니다.')
-      console.log('1. Prisma 마이그레이션을 실행합니다...')
+
+      console.log('1. Prisma 클라이언트를 생성합니다...')
+      await generatePrismaClient()
+
+      console.log('2. Prisma 마이그레이션을 실행합니다...')
       await runPrismaMigration()
 
-      console.log('2. 시드 데이터를 추가합니다...')
+      console.log('3. 시드 데이터를 추가합니다...')
       await seedDatabase()
     }
 
