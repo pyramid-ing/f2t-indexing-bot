@@ -39,6 +39,31 @@ function setupUserDataDirectory() {
     ? path.join(userDataPath, 'dev.db')
     : path.join(app.getAppPath(), 'backend', 'prisma', 'db.sqlite')
 
+  // 시스템에 설치된 Chrome 경로 설정
+  let puppeteerPath = ''
+  if (app.isPackaged) {
+    switch (process.platform) {
+      case 'darwin': // macOS
+        puppeteerPath = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+        break
+      case 'win32': // Windows
+        const programFiles = process.env['PROGRAMFILES'] || 'C:\\Program Files'
+        puppeteerPath = path.join(programFiles, 'Google\\Chrome\\Application\\chrome.exe')
+        break
+      case 'linux': // Linux
+        puppeteerPath = '/usr/bin/google-chrome'
+        break
+    }
+
+    // Chrome 실행 파일이 존재하는지 확인
+    if (puppeteerPath && fs.existsSync(puppeteerPath)) {
+      process.env.PUPPETEER_EXECUTABLE_PATH = puppeteerPath
+      log.info('Chrome 실행 파일 경로:', puppeteerPath)
+    } else {
+      log.warn('시스템에 설치된 Chrome을 찾을 수 없습니다.')
+    }
+  }
+
   process.env.NODE_ENV = app.isPackaged ? 'production' : 'development'
   process.env.USER_DATA_PATH = userDataPath
   process.env.DATABASE_URL = `file:${dbPath}`
@@ -48,6 +73,9 @@ function setupUserDataDirectory() {
   console.log(`📁 사용자 데이터 경로: ${userDataPath}`)
   console.log(`🗃️ 데이터베이스 경로: ${dbPath}`)
   console.log(`DATABASE_URL: ${process.env.DATABASE_URL}`)
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    console.log(`🌐 Chrome 실행 파일 경로: ${process.env.PUPPETEER_EXECUTABLE_PATH}`)
+  }
 
   return { dbPath }
 }
