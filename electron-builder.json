@@ -35,6 +35,10 @@
     {
       "from": "backend/package.json",
       "to": "backend/package.json"
+    },
+    {
+      "from": "build/node",
+      "to": "node"
     }
   ],
   "asarUnpack": [

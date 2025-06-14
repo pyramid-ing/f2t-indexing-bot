@@ -55,7 +55,7 @@ function setupUserDataDirectory() {
 async function seedDatabase(): Promise<void> {
   return new Promise((resolve, reject) => {
     const seedPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'backend', 'prisma', 'seed.js')
+      ? path.join(process.resourcesPath, 'backend', 'dist', 'prisma', 'seed.js')
       : path.join(app.getAppPath(), 'backend', 'prisma', 'seed.ts')
 
     const command = app.isPackaged ? 'node' : 'ts-node'
@@ -206,9 +206,12 @@ async function generatePrismaClient(): Promise<void> {
 function startBackend() {
   try {
     const isProduction = process.env.NODE_ENV === 'production'
-    const backendPath = isProduction
+    // 백엔드 경로 (NestJS 빌드 경로)
+    const backendBase = isProduction
       ? path.join(process.resourcesPath, 'backend')
-      : path.join(__dirname, '..', '..', 'backend')
+      : path.join(__dirname, '..', '..', '..', 'backend')
+
+    const backendEntry = path.join(backendBase, 'dist', 'apps', 'main.js')
 
     // 로그 파일 경로 설정
     const logPath = path.join(app.getPath('userData'), 'logs')
@@ -217,18 +220,14 @@ function startBackend() {
     }
     const backendLogPath = path.join(logPath, 'backend.log')
 
-    const nodeExecutable = process.platform === 'win32' ? 'node.exe' : 'node'
-    const nodePath = isProduction
-      ? path.join(process.resourcesPath, 'backend', 'node_modules', '.bin', nodeExecutable)
-      : 'node'
+    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
 
-    backendProcess = spawn(nodePath, ['dist/main.js'], {
-      cwd: backendPath,
+    backendProcess = spawn(nodeExecutable, [backendEntry], {
       env: {
         ...process.env,
         NODE_ENV: process.env.NODE_ENV || 'production',
       },
-      stdio: ['pipe', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'], // stdout/stderr 리다이렉트
     })
 
     // 로그 파일로 출력 리다이렉션
@@ -260,20 +259,20 @@ app.whenReady().then(async () => {
 
   try {
     // DB가 비어있으면 마이그레이션 후 시드 데이터 추가
-    if (isDatabaseEmpty(dbPath)) {
-      console.log('빈 DB가 감지되었습니다.')
+    // if (isDatabaseEmpty(dbPath)) {
+    //   console.log('빈 DB가 감지되었습니다.')
+    //
+    //   console.log('1. Prisma 클라이언트를 생성합니다...')
+    //   await generatePrismaClient()
+    //
+    //   console.log('2. Prisma 마이그레이션을 실행합니다...')
+    //   await runPrismaMigration()
+    //
+    //   console.log('3. 시드 데이터를 추가합니다...')
+    //   await seedDatabase()
+    // }
 
-      console.log('1. Prisma 클라이언트를 생성합니다...')
-      await generatePrismaClient()
-
-      console.log('2. Prisma 마이그레이션을 실행합니다...')
-      await runPrismaMigration()
-
-      console.log('3. 시드 데이터를 추가합니다...')
-      await seedDatabase()
-    }
-
-    // await startBackend()
+    await startBackend()
     createWindow()
     registerIpcHandlers()
 
