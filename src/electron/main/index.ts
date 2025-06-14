@@ -300,7 +300,7 @@ function startBackend() {
   try {
     // 백엔드 경로 (NestJS 빌드 경로)
     const backendBase = path.join(process.resourcesPath, 'backend')
-    const backendEntry = path.join(backendBase, 'dist', 'apps', 'main.js')
+    const backendEntry = path.join(backendBase, 'dist', 'src', 'main.js')
 
     // 로그 파일 경로 설정
     const logPath = path.join(app.getPath('userData'), 'logs')

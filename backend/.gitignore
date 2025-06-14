@@ -7,7 +7,7 @@
 /.env.*
 !/.env.example
 
-apps/temp
+src/temp
 
 # user_data & temp
 /temp
@@ -46,7 +46,7 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 
-apps/temp/*
+src/temp/*
 
 .env
 .env.local

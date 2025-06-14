@@ -220,7 +220,7 @@ MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC...
           {/*        label="OAuth2 Client ID"*/}
           {/*        help="Google Cloud Console > APIs & Services > Credentials에서 생성한 OAuth 2.0 클라이언트 ID"*/}
           {/*      >*/}
-          {/*        <Input placeholder="123456789-abcdefghijklmnop.apps.googleusercontent.com" size="large" />*/}
+          {/*        <Input placeholder="123456789-abcdefghijklmnop.src.googleusercontent.com" size="large" />*/}
           {/*      </Form.Item>*/}
           {/*    </Col>*/}
           {/*    <Col span={12}>*/}

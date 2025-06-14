@@ -19,9 +19,7 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "paths": {
-      "@prd/apps/*": ["apps/*"],
-      "@prd/libs/common/*": ["libs/common/src/lib/*"],
-      "@prd/libs/exchange/*": ["libs/exchange/*"]
+      "@prd/*": ["src/*"],
     }
   },
   "exclude": ["node_modules", "tmp", "dist"]

@@ -30,7 +30,7 @@ npm run dev
 
 ```
 ├── backend/                 # NestJS 백엔드
-│   ├── apps/               # 앱 모듈들
+│   ├── src/               # 앱 모듈들
 │   ├── prisma/             # 데이터베이스 스키마
 │   └── ...
 ├── src/
