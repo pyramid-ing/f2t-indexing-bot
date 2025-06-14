@@ -56,10 +56,10 @@ async function seedDatabase(): Promise<void> {
   return new Promise((resolve, reject) => {
     const seedPath = app.isPackaged
       ? path.join(process.resourcesPath, 'backend', 'dist', 'prisma', 'seed.js')
-      : path.join(app.getAppPath(), 'backend', 'prisma', 'seed.ts')
+      : path.join(app.getAppPath(), 'backend', 'dist', 'prisma', 'seed.js')
 
     const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
-    const args = app.isPackaged ? [seedPath] : ['-r', 'tsconfig-paths/register', seedPath]
+    const args = [seedPath]
     const backendDir = path.join(app.getAppPath(), 'backend')
 
     console.log('DB 시드 실행:', nodeExecutable, args.join(' '))
@@ -234,27 +234,48 @@ function startBackend() {
 
     const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
 
+    console.log('백엔드 시작:', nodeExecutable, backendEntry)
+    console.log('작업 디렉토리:', backendBase)
+
     backendProcess = spawn(nodeExecutable, [backendEntry], {
       env: {
         ...process.env,
         NODE_ENV: process.env.NODE_ENV || 'production',
       },
-      stdio: ['pipe', 'pipe', 'pipe'], // stdout/stderr 리다이렉트
+      stdio: ['pipe', 'pipe', 'pipe'],
     })
 
     // 로그 파일로 출력 리다이렉션
     const logStream = fs.createWriteStream(backendLogPath, { flags: 'a' })
-    backendProcess.stdout.pipe(logStream)
-    backendProcess.stderr.pipe(logStream)
+
+    // stdout 처리
+    backendProcess.stdout.on('data', data => {
+      const output = data.toString().trim()
+      console.log(`[Backend]: ${output}`)
+      log.info(`[Backend]: ${output}`)
+      logStream.write(`${output}\n`)
+    })
+
+    // stderr 처리
+    backendProcess.stderr.on('data', data => {
+      const output = data.toString().trim()
+      console.error(`[Backend Error]: ${output}`)
+      log.error(`[Backend Error]: ${output}`)
+      logStream.write(`[Error] ${output}\n`)
+    })
 
     backendProcess.on('error', error => {
       console.error('Backend process error:', error)
       log.error('Backend process error:', error)
+      logStream.write(`[Process Error] ${error.toString()}\n`)
     })
 
     backendProcess.on('exit', (code, signal) => {
-      console.log(`Backend process exited with code ${code} and signal ${signal}`)
-      log.info(`Backend process exited with code ${code} and signal ${signal}`)
+      const message = `Backend process exited with code ${code} and signal ${signal}`
+      console.log(message)
+      log.info(message)
+      logStream.write(`[Process Exit] ${message}\n`)
+      logStream.end()
     })
   } catch (error) {
     console.error('Backend 시작 실패:', error)
