@@ -99,7 +99,9 @@ async function seedDatabase(): Promise<void> {
       ? path.join(process.resourcesPath, 'backend', 'dist', 'prisma', 'seed.js')
       : path.join(app.getAppPath(), 'backend', 'dist', 'prisma', 'seed.js')
 
-    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
+    const nodeExecutable = app.isPackaged
+      ? path.join(process.resourcesPath, 'node', 'bin', process.platform === 'win32' ? 'node.exe' : 'node')
+      : process.execPath
     const args = [seedPath]
     const backendDir = path.join(app.getAppPath(), 'backend')
 
@@ -178,7 +180,9 @@ async function runPrismaMigration(): Promise<void> {
 
     const prismaPath = path.join(backendDir, 'node_modules', '.bin', 'prisma')
     const args = ['migrate', 'deploy']
-    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
+    const nodeExecutable = app.isPackaged
+      ? path.join(process.resourcesPath, 'node', 'bin', process.platform === 'win32' ? 'node.exe' : 'node')
+      : process.execPath
 
     log.info('[Prisma Migration] 시작')
     log.info('[Prisma Migration] 작업 디렉토리:', backendDir)
@@ -237,7 +241,9 @@ async function generatePrismaClient(): Promise<void> {
 
     const prismaPath = path.join(backendDir, 'node_modules', '.bin', 'prisma')
     const args = ['generate']
-    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
+    const nodeExecutable = app.isPackaged
+      ? path.join(process.resourcesPath, 'node', 'bin', process.platform === 'win32' ? 'node.exe' : 'node')
+      : process.execPath
 
     log.info('[Prisma Generate] 시작')
     log.info('[Prisma Generate] 작업 디렉토리:', backendDir)
@@ -309,7 +315,12 @@ function startBackend() {
     }
     const backendLogPath = path.join(logPath, 'backend.log')
 
-    const nodeExecutable = path.join(process.resourcesPath, 'node', 'bin', 'node')
+    const nodeExecutable = path.join(
+      process.resourcesPath,
+      'node',
+      'bin',
+      process.platform === 'win32' ? 'node.exe' : 'node',
+    )
 
     console.log('백엔드 시작:', nodeExecutable, backendEntry)
     console.log('작업 디렉토리:', backendBase)
