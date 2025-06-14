@@ -58,17 +58,20 @@ async function seedDatabase(): Promise<void> {
       ? path.join(process.resourcesPath, 'backend', 'dist', 'prisma', 'seed.js')
       : path.join(app.getAppPath(), 'backend', 'dist', 'prisma', 'seed.js')
 
-    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
+    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
     const args = [seedPath]
     const backendDir = path.join(app.getAppPath(), 'backend')
 
     log.info('[DB Seed] 시작:', nodeExecutable, args.join(' '))
     log.info('[DB Seed] 작업 디렉토리:', backendDir)
+    log.info('[DB Seed] Node 실행 파일:', nodeExecutable)
 
     const seedProcess = spawn(nodeExecutable, args, {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
+        NODE: nodeExecutable,
+        PATH: `${path.dirname(nodeExecutable)}:${process.env.PATH}`,
       },
       cwd: backendDir,
     })
@@ -132,17 +135,21 @@ async function runPrismaMigration(): Promise<void> {
       ? path.join(process.resourcesPath, 'backend')
       : path.join(app.getAppPath(), 'backend')
 
-    const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
-    const args = app.isPackaged ? ['migrate', 'deploy'] : ['prisma', 'migrate', 'deploy']
+    const prismaPath = path.join(backendDir, 'node_modules', '.bin', 'prisma')
+    const args = ['migrate', 'deploy']
+    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
 
     log.info('[Prisma Migration] 시작')
     log.info('[Prisma Migration] 작업 디렉토리:', backendDir)
+    log.info('[Prisma Migration] Node 실행 파일:', nodeExecutable)
     log.info('[Prisma Migration] 명령어:', prismaPath, args.join(' '))
 
     const migrationProcess = spawn(prismaPath, args, {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
+        NODE: nodeExecutable,
+        PATH: `${path.dirname(nodeExecutable)}:${process.env.PATH}`,
       },
       cwd: backendDir,
     })
@@ -189,9 +196,11 @@ async function generatePrismaClient(): Promise<void> {
 
     const prismaPath = path.join(backendDir, 'node_modules', '.bin', 'prisma')
     const args = ['generate']
+    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : process.execPath
 
     log.info('[Prisma Generate] 시작')
     log.info('[Prisma Generate] 작업 디렉토리:', backendDir)
+    log.info('[Prisma Generate] Node 실행 파일:', nodeExecutable)
     log.info('[Prisma Generate] 명령어:', prismaPath, args.join(' '))
     log.info('[Prisma Generate] DATABASE_URL:', process.env.DATABASE_URL)
     log.info('[Prisma Generate] NODE_ENV:', process.env.NODE_ENV)
@@ -200,6 +209,8 @@ async function generatePrismaClient(): Promise<void> {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
+        NODE: nodeExecutable,
+        PATH: `${path.dirname(nodeExecutable)}:${process.env.PATH}`,
       },
       cwd: backendDir,
     })
