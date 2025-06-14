@@ -187,12 +187,14 @@ async function generatePrismaClient(): Promise<void> {
       ? path.join(process.resourcesPath, 'backend')
       : path.join(app.getAppPath(), 'backend')
 
-    const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
-    const args = app.isPackaged ? ['generate'] : ['prisma', 'generate']
+    const prismaPath = path.join(backendDir, 'node_modules', '.bin', 'prisma')
+    const args = ['generate']
 
     log.info('[Prisma Generate] 시작')
     log.info('[Prisma Generate] 작업 디렉토리:', backendDir)
     log.info('[Prisma Generate] 명령어:', prismaPath, args.join(' '))
+    log.info('[Prisma Generate] DATABASE_URL:', process.env.DATABASE_URL)
+    log.info('[Prisma Generate] NODE_ENV:', process.env.NODE_ENV)
 
     const generateProcess = spawn(prismaPath, args, {
       env: {
