@@ -49,12 +49,7 @@ export class NaverIndexerService implements OnModuleInit {
     private readonly settingsService: SettingsService,
   ) {}
 
-  async onModuleInit() {
-    // 애플리케이션 시작 시 네이버 로그인 상태 확인 (3초 지연 후)
-    setTimeout(() => {
-      this.initializeLoginStatus()
-    }, 3000)
-  }
+  async onModuleInit() {}
 
   private sleep(ms: number) {
     return new Promise(res => setTimeout(res, ms))
