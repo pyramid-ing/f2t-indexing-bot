@@ -107,7 +107,7 @@ export class DaumIndexerService {
         ],
         defaultViewport: { width: 1280, height: 900 },
       }
-      if (process.env.NODE_ENV === 'production' && process.env.PUPPETEER_EXECUTABLE_PATH) {
+      if (process.env.PUPPETEER_EXECUTABLE_PATH) {
         launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH
       }
 
