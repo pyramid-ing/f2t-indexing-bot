@@ -7,51 +7,6 @@
     "name": "Iron",
     "email": "k37844350@gmail.com"
   },
-  "build": {
-    "appId": "f2t-indexing-bot",
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "pyramid-ing",
-        "repo": "prd-naver-kin",
-        "releaseType": "release"
-      }
-    ],
-    "mac": {
-      "icon": "build/icon.icns",
-      "category": "your.app.category.type",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
-    },
-    "win": {
-      "icon": "build/icon.ico",
-      "target": [
-        "nsis",
-        "zip"
-      ]
-    },
-    "asar": true,
-    "asarUnpack": [
-      "files/**/*",
-      "dist/backend/**/*",
-      "backend/prisma/**/*"
-    ],
-    "files": [
-      "build/**/*",
-      "dist/electron/**/*",
-      "dist/renderer/**/*",
-      "dist/backend/**/*",
-      "package.json",
-      "!**/*.map",
-      "backend/prisma/db.sqlite",
-      "backend/prisma/migrations/*.sql"
-    ],
-    "directories": {
-      "output": "release"
-    }
-  },
   "scripts": {
     "lint": "eslint \"{src,test}/**/*.{ts,tsx}\" --fix && yarn --cwd ./backend lint",
     "start": "concurrently \"yarn start:renderer\" \"wait-on tcp:8080 && yarn start:main\"",
@@ -61,12 +16,12 @@
     "debug:renderer": "cross-env ELECTRON_DEBUG=true NODE_ENV=development webpack serve --config webpack.config.js",
     "debug:main": "cross-env tsc -p tsconfig.electron.json && cross-env ELECTRON_DEBUG=true electron . --remote-debugging-port=9222",
     "clean": "rimraf dist/*",
-    "build": "yarn clean && yarn --cwd backend prisma migrate deploy && yarn --cwd backend prisma db seed && yarn build:main && yarn build:renderer && yarn --cwd backend build",
+    "build": "yarn clean && yarn build:main && yarn build:renderer && yarn --cwd backend build",
     "build:main": "tsc -p tsconfig.electron.prod.json",
     "build:renderer": "cross-env NODE_ENV=production webpack --config webpack.config.js --mode production",
-    "package": "yarn build && electron-builder",
-    "package-mac": "yarn build && electron-builder --mac",
-    "package-win": "yarn build && electron-builder --win --publish=always"
+    "package": "yarn build && electron-builder --config electron-builder.json",
+    "package-mac": "yarn build && electron-builder --config electron-builder.json --mac",
+    "package-win": "yarn build && electron-builder --config electron-builder.json --win --publish=always"
   },
   "dependencies": {
     "@ant-design/cssinjs": "^1.23.0",

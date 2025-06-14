@@ -1,0 +1,54 @@
+{
+  "appId": "com.f2t.indexing",
+  "productName": "F2T Indexing Bot",
+  "directories": {
+    "output": "release"
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "pyramid-ing",
+      "repo": "f2t-indexing-bot",
+      "releaseType": "release"
+    }
+  ],
+  "files": [
+    "dist/electron/**/*",
+    "dist/renderer/**/*"
+  ],
+  "asar": true,
+  "extraResources": [
+    {
+      "from": "backend/dist",
+      "to": "backend/dist",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "backend/node_modules",
+      "to": "backend/node_modules",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "backend/prisma",
+      "to": "backend/prisma",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "backend/package.json",
+      "to": "backend/package.json"
+    }
+  ],
+  "asarUnpack": [
+    "backend/**/*"
+  ],
+  "mac": {
+    "target": ["dmg"],
+    "category": "public.app-category.utilities",
+    "identity": null,
+    "hardenedRuntime": false,
+    "gatekeeperAssess": false
+  },
+  "win": {
+    "target": ["nsis"]
+  }
+} 

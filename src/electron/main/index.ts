@@ -183,7 +183,7 @@ async function generatePrismaClient(): Promise<void> {
 function startBackend() {
   return new Promise<number>((resolve, reject) => {
     const backendPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'backend', 'main.js')
+      ? path.join(process.resourcesPath, 'backend', 'dist', 'apps', 'main.js')
       : path.join(app.getAppPath(), 'backend', 'dist', 'apps', 'main.js')
 
     console.log(`백엔드 시작 (${backendPath})`)
