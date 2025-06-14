@@ -465,6 +465,39 @@ export class NaverIndexerService implements OnModuleInit {
   }
 
   /**
+   * 네이버 로그인 상태를 페이지에서 직접 확인
+   */
+  private async checkNaverLoginOnPage(page: Page): Promise<boolean> {
+    try {
+      // #account 요소가 없는 경우에만 네이버 메인으로 이동
+      const hasAccountArea = await page.evaluate(() => {
+        return !!document.querySelector('#account')
+      })
+
+      if (!hasAccountArea) {
+        await page.goto('https://www.naver.com', {
+          waitUntil: 'networkidle2',
+          timeout: 10000,
+        })
+        await this.sleep(500)
+      }
+
+      // #account 영역에서 로그인 상태 확인
+      return await page.evaluate(() => {
+        const accountArea = document.querySelector('#account')
+        if (!accountArea) return false
+
+        // "네이버를 더 안전하고 편리하게 이용하세요" 텍스트가 있으면 로그아웃 상태
+        const text = accountArea.textContent || ''
+        return !text.includes('네이버를 더 안전하고 편리하게 이용하세요')
+      })
+    } catch (error) {
+      this.logger.error('페이지에서 로그인 상태 확인 실패:', error)
+      return false
+    }
+  }
+
+  /**
    * 네이버 로그인 상태 확인 (headless)
    */
   async checkLoginStatus(): Promise<NaverLoginStatus> {
@@ -494,31 +527,15 @@ export class NaverIndexerService implements OnModuleInit {
       })
       await page.emulateTimezone('Asia/Seoul')
 
-      let needsLogin = false
-
       try {
         // 저장된 쿠키 로드 시도
         await this.loadCookies(page, naverConfig.naverId)
 
-        // 네이버 서치 어드바이저 페이지로 이동
-        await page.goto('https://searchadvisor.naver.com/console/site', {
-          waitUntil: 'networkidle2',
-          timeout: 10000,
-        })
-
-        await this.sleep(2000)
-
-        // 로그인 필요 여부 확인
-        if (
-          page.url().startsWith('https://nid.naver.com/oauth2.0/authorize') ||
-          page.url().startsWith('https://nid.naver.com/nidlogin.login')
-        ) {
-          needsLogin = true
-        }
+        const isLoggedIn = await this.checkNaverLoginOnPage(page)
 
         await browser.close()
 
-        if (needsLogin) {
+        if (!isLoggedIn) {
           return {
             isLoggedIn: false,
             needsLogin: true,
@@ -689,18 +706,6 @@ export class NaverIndexerService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error('브라우저 닫기 실패:', error)
-    }
-  }
-
-  /**
-   * 애플리케이션 시작 시 네이버 로그인 상태 초기화
-   */
-  async initializeLoginStatus(): Promise<void> {
-    try {
-      const status = await this.checkLoginStatus()
-      this.logger.log(`네이버 로그인 상태 초기화: ${status.message}`)
-    } catch (error) {
-      this.logger.warn(`네이버 로그인 상태 확인 실패: ${error.message}`)
     }
   }
 
