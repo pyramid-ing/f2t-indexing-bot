@@ -35,10 +35,6 @@
     {
       "from": "backend/package.json",
       "to": "backend/package.json"
-    },
-    {
-      "from": "build/node",
-      "to": "node"
     }
   ],
   "asarUnpack": [
@@ -49,9 +45,21 @@
     "category": "public.app-category.utilities",
     "identity": null,
     "hardenedRuntime": false,
-    "gatekeeperAssess": false
+    "gatekeeperAssess": false,
+    "extraResources": [
+      {
+        "from": "resources/node/mac",
+        "to": "node"
+      }
+    ]
   },
   "win": {
-    "target": ["nsis"]
+    "target": ["nsis"],
+    "extraResources": [
+      {
+        "from": "resources/node/win",
+        "to": "node"
+      }
+    ]
   }
 } 
