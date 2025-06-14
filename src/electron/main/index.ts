@@ -62,8 +62,8 @@ async function seedDatabase(): Promise<void> {
     const args = [seedPath]
     const backendDir = path.join(app.getAppPath(), 'backend')
 
-    console.log('DB 시드 실행:', nodeExecutable, args.join(' '))
-    console.log(`작업 디렉토리: ${backendDir}`)
+    log.info('[DB Seed] 시작:', nodeExecutable, args.join(' '))
+    log.info('[DB Seed] 작업 디렉토리:', backendDir)
 
     const seedProcess = spawn(nodeExecutable, args, {
       env: {
@@ -74,26 +74,34 @@ async function seedDatabase(): Promise<void> {
     })
 
     seedProcess.stdout?.on('data', data => {
-      console.log(`[Seed STDOUT]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.log(`[DB Seed]: ${output}`)
+      log.info(`[DB Seed]: ${output}`)
     })
 
     seedProcess.stderr?.on('data', data => {
-      console.error(`[Seed STDERR]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.error(`[DB Seed Error]: ${output}`)
+      log.error(`[DB Seed Error]: ${output}`)
     })
 
     seedProcess.on('close', code => {
       if (code === 0) {
-        console.log('✅ DB 시드가 완료되었습니다.')
+        const msg = '✅ DB 시드가 완료되었습니다.'
+        console.log(msg)
+        log.info('[DB Seed]', msg)
         resolve()
       } else {
         const error = new Error(`DB 시드가 실패했습니다. (Exit code: ${code})`)
         console.error(error)
+        log.error('[DB Seed]', error)
         reject(error)
       }
     })
 
     seedProcess.on('error', err => {
       console.error('DB 시드 중 오류:', err)
+      log.error('[DB Seed] 프로세스 오류:', err)
       reject(err)
     })
   })
@@ -103,33 +111,33 @@ function isDatabaseEmpty(dbPath: string): boolean {
   try {
     // 파일이 없으면 빈 것으로 간주
     if (!fs.existsSync(dbPath)) {
+      log.info('[DB Check] 데이터베이스 파일이 없습니다:', dbPath)
       return true
     }
 
     // 파일 크기가 0이면 빈 것으로 간주
     const stats = fs.statSync(dbPath)
-    return stats.size === 0
+    const isEmpty = stats.size === 0
+    log.info(`[DB Check] 데이터베이스 크기: ${stats.size} bytes, 비어있음: ${isEmpty}`)
+    return isEmpty
   } catch (error) {
-    console.error('DB 파일 확인 중 오류:', error)
+    log.error('[DB Check] 파일 확인 중 오류:', error)
     return true
   }
 }
 
 async function runPrismaMigration(): Promise<void> {
   return new Promise((resolve, reject) => {
-    console.log('Prisma 마이그레이션 실행 중...')
-
     const backendDir = app.isPackaged
       ? path.join(process.resourcesPath, 'backend')
       : path.join(app.getAppPath(), 'backend')
 
     const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
-
     const args = app.isPackaged ? ['migrate', 'deploy'] : ['prisma', 'migrate', 'deploy']
 
-    console.log(`작업 디렉토리: ${backendDir}`)
-    console.log(`Prisma 실행 경로: ${prismaPath}`)
-    console.log(`명령어: ${prismaPath} ${args.join(' ')}`)
+    log.info('[Prisma Migration] 시작')
+    log.info('[Prisma Migration] 작업 디렉토리:', backendDir)
+    log.info('[Prisma Migration] 명령어:', prismaPath, args.join(' '))
 
     const migrationProcess = spawn(prismaPath, args, {
       env: {
@@ -140,26 +148,34 @@ async function runPrismaMigration(): Promise<void> {
     })
 
     migrationProcess.stdout?.on('data', data => {
-      console.log(`[Migration STDOUT]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.log(`[Migration]: ${output}`)
+      log.info(`[Migration]: ${output}`)
     })
 
     migrationProcess.stderr?.on('data', data => {
-      console.error(`[Migration STDERR]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.error(`[Migration Error]: ${output}`)
+      log.error(`[Migration Error]: ${output}`)
     })
 
     migrationProcess.on('close', code => {
       if (code === 0) {
-        console.log('✅ Prisma 마이그레이션이 완료되었습니다.')
+        const msg = '✅ Prisma 마이그레이션이 완료되었습니다.'
+        console.log(msg)
+        log.info('[Migration]', msg)
         resolve()
       } else {
         const error = new Error(`Prisma 마이그레이션이 실패했습니다. (Exit code: ${code})`)
         console.error(error)
+        log.error('[Migration]', error)
         reject(error)
       }
     })
 
     migrationProcess.on('error', err => {
       console.error('Prisma 마이그레이션 중 오류:', err)
+      log.error('[Migration] 프로세스 오류:', err)
       reject(err)
     })
   })
@@ -167,19 +183,16 @@ async function runPrismaMigration(): Promise<void> {
 
 async function generatePrismaClient(): Promise<void> {
   return new Promise((resolve, reject) => {
-    console.log('Prisma 클라이언트 생성 중...')
-
     const backendDir = app.isPackaged
       ? path.join(process.resourcesPath, 'backend')
       : path.join(app.getAppPath(), 'backend')
 
     const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
-
     const args = app.isPackaged ? ['generate'] : ['prisma', 'generate']
 
-    console.log(`작업 디렉토리: ${backendDir}`)
-    console.log(`Prisma 실행 경로: ${prismaPath}`)
-    console.log(`명령어: ${prismaPath} ${args.join(' ')}`)
+    log.info('[Prisma Generate] 시작')
+    log.info('[Prisma Generate] 작업 디렉토리:', backendDir)
+    log.info('[Prisma Generate] 명령어:', prismaPath, args.join(' '))
 
     const generateProcess = spawn(prismaPath, args, {
       env: {
@@ -190,26 +203,34 @@ async function generatePrismaClient(): Promise<void> {
     })
 
     generateProcess.stdout?.on('data', data => {
-      console.log(`[Generate STDOUT]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.log(`[Generate]: ${output}`)
+      log.info(`[Generate]: ${output}`)
     })
 
     generateProcess.stderr?.on('data', data => {
-      console.error(`[Generate STDERR]: ${data.toString().trim()}`)
+      const output = data.toString().trim()
+      console.error(`[Generate Error]: ${output}`)
+      log.error(`[Generate Error]: ${output}`)
     })
 
     generateProcess.on('close', code => {
       if (code === 0) {
-        console.log('✅ Prisma 클라이언트가 생성되었습니다.')
+        const msg = '✅ Prisma 클라이언트가 생성되었습니다.'
+        console.log(msg)
+        log.info('[Generate]', msg)
         resolve()
       } else {
         const error = new Error(`Prisma 클라이언트 생성이 실패했습니다. (Exit code: ${code})`)
         console.error(error)
+        log.error('[Generate]', error)
         reject(error)
       }
     })
 
     generateProcess.on('error', err => {
       console.error('Prisma 클라이언트 생성 중 오류:', err)
+      log.error('[Generate] 프로세스 오류:', err)
       reject(err)
     })
   })
