@@ -58,14 +58,14 @@ async function seedDatabase(): Promise<void> {
       ? path.join(process.resourcesPath, 'backend', 'dist', 'prisma', 'seed.js')
       : path.join(app.getAppPath(), 'backend', 'prisma', 'seed.ts')
 
-    const command = app.isPackaged ? 'node' : 'ts-node'
+    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
     const args = app.isPackaged ? [seedPath] : ['-r', 'tsconfig-paths/register', seedPath]
     const backendDir = path.join(app.getAppPath(), 'backend')
 
-    console.log('DB 시드 실행:', command, args.join(' '))
+    console.log('DB 시드 실행:', nodeExecutable, args.join(' '))
     console.log(`작업 디렉토리: ${backendDir}`)
 
-    const seedProcess = spawn(command, args, {
+    const seedProcess = spawn(nodeExecutable, args, {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
@@ -119,13 +119,19 @@ async function runPrismaMigration(): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log('Prisma 마이그레이션 실행 중...')
 
-    const command = app.isPackaged ? 'prisma' : 'npx'
+    const backendDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'backend')
+      : path.join(app.getAppPath(), 'backend')
+
+    const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
+
     const args = app.isPackaged ? ['migrate', 'deploy'] : ['prisma', 'migrate', 'deploy']
-    const backendDir = path.join(app.getAppPath(), 'backend')
 
     console.log(`작업 디렉토리: ${backendDir}`)
+    console.log(`Prisma 실행 경로: ${prismaPath}`)
+    console.log(`명령어: ${prismaPath} ${args.join(' ')}`)
 
-    const migrationProcess = spawn(command, args, {
+    const migrationProcess = spawn(prismaPath, args, {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
@@ -163,13 +169,19 @@ async function generatePrismaClient(): Promise<void> {
   return new Promise((resolve, reject) => {
     console.log('Prisma 클라이언트 생성 중...')
 
-    const command = app.isPackaged ? 'prisma' : 'npx'
+    const backendDir = app.isPackaged
+      ? path.join(process.resourcesPath, 'backend')
+      : path.join(app.getAppPath(), 'backend')
+
+    const prismaPath = app.isPackaged ? path.join(backendDir, 'node_modules', '.bin', 'prisma') : 'npx'
+
     const args = app.isPackaged ? ['generate'] : ['prisma', 'generate']
-    const backendDir = path.join(app.getAppPath(), 'backend')
 
     console.log(`작업 디렉토리: ${backendDir}`)
+    console.log(`Prisma 실행 경로: ${prismaPath}`)
+    console.log(`명령어: ${prismaPath} ${args.join(' ')}`)
 
-    const generateProcess = spawn(command, args, {
+    const generateProcess = spawn(prismaPath, args, {
       env: {
         ...process.env,
         NODE_ENV: app.isPackaged ? 'production' : 'development',
@@ -259,18 +271,18 @@ app.whenReady().then(async () => {
 
   try {
     // DB가 비어있으면 마이그레이션 후 시드 데이터 추가
-    // if (isDatabaseEmpty(dbPath)) {
-    //   console.log('빈 DB가 감지되었습니다.')
-    //
-    //   console.log('1. Prisma 클라이언트를 생성합니다...')
-    //   await generatePrismaClient()
-    //
-    //   console.log('2. Prisma 마이그레이션을 실행합니다...')
-    //   await runPrismaMigration()
-    //
-    //   console.log('3. 시드 데이터를 추가합니다...')
-    //   await seedDatabase()
-    // }
+    if (isDatabaseEmpty(dbPath)) {
+      console.log('빈 DB가 감지되었습니다.')
+
+      console.log('1. Prisma 클라이언트를 생성합니다...')
+      await generatePrismaClient()
+
+      console.log('2. Prisma 마이그레이션을 실행합니다...')
+      await runPrismaMigration()
+
+      console.log('3. 시드 데이터를 추가합니다...')
+      await seedDatabase()
+    }
 
     await startBackend()
     createWindow()
