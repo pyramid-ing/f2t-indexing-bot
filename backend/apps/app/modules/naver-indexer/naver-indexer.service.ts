@@ -30,7 +30,7 @@ export interface NaverLoginStatus {
 // 쿠키 저장 경로 분기 (tistory-bot 방식과 동일)
 function getNaverCookiePath(naverId?: string) {
   const isProd = process.env.NODE_ENV === 'production'
-  const cookieDir = isProd ? process.env.COOKIE_DIR : path.join(process.cwd(), 'static', 'cookies')
+  const cookieDir = process.env.COOKIE_DIR
   if (!require('fs').existsSync(cookieDir)) require('fs').mkdirSync(cookieDir, { recursive: true })
   const naverIdForFile = (naverId || 'default').replace(/[^a-zA-Z0-9_\-]/g, '_')
   return path.join(cookieDir, `naver_${naverIdForFile}.json`)

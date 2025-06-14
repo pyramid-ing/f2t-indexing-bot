@@ -39,6 +39,17 @@ function setupUserDataDirectory() {
     ? path.join(userDataPath, 'dev.db')
     : path.join(app.getAppPath(), 'backend', 'prisma', 'db.sqlite')
 
+  // 쿠키 디렉토리 설정
+  const cookieDir = app.isPackaged
+    ? path.join(userDataPath, 'static', 'cookies')
+    : path.join(app.getAppPath(), 'backend', 'static', 'cookies')
+
+  // 쿠키 디렉토리가 없으면 생성
+  if (!fs.existsSync(cookieDir)) {
+    fs.mkdirSync(cookieDir, { recursive: true })
+    log.info('쿠키 디렉토리 생성:', cookieDir)
+  }
+
   // 시스템에 설치된 Chrome 경로 설정
   let puppeteerPath = ''
   if (app.isPackaged) {
@@ -67,11 +78,13 @@ function setupUserDataDirectory() {
   process.env.NODE_ENV = app.isPackaged ? 'production' : 'development'
   process.env.USER_DATA_PATH = userDataPath
   process.env.DATABASE_URL = `file:${dbPath}`
+  process.env.COOKIE_DIR = cookieDir
 
   console.log('환경 설정:')
   console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
   console.log(`📁 사용자 데이터 경로: ${userDataPath}`)
   console.log(`🗃️ 데이터베이스 경로: ${dbPath}`)
+  console.log(`🍪 쿠키 저장 경로: ${cookieDir}`)
   console.log(`DATABASE_URL: ${process.env.DATABASE_URL}`)
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
     console.log(`🌐 Chrome 실행 파일 경로: ${process.env.PUPPETEER_EXECUTABLE_PATH}`)
