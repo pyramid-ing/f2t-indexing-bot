@@ -291,13 +291,15 @@ async function generatePrismaClient(): Promise<void> {
 }
 
 function startBackend() {
-  try {
-    const isProduction = process.env.NODE_ENV === 'production'
-    // 백엔드 경로 (NestJS 빌드 경로)
-    const backendBase = isProduction
-      ? path.join(process.resourcesPath, 'backend')
-      : path.join(__dirname, '..', '..', '..', 'backend')
+  // 개발 모드에서는 백엔드를 실행하지 않음
+  if (!app.isPackaged) {
+    log.info('개발 모드: 백엔드는 별도로 실행해주세요.')
+    return
+  }
 
+  try {
+    // 백엔드 경로 (NestJS 빌드 경로)
+    const backendBase = path.join(process.resourcesPath, 'backend')
     const backendEntry = path.join(backendBase, 'dist', 'apps', 'main.js')
 
     // 로그 파일 경로 설정
@@ -307,7 +309,7 @@ function startBackend() {
     }
     const backendLogPath = path.join(logPath, 'backend.log')
 
-    const nodeExecutable = app.isPackaged ? path.join(process.resourcesPath, 'node', 'bin', 'node') : 'node'
+    const nodeExecutable = path.join(process.resourcesPath, 'node', 'bin', 'node')
 
     console.log('백엔드 시작:', nodeExecutable, backendEntry)
     console.log('작업 디렉토리:', backendBase)
