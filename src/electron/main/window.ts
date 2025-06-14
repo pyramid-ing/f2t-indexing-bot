@@ -23,7 +23,7 @@ export function createWindow() {
     console.log('Loading dev server at http://localhost:8080')
     mainWindow.loadURL('http://localhost:8080')
   } else {
-    const indexPath = path.join(__dirname, '..', 'renderer', 'index.html')
+    const indexPath = path.join(__dirname, '..', '..', '..', 'dist', 'renderer', 'index.html')
     mainWindow.loadFile(indexPath)
   }
 

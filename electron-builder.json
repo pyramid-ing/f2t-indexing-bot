@@ -13,8 +13,7 @@
     }
   ],
   "files": [
-    "dist/electron/**/*",
-    "dist/renderer/**/*"
+    "dist/**/*"
   ],
   "asar": true,
   "extraResources": [

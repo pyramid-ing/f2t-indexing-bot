@@ -1,12 +1,35 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, globalShortcut } from 'electron'
 import { spawn, ChildProcess } from 'child_process'
-import path from 'path'
+import * as path from 'path'
 import { createWindow } from './window'
 import { registerIpcHandlers } from './ipc'
-import { appState } from './state'
 import * as fs from 'fs'
+import log from 'electron-log'
+
+// 로그 설정
+log.initialize({ preload: true })
+
+if (process.env.NODE_ENV === 'development') {
+  log.transports.file.resolvePathFn = () => path.join(process.cwd(), 'logs/main.log')
+} else {
+  log.transports.file.resolvePathFn = () => path.join(app.getPath('logs'), 'main.log')
+}
+
+// 로그 레벨 설정
+log.transports.file.level = 'info'
+log.transports.console.level = 'debug'
+
+// 로그 포맷 설정
+log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}'
+
+// 파일 크기 제한 (10MB)
+log.transports.file.maxSize = 10 * 1024 * 1024
+
+// 로그 시작 표시
+log.info('애플리케이션 시작')
 
 let backendProcess: ChildProcess | null = null
+let mainWindow: BrowserWindow | null = null
 
 function setupUserDataDirectory() {
   const userDataPath = app.getPath('userData')
@@ -181,63 +204,51 @@ async function generatePrismaClient(): Promise<void> {
 }
 
 function startBackend() {
-  return new Promise<number>((resolve, reject) => {
-    const backendPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'backend', 'dist', 'apps', 'main.js')
-      : path.join(app.getAppPath(), 'backend', 'dist', 'apps', 'main.js')
+  try {
+    const isProduction = process.env.NODE_ENV === 'production'
+    const backendPath = isProduction
+      ? path.join(process.resourcesPath, 'backend')
+      : path.join(__dirname, '..', '..', 'backend')
 
-    console.log(`백엔드 시작 (${backendPath})`)
-
-    try {
-      // 백엔드 파일이 존재하는지 확인
-      if (!fs.existsSync(backendPath)) {
-        console.error(`❌ 백엔드 파일이 존재하지 않습니다: ${backendPath}`)
-        reject(new Error(`Backend file not found: ${backendPath}`))
-        return
-      }
-
-      backendProcess = spawn('node', [backendPath], {
-        env: {
-          ...process.env,
-          NODE_ENV: app.isPackaged ? 'production' : 'development',
-        },
-      })
-
-      const handleData = (data: Buffer) => {
-        const output = data.toString()
-        console.log(`[Backend STDOUT]: ${output.trim()}`)
-        const match = output.match(/BACKEND_PORT=(\d+)/)
-        if (match && match[1]) {
-          const port = parseInt(match[1], 10)
-          console.log(`✅ 백엔드 포트 감지: ${port}`)
-          appState.backendPort = port
-          resolve(port)
-          backendProcess?.stdout?.removeListener('data', handleData)
-        }
-      }
-
-      backendProcess.stdout?.on('data', handleData)
-
-      backendProcess.stderr?.on('data', data => {
-        console.error(`[Backend STDERR]: ${data.toString().trim()}`)
-      })
-
-      backendProcess.on('close', code => {
-        console.log(`Backend process exited with code ${code}`)
-        if (code !== 0 && code !== null) {
-          reject(new Error(`Backend process exited with non-zero code: ${code}`))
-        }
-      })
-
-      backendProcess.on('error', err => {
-        console.error('[Backend ERROR]:', err)
-        reject(err)
-      })
-    } catch (error) {
-      console.error('백엔드 프로세스 시작 중 오류:', error)
-      reject(error)
+    // 로그 파일 경로 설정
+    const logPath = path.join(app.getPath('userData'), 'logs')
+    if (!fs.existsSync(logPath)) {
+      fs.mkdirSync(logPath, { recursive: true })
     }
-  })
+    const backendLogPath = path.join(logPath, 'backend.log')
+
+    const nodeExecutable = process.platform === 'win32' ? 'node.exe' : 'node'
+    const nodePath = isProduction
+      ? path.join(process.resourcesPath, 'backend', 'node_modules', '.bin', nodeExecutable)
+      : 'node'
+
+    backendProcess = spawn(nodePath, ['dist/main.js'], {
+      cwd: backendPath,
+      env: {
+        ...process.env,
+        NODE_ENV: process.env.NODE_ENV || 'production',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+
+    // 로그 파일로 출력 리다이렉션
+    const logStream = fs.createWriteStream(backendLogPath, { flags: 'a' })
+    backendProcess.stdout.pipe(logStream)
+    backendProcess.stderr.pipe(logStream)
+
+    backendProcess.on('error', error => {
+      console.error('Backend process error:', error)
+      log.error('Backend process error:', error)
+    })
+
+    backendProcess.on('exit', (code, signal) => {
+      console.log(`Backend process exited with code ${code} and signal ${signal}`)
+      log.info(`Backend process exited with code ${code} and signal ${signal}`)
+    })
+  } catch (error) {
+    console.error('Backend 시작 실패:', error)
+    log.error('Backend 시작 실패:', error)
+  }
 }
 
 app.whenReady().then(async () => {
@@ -262,9 +273,27 @@ app.whenReady().then(async () => {
       await seedDatabase()
     }
 
-    await startBackend()
+    // await startBackend()
     createWindow()
     registerIpcHandlers()
+
+    // 개발자 도구 단축키 등록
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+      if (mainWindow) {
+        mainWindow.webContents.openDevTools()
+      }
+    })
+
+    // 에러 로깅 강화
+    process.on('uncaughtException', error => {
+      console.error('Uncaught Exception:', error)
+      log.error('Uncaught Exception:', error)
+    })
+
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason)
+      log.error('Unhandled Rejection:', reason)
+    })
   } catch (error) {
     console.error('애플리케이션 시작 실패:', error)
     app.quit()
