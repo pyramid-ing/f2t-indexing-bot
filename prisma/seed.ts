@@ -54,11 +54,15 @@ async function main() {
   console.log('시드 데이터 초기화 완료')
 }
 
-main()
-  .catch((e) => {
+(async () => {
+  try {
+    await main()
+  }
+  catch (e) {
     console.error(e)
     process.exit(1)
-  })
-  .finally(async () => {
+  }
+  finally {
     await prisma.$disconnect()
-  })
+  }
+})()
