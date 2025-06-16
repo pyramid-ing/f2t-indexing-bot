@@ -7,8 +7,6 @@ const { version, description } = require('./package.json')
 const config = {
   appId: 'com.f2t.indexing',
   productName: '윈소프트 검색엔진 등록 봇',
-  version,
-  description,
   directories: {
     output: 'dist/electron',
   },
