@@ -133,7 +133,7 @@ export class DaumIndexerService {
       try {
         if (await this.loadCookies(page, daumSiteUrl)) {
           await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-          await this.sleep(2000)
+          await this.sleep(1000)
           const isLoginPage = await page.evaluate(() => {
             return !!document.querySelector('form.form_register input#authSiteUrl')
           })
