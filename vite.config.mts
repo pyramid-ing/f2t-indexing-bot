@@ -23,6 +23,11 @@ export default defineConfig({
           outDir: 'dist/preload',
         },
       },
+      debugCfg: {
+        enabled: true,
+        args: ['--remote-debugging-port=9222'], // ← 여기에 디버깅 옵션!
+        // 필요시 env, sourcemapType 등도 추가 가능
+      },
       waitTimeout: 60000,
     }),
   ],
