@@ -54,7 +54,7 @@ jobs:
       - name: Build Windows App
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: pnpm package-win
+        run: pnpm build
         shell: pwsh
 
       # 9. 빌드된 파일 업로드
