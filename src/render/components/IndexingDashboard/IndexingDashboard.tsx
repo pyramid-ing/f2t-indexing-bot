@@ -345,20 +345,24 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
       }
       else if (result.status === 'success' && result.data) {
-        if (service === 'bing' && result.data.success) {
-          const urlsForService = task._groupedUrls?.[service] || task.urls
-          urlsForService.forEach((url, urlIndex) => {
-            flatList.push({
-              id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
-              service,
-              url,
-              status: 'success',
-              message: result.data.message || '요청 성공',
-              rawData: result.data,
+        if (service === 'bing') {
+          const isBingSuccess = (result.data && (result.data.success || result.data.d === null || Object.keys(result.data).length === 0))
+          if (isBingSuccess) {
+            const urlsForService = task._groupedUrls?.[service] || task.urls
+            urlsForService.forEach((url, urlIndex) => {
+              flatList.push({
+                id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
+                service,
+                url,
+                status: 'success',
+                message: '요청 성공',
+                rawData: result.data,
+              })
             })
-          })
+            return
+          }
         }
-        else if (Array.isArray(result.data.results)) {
+        if (Array.isArray(result.data.results)) {
           processIndividualResults(result.data.results)
         }
         else if (Array.isArray(result.data)) {
