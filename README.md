@@ -1,50 +1,70 @@
-# F2T 인덱싱 봇
+<p align="center">
+    <img width="400" src="./logo.png" alt="logo">
+</p>
 
-블로그 포스트를 Google, Bing, Naver, Daum에 자동으로 색인 요청하는 Electron 앱입니다.
+# ⚡Vite + Electron + Nestjs Template
 
-## 빠른 시작
+This template is used to build [vite](https://vitejs.dev/) + [electron](https://www.electronjs.org/) + [nestjs](https://nestjs.com/) projects. Build with [Doubleshot](https://github.com/Doubleshotjs/doubleshot), crazy fast!
 
-### 1. 백엔드 서버 실행
+🎉 [Doubleshot](https://github.com/Doubleshotjs/doubleshot) is a whole new set of tools to help you quickly build and start a node backend or electron main process.
 
-```bash
-cd backend
-npm install
-npm run dev
+This is a vue version of the template, you can also use:
+
+- [React template](https://github.com/ArcherGu/vite-react-nestjs-electron)
+- [Svelte.js template](https://github.com/ArcherGu/vite-svelte-nestjs-electron)
+
+## Introduce
+
+This is a template based on my repo: [fast-vite-electron](https://github.com/ArcherGu/fast-vite-electron). In the main process, I integrated nestjs. In the main process, you can build your code just as you would write a nestjs backend. Desktop clients built from this template can quickly split the electron when you need to switch to B/S.
+
+## Features
+
+- 🔨 [vite-plugin-doubleshot](https://github.com/archergu/doubleshot/tree/main/packages/plugin-vite#readme) to run/build electron main process or node backend.
+  <br>
+
+- 🛻 An electron ipc transport for [nestjs](https://nestjs.com/) that provides simple ipc communication.
+  <br>
+
+- 🪟 An electron module for [nestjs](https://nestjs.com/) to launch electron windows.
+  <br>
+
+- ⏩ Quick start and build, powered by [tsup](https://tsup.egoist.dev/) and [electron-builder](https://www.electron.build/) integrated in [@doubleshot/builder](https://github.com/Doubleshotjs/doubleshot/tree/main/packages/builder)
+
+## How to use
+
+- Click the [Use this template](https://github.com/ArcherGu/fast-vite-electron/generate) button (you must be logged in) or just clone this repo.
+- In the project folder:
+
+  ```bash
+  # install dependencies
+  yarn # npm install
+
+  # run in developer mode
+  yarn dev # npm run dev
+
+  # build
+  yarn build # npm run build
+  ```
+
+## Note for PNPM
+
+In order to use with `pnpm`, you'll need to adjust your `.npmrc` to use any one the following approaches in order for your dependencies to be bundled correctly (ref: [#6389](https://github.com/electron-userland/electron-builder/issues/6289#issuecomment-1042620422)):
+
+```
+node-linker=hoisted
 ```
 
-### 2. 프론트엔드 실행
-
-```bash
-npm install
-npm run dev
+```
+public-hoist-pattern=*
 ```
 
-## 특징
-
-- **자동 데이터베이스 초기화**: 첫 실행 시 SQLite 데이터베이스가 자동으로 생성됩니다
-- **4개 검색엔진 지원**: Google, Bing, Naver, Daum
-- **사이트 관리**: 여러 사이트의 인덱싱 설정을 관리할 수 있습니다
-- **실시간 로그**: 인덱싱 작업의 성공/실패 로그를 확인할 수 있습니다
-
-## 폴더 구조
-
 ```
-├── backend/                 # NestJS 백엔드
-│   ├── src/               # 앱 모듈들
-│   ├── prisma/             # 데이터베이스 스키마
-│   └── ...
-├── src/
-│   ├── electron/           # Electron 메인 프로세스
-│   └── renderer/           # React 프론트엔드
-└── ...
+shamefully-hoist=true
 ```
 
-## 문제 해결
+## Relative
 
-### 백엔드 연결 오류
-- 백엔드 서버가 실행 중인지 확인: `cd backend && npm run dev`
-- 포트 3030이 사용 중이 아닌지 확인
+My blog post:
 
-### 데이터베이스 오류
-- 데이터베이스는 첫 실행 시 자동으로 초기화됩니다
-- 수동 재초기화: `cd backend && npm run db:reset` 
+- [极速 DX Vite + Electron + esbuild](https://archergu.me/posts/vite-electron-esbuild)
+- [用装饰器给 Electron 提供一个基础 API 框架](https://archergu.me/posts/electron-decorators)
