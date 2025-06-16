@@ -516,7 +516,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               layout="vertical"
               onFinish={values =>
                 handleManualIndexing({
-                  urls: values.urls.split('\\n').filter((u: string) => u.trim() !== ''),
+                  urls: values.urls.split('\n').filter((u: string) => u.trim() !== ''),
                   services: values.services,
                 })}
             >
