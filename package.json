@@ -1,9 +1,9 @@
 {
-  "name": "fast-vite-nestjs-electron",
+  "name": "winsoft-search-engine-register",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "packageManager": "pnpm@10.12.1",
-  "description": "Vite + Electron with Doubleshot, so fast! ⚡",
+  "description": "검색엔진 자동 등록기입니다. Bing, Google, 네이버, 다음을 지원합니다.",
   "main": "dist/main/index.cjs",
   "scripts": {
     "dev": "rimraf dist && vite",

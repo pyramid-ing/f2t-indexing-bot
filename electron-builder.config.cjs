@@ -1,15 +1,25 @@
+const { version, description } = require('./package.json')
+
 /**
  * @type {import('electron-builder').Configuration}
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
   appId: 'com.f2t.indexing',
-  productName: 'Test F2T Indexing Bot',
+  productName: '윈소프트 검색엔진 등록 봇',
+  version,
+  description,
   directories: {
     output: 'dist/electron',
   },
   npmRebuild: false,
   publish: [
+    {
+      provider: 'github',
+      owner: 'pyramid-ing',
+      repo: 'f2t-indexing-bot',
+      releaseType: 'release',
+    },
   ],
   asar: true,
   asarUnpack: [
@@ -43,6 +53,7 @@ const config = {
     },
   ],
   mac: {
+    icon: 'build/icon.icns',
     target: [
       'dmg',
     ],
@@ -52,6 +63,7 @@ const config = {
     gatekeeperAssess: false,
   },
   win: {
+    icon: 'build/icon.ico',
     target: [
       'nsis',
     ],
@@ -61,6 +73,7 @@ const config = {
     allowToChangeInstallationDirectory: true,
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
+    runAfterFinish: true,
   },
 }
 
