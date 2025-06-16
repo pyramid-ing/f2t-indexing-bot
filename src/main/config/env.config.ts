@@ -30,8 +30,8 @@ export class EnvConfig {
   private static setupEngineNames() {
     switch (this.platform) {
       case 'win32':
-        this.engineName = `schema-engine-windows-${this.arch}.exe`
-        this.libName = `libquery_engine-windows-${this.arch}.dll.node`
+        this.engineName = `schema-engine-windows.exe`
+        this.libName = `query_engine-windows.dll.node`
         break
       case 'darwin':
         this.engineName = `schema-engine-darwin-${this.arch}`
