@@ -1,6 +1,9 @@
+// 파일 존재 여부 확인
+import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import electronLog from 'electron-log'
+
 import { EnvConfig } from './env.config'
 
 export class LoggerConfig {
@@ -15,16 +18,15 @@ export class LoggerConfig {
       )
     }
 
-    // 패키지 모드에서는 모든 로그 레벨 활성화
-    this.logger.transports.console.level = 'silly'
-    this.logger.transports.file.level = 'silly'
+    this.logger.transports.console.level = 'info'
+    this.logger.transports.file.level = 'info'
 
     // 로그 포맷 설정 - 스택 트레이스 포함
     this.logger.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text} {stack}'
-    
+
     // 로그 파일 크기 제한 (10MB)
     this.logger.transports.file.maxSize = 10 * 1024 * 1024
-    
+
     // 로그 파일 순환 설정
     this.logger.transports.file.archiveLog = (oldFile) => {
       const timestamp = Date.now()
@@ -58,7 +60,7 @@ export class LoggerConfig {
 
   private static logEnvironmentVariables() {
     this.logger.info('--- Environment Variables ---')
-    Object.keys(process.env).forEach(key => {
+    Object.keys(process.env).forEach((key) => {
       // 민감한 정보는 제외
       if (!key.includes('TOKEN') && !key.includes('SECRET') && !key.includes('PASSWORD')) {
         this.logger.info(`${key}:`, process.env[key])
@@ -71,12 +73,9 @@ export class LoggerConfig {
     this.logger.info('Database URL:', process.env.DATABASE_URL)
     this.logger.info('Query Engine Binary:', process.env.PRISMA_QUERY_ENGINE_BINARY)
     this.logger.info('Query Engine Library:', process.env.PRISMA_QUERY_ENGINE_LIBRARY)
-    
-    // 파일 존재 여부 확인
-    const fs = require('fs')
     const enginePath = process.env.PRISMA_QUERY_ENGINE_BINARY
     const libPath = process.env.PRISMA_QUERY_ENGINE_LIBRARY
-    
+
     if (enginePath) {
       this.logger.info('Engine exists:', fs.existsSync(enginePath))
     }
@@ -96,7 +95,7 @@ export class LoggerConfig {
     })
 
     // Node.js의 처리되지 않은 Promise 거부 처리
-    process.on('unhandledRejection', (reason: any, promise) => {
+    process.on('unhandledRejection', (reason: any) => {
       this.logger.error('Unhandled Promise Rejection:', reason)
       if (reason instanceof Error) {
         this.logger.error('Stack:', reason.stack)

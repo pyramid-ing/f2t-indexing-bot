@@ -1,3 +1,5 @@
+import * as fs from 'node:fs'
+import * as os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
 import { LoggerConfig } from './logger.config'
@@ -43,14 +45,27 @@ export class EnvConfig {
   }
 
   private static getDefaultChromePath(): string {
-    switch (this.platform) {
-      case 'win32':
-        return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
-      case 'darwin':
-        return '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-      default:
-        return ''
+    const platform = os.platform()
+    // 각 OS별 크롬 설치 가능 경로 목록
+    const chromePaths: { [key: string]: string[] } = {
+      win32: [
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+        path.join(process.env.LOCALAPPDATA || '', 'Google\\Chrome\\Application\\chrome.exe'),
+      ],
+      darwin: [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        path.join(os.homedir(), 'Applications/Google Chrome.app/Contents/MacOS/Google Chrome'),
+      ],
     }
+    const candidates = chromePaths[platform] || []
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        return candidate
+      }
+    }
+    // 못 찾았을 때는 빈 문자열 반환
+    return ''
   }
 
   private static setupPackagedEnvironment() {
