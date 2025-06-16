@@ -20,37 +20,46 @@ jobs:
         with:
           node-version: 20
 
-      # 3. 캐시 활성화
-      - name: Cache Node Modules
+      # 3. pnpm 설치
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.12.1
+
+      # 4. 캐시 활성화
+      - name: Cache pnpm modules
         uses: actions/cache@v3
         with:
-          path: ~/.yarn/cache
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-pnpm-
 
-      # 4. Yarn 설정 및 의존성 설치 (루트 및 백엔드)
+      # 5. pnpm 의존성 설치 (루트)
       - name: Install dependencies
         run: |
-          yarn config set registry https://registry.npmjs.org
-          yarn config set network-timeout 600000
-          yarn install
-          yarn --cwd backend install
+          pnpm install
 
-      # 5. Prisma Generate 실행
+      # 6. Prisma Client 생성
       - name: Generate Prisma Client
-        run: yarn --cwd backend prisma generate
+        run: pnpm prisma generate
 
-      # 7. Electron 빌드 (package-win 스크립트 실행)
+      # 7. (필요시) Prisma 마이그레이션/시드
+      # - name: Run Prisma Migrate
+      #   run: pnpm prisma migrate deploy
+      # - name: Seed Database
+      #   run: pnpm prisma db seed
+
+      # 8. Electron 빌드 (스크립트명에 맞게 수정)
       - name: Build Windows App
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        run: yarn package-win
+        run: pnpm package-win
         shell: pwsh
 
-      # 8. 빌드된 파일 업로드
+      # 9. 빌드된 파일 업로드
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: f2t-search-indexing-app
-          path: release/
+          path: dist/electron
