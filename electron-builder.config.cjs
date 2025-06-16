@@ -72,6 +72,7 @@ const config = {
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     runAfterFinish: true,
+    perMachine: true,
   },
 }
 
