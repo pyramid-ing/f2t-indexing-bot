@@ -116,20 +116,6 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item
-                name="loginUrl"
-                label="로그인 URL (선택사항)"
-                help="특별한 로그인 URL이 있는 경우 입력해주세요"
-              >
-                <Input
-                  placeholder="https://login.daum.net/accounts/loginform.do"
-                  disabled={!localUse}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
         </Card>
 
         <Form.Item>

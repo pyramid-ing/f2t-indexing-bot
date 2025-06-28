@@ -97,18 +97,6 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
             </Col>
           </Row>
 
-          <Row gutter={16}>
-            <Col span={24}>
-              <Form.Item
-                name="loginUrl"
-                label="로그인 URL (선택사항)"
-                help="특별한 로그인 URL이 있는 경우 입력해주세요"
-              >
-                <Input placeholder="https://nid.naver.com/nidlogin.login" disabled={!localUse} />
-              </Form.Item>
-            </Col>
-          </Row>
-
           <div
             style={{
               backgroundColor: '#fff7e6',
