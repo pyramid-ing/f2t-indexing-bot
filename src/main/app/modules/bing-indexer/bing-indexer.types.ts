@@ -1,7 +1,7 @@
 export interface BingIndexerOptions {
   url?: string
   urls?: string[]
-  siteUrl: string
+  siteId: number
 }
 
 export interface BingSubmitPayload {

@@ -61,9 +61,9 @@ const SiteSettings: React.FC = () => {
     setModalVisible(true)
   }
 
-  const handleDelete = async (siteUrl: string) => {
+  const handleDelete = async (siteId: number) => {
     try {
-      await deleteSiteConfig(siteUrl)
+      await deleteSiteConfig(siteId)
       message.success('사이트가 삭제되었습니다.')
       loadSites()
     }
@@ -83,13 +83,26 @@ const SiteSettings: React.FC = () => {
 
   const handleSave = async (values: any) => {
     try {
+      // URL에서 도메인 추출
+      const extractDomain = (url: string) => {
+        try {
+          const urlObj = new URL(url)
+          return urlObj.hostname.replace('www.', '')
+        }
+        catch {
+          return url.replace('www.', '')
+        }
+      }
+
       const siteData: SiteConfig = {
+        domain: extractDomain(values.siteUrl),
         name: values.name,
         siteUrl: values.siteUrl,
+        isActive: true,
       }
 
       if (editingSite) {
-        await updateSiteConfig(editingSite.siteUrl, siteData)
+        await updateSiteConfig(editingSite.id!, siteData)
         message.success('사이트가 수정되었습니다.')
       }
       else {
@@ -148,7 +161,7 @@ const SiteSettings: React.FC = () => {
           </Button>
           <Popconfirm
             title="정말 삭제하시겠습니까?"
-            onConfirm={() => handleDelete(record.siteUrl)}
+            onConfirm={() => handleDelete(record.id)}
             okText="삭제"
             cancelText="취소"
           >

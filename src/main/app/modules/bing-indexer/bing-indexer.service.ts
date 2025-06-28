@@ -1,5 +1,5 @@
+import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
 import { PrismaService } from '@main/app/shared/prisma.service'
-import { SettingsService } from '@main/app/shared/settings.service'
 import { BingAuthError, BingConfigError, BingSubmissionError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
@@ -14,34 +14,37 @@ export class BingIndexerService {
   constructor(
     private readonly httpService: HttpService,
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly siteConfigService: SiteConfigService,
   ) {}
 
-  private async getBingConfig() {
+  private async getBingConfigForSite(siteId: number) {
     try {
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
 
-      if (!globalSettings.bing || !globalSettings.bing.use) {
-        throw new BingConfigError('Bing 색인이 비활성화되어 있습니다.', 'getBingConfig', 'indexing_service', {
+      if (!siteConfig.bingConfig || !siteConfig.bingConfig.use) {
+        throw new BingConfigError('Bing 색인이 비활성화되어 있습니다.', 'getBingConfigForSite', 'indexing_service', {
           enabled: false,
+          siteId,
         })
       }
 
-      if (!globalSettings.bing.apiKey) {
-        throw new BingConfigError('Bing API 키가 설정되지 않았습니다.', 'getBingConfig', 'api_key', {
+      if (!siteConfig.bingConfig.apiKey) {
+        throw new BingConfigError('Bing API 키가 설정되지 않았습니다.', 'getBingConfigForSite', 'api_key', {
           hasApiKey: false,
+          siteId,
         })
       }
 
       return {
-        apiKey: globalSettings.bing.apiKey,
+        apiKey: siteConfig.bingConfig.apiKey,
+        siteConfig,
       }
     }
     catch (error) {
       if (error instanceof BingConfigError) {
         throw error
       }
-      throw new BingConfigError(`Bing 설정 조회 실패: ${error.message}`, 'getBingConfig', 'settings_fetch')
+      throw new BingConfigError(`Bing 설정 조회 실패: ${error.message}`, 'getBingConfigForSite', 'settings_fetch', { siteId })
     }
   }
 
@@ -52,13 +55,13 @@ export class BingIndexerService {
     }
   }
 
-  async submitUrlToBing(siteUrl: string, url: string): Promise<any> {
+  async submitUrlToBing(siteId: number, url: string): Promise<any> {
     try {
-      const config = await this.getBingConfig()
-      const payload = this.createPayload(siteUrl, [url])
+      const { apiKey, siteConfig } = await this.getBingConfigForSite(siteId)
+      const payload = this.createPayload(siteConfig.siteUrl, [url])
 
       const response = await firstValueFrom(
-        this.httpService.post(`${this.bingApiUrl}?apikey=${config.apiKey}`, payload, {
+        this.httpService.post(`${this.bingApiUrl}?apikey=${apiKey}`, payload, {
           headers: {
             'Content-Type': 'application/json',
           },
@@ -68,7 +71,7 @@ export class BingIndexerService {
       // 로그 기록
       await this.prisma.indexingLog.create({
         data: {
-          siteUrl,
+          siteId,
           targetUrl: url,
           provider: 'BING',
           status: 'SUCCESS',
@@ -77,7 +80,7 @@ export class BingIndexerService {
       })
 
       if (response.data && response.data.d && response.data.d.ErrorCode) {
-        throw new BingSubmissionError(`Bing API 오류: ${response.data.d.Message}`, 'submitUrlToBing', url, siteUrl, {
+        throw new BingSubmissionError(`Bing API 오류: ${response.data.d.Message}`, 'submitUrlToBing', url, siteId.toString(), {
           errorCode: response.data.d.ErrorCode,
           errorMessage: response.data.d.Message,
           responseData: response.data,
@@ -90,7 +93,7 @@ export class BingIndexerService {
       // 실패 로그 기록
       await this.prisma.indexingLog.create({
         data: {
-          siteUrl,
+          siteId,
           targetUrl: url,
           provider: 'BING',
           status: 'FAILED',
@@ -107,7 +110,7 @@ export class BingIndexerService {
       if (error.response?.status === 401) {
         throw new BingAuthError('Bing API 인증이 실패했습니다. API 키를 확인해주세요.', 'submitUrlToBing', {
           url,
-          siteUrl,
+          siteId,
           responseStatus: 401,
         })
       }
@@ -116,7 +119,7 @@ export class BingIndexerService {
           'Bing API 권한이 없습니다. 사이트 등록 및 API 키 권한을 확인해주세요.',
           'submitUrlToBing',
           url,
-          siteUrl,
+          siteId.toString(),
           { responseStatus: 403, responseData: error.response?.data },
         )
       }
@@ -125,12 +128,12 @@ export class BingIndexerService {
           'Bing API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'submitUrlToBing',
           url,
-          siteUrl,
+          siteId.toString(),
           { responseStatus: 429, responseData: error.response?.data },
         )
       }
 
-      throw new BingSubmissionError(`Bing 색인 요청 실패: ${error.message}`, 'submitUrlToBing', url, siteUrl, {
+      throw new BingSubmissionError(`Bing 색인 요청 실패: ${error.message}`, 'submitUrlToBing', url, siteId.toString(), {
         responseStatus: error.response?.status,
         responseData: error.response?.data,
         axiosCode: error.code,
@@ -138,13 +141,13 @@ export class BingIndexerService {
     }
   }
 
-  async submitMultipleUrlsToBing(siteUrl: string, urls: string[]): Promise<any> {
+  async submitMultipleUrlsToBing(siteId: number, urls: string[]): Promise<any> {
     try {
-      const config = await this.getBingConfig()
-      const payload = this.createPayload(siteUrl, urls)
+      const { apiKey, siteConfig } = await this.getBingConfigForSite(siteId)
+      const payload = this.createPayload(siteConfig.siteUrl, urls)
 
       const response = await firstValueFrom(
-        this.httpService.post(`${this.bingApiUrl}?apikey=${config.apiKey}`, payload, {
+        this.httpService.post(`${this.bingApiUrl}?apikey=${apiKey}`, payload, {
           headers: {
             'Content-Type': 'application/json',
           },
@@ -156,7 +159,7 @@ export class BingIndexerService {
           `Bing API 오류: ${response.data.d.Message}`,
           'submitMultipleUrlsToBing',
           undefined,
-          siteUrl,
+          siteId.toString(),
           {
             urlCount: urls.length,
             errorCode: response.data.d.ErrorCode,
@@ -170,7 +173,7 @@ export class BingIndexerService {
       for (const url of urls) {
         await this.prisma.indexingLog.create({
           data: {
-            siteUrl,
+            siteId,
             targetUrl: url,
             provider: 'BING',
             status: 'SUCCESS',
@@ -186,7 +189,7 @@ export class BingIndexerService {
       for (const url of urls) {
         await this.prisma.indexingLog.create({
           data: {
-            siteUrl,
+            siteId,
             targetUrl: url,
             provider: 'BING',
             status: 'FAILED',
@@ -203,8 +206,8 @@ export class BingIndexerService {
       // HTTP 응답 에러 분석
       if (error.response?.status === 401) {
         throw new BingAuthError('Bing API 인증이 실패했습니다. API 키를 확인해주세요.', 'submitMultipleUrlsToBing', {
-          urlCount: urls.length,
-          siteUrl,
+          urls,
+          siteId,
           responseStatus: 401,
         })
       }
@@ -213,12 +216,8 @@ export class BingIndexerService {
           'Bing API 권한이 없습니다. 사이트 등록 및 API 키 권한을 확인해주세요.',
           'submitMultipleUrlsToBing',
           undefined,
-          siteUrl,
-          {
-            urlCount: urls.length,
-            responseStatus: 403,
-            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
-          },
+          siteId.toString(),
+          { responseStatus: 403, responseData: error.response?.data, urlCount: urls.length },
         )
       }
       else if (error.response?.status === 429) {
@@ -226,173 +225,46 @@ export class BingIndexerService {
           'Bing API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'submitMultipleUrlsToBing',
           undefined,
-          siteUrl,
-          {
-            urlCount: urls.length,
-            responseStatus: 429,
-            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
-          },
+          siteId.toString(),
+          { responseStatus: 429, responseData: error.response?.data, urlCount: urls.length },
         )
       }
 
-      throw new BingSubmissionError(
-        `Bing 다중 색인 요청 실패: ${error.message}`,
-        'submitMultipleUrlsToBing',
-        undefined,
-        siteUrl,
-        {
-          urlCount: urls.length,
-          responseStatus: error.response?.status,
-          responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
-          axiosCode: error.code,
-        },
-      )
+      throw new BingSubmissionError(`Bing 다중 색인 요청 실패: ${error.message}`, 'submitMultipleUrlsToBing', undefined, siteId.toString(), {
+        responseStatus: error.response?.status,
+        responseData: error.response?.data,
+        urlCount: urls.length,
+        axiosCode: error.code,
+      })
     }
   }
 
   async manualIndexing(options: BingIndexerOptions): Promise<any> {
-    if (!options.siteUrl) {
-      throw new BingSubmissionError('siteUrl이 필요합니다.', 'manualIndexing', undefined, undefined, {
-        providedOptions: options,
-      })
+    const { url, urls, siteId } = options
+
+    if (!siteId) {
+      throw new BingSubmissionError('Site ID가 필요합니다.', 'manualIndexing', '', '0', { options })
     }
 
-    if (options.url) {
-      return this.submitUrlToBing(options.siteUrl, options.url)
+    // 단일 URL 처리
+    if (url) {
+      return await this.submitUrlToBing(siteId, url)
     }
-    else if (options.urls && options.urls.length > 0) {
-      return this.submitMultipleUrlsToBing(options.siteUrl, options.urls)
+
+    // 다중 URL 처리
+    if (urls && urls.length > 0) {
+      return await this.submitMultipleUrlsToBing(siteId, urls)
     }
-    else {
-      throw new BingSubmissionError('URL 또는 URLs가 필요합니다.', 'manualIndexing', undefined, options.siteUrl, {
-        providedOptions: options,
-      })
-    }
+
+    throw new BingSubmissionError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), { options })
   }
 
-  async getUrlInfo(siteUrl: string, urls: string[]): Promise<any> {
-    this.logger.log(`Bing URL 상태 조회: ${siteUrl}`)
-
-    try {
-      const config = await this.getBingConfig()
-
-      // ... rest of the existing method implementation ...
+  // 레거시 호환성을 위한 메서드 (필요한 경우)
+  async indexUrls(urls: string[], siteId?: number): Promise<any> {
+    if (!siteId) {
+      throw new BingSubmissionError('Site ID가 필요합니다.', 'indexUrls', '', '0', { urls })
     }
-    catch (error) {
-      this.logger.error('Bing URL 상태 조회 실패:', error)
 
-      if (error instanceof BingConfigError || error instanceof BingAuthError) {
-        throw error
-      }
-
-      throw new BingSubmissionError(`Bing URL 상태 조회 실패: ${error.message}`, 'getUrlInfo', undefined, siteUrl, {
-        urlCount: urls.length,
-        responseStatus: error.response?.status,
-        responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
-      })
-    }
-  }
-
-  async indexUrls(urls: string[]): Promise<any> {
-    try {
-      this.logger.log(`Bing 인덱싱 시작: ${urls.length}개 URL`)
-
-      // 전역 Bing 설정 조회
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
-      const bingConfig = globalSettings.bing
-
-      if (!bingConfig.use) {
-        throw new BingConfigError('Bing 인덱싱이 비활성화되어 있습니다.', 'indexUrls', 'indexing_service', {
-          enabled: false,
-        })
-      }
-
-      if (!bingConfig.apiKey) {
-        throw new BingConfigError('Bing API 키가 설정되지 않았습니다.', 'indexUrls', 'api_key', {
-          hasApiKey: false,
-        })
-      }
-
-      const results = []
-      const failedUrls = []
-
-      for (const url of urls) {
-        const result = await this.indexSingleUrl(url, bingConfig)
-        results.push(result)
-
-        // 인덱싱 로그 저장
-        await this.prisma.indexingLog.create({
-          data: {
-            siteUrl: 'global', // 전역 설정이므로 임시값
-            targetUrl: url,
-            provider: 'BING',
-            status: result.success ? 'SUCCESS' : 'FAILED',
-            message: result.success ? result.message : result.error,
-            responseData: JSON.stringify(result),
-          },
-        })
-
-        // 실패한 URL 추적
-        if (!result.success) {
-          failedUrls.push({
-            url: result.url,
-            error: result.error,
-          })
-        }
-      }
-
-      // 실패한 URL이 있으면 에러 throw
-      if (failedUrls.length > 0) {
-        throw new BingSubmissionError(
-          `${failedUrls.length}/${urls.length} URL Bing 인덱싱 실패`,
-          'indexUrls',
-          undefined,
-          'global',
-          {
-            failedUrls,
-            totalCount: urls.length,
-            failedCount: failedUrls.length,
-            results,
-          },
-        )
-      }
-
-      this.logger.log(`Bing 인덱싱 완료: ${results.length}개 URL`)
-      return { results }
-    }
-    catch (error) {
-      this.logger.error('Bing 인덱싱 실패:', error)
-
-      if (error instanceof BingConfigError || error instanceof BingAuthError || error instanceof BingSubmissionError) {
-        throw error
-      }
-
-      throw new BingSubmissionError(`Bing 인덱싱 실패: ${error.message}`, 'indexUrls', undefined, 'global', {
-        urlCount: urls.length,
-      })
-    }
-  }
-
-  private async indexSingleUrl(url: string, config: any): Promise<any> {
-    try {
-      // Bing Webmaster API 호출 로직
-      this.logger.log(`Bing 인덱싱 요청: ${url}`)
-
-      // 임시 응답 (실제로는 Bing API 호출)
-      return {
-        success: true,
-        url,
-        message: 'Bing 인덱싱 요청 성공',
-        timestamp: new Date().toISOString(),
-      }
-    }
-    catch (error) {
-      return {
-        success: false,
-        url,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      }
-    }
+    return await this.submitMultipleUrlsToBing(siteId, urls)
   }
 }

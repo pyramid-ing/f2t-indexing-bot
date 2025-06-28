@@ -120,13 +120,47 @@ export function getErrorDetails(error: any): string | undefined {
   return undefined
 }
 
-// 사이트 설정 관련
-export interface SiteConfig {
-  name: string
-  siteUrl: string
+// 검색엔진별 설정 인터페이스
+export interface GoogleConfig {
+  use: boolean
+  serviceAccountJson: string
 }
 
-// 전역 엔진 설정 인터페이스
+export interface BingConfig {
+  use: boolean
+  apiKey: string
+}
+
+export interface NaverConfig {
+  use: boolean
+  naverId: string
+  password: string
+  loginUrl: string
+}
+
+export interface DaumConfig {
+  use: boolean
+  siteUrl: string
+  password: string
+  loginUrl: string
+}
+
+// 사이트 설정 관련 (새로운 구조)
+export interface SiteConfig {
+  id?: number
+  domain: string
+  name: string
+  siteUrl: string
+  isActive?: boolean
+  googleConfig?: GoogleConfig
+  naverConfig?: NaverConfig
+  daumConfig?: DaumConfig
+  bingConfig?: BingConfig
+  createdAt?: string
+  updatedAt?: string
+}
+
+// 전역 엔진 설정 인터페이스 (레거시 호환용)
 export interface GlobalEngineSettings {
   google: {
     use: boolean
@@ -161,24 +195,39 @@ export async function getAppStatus() {
   return res.data
 }
 
-// 사이트 설정 관리 (간소화됨)
+// 사이트 설정 관리 (새로운 구조)
 export async function createSiteConfig(config: SiteConfig) {
   const res = await axios.post(`${API_BASE_URL}/sites`, config)
   return res.data
 }
 
-export async function getSiteConfig(siteUrl: string) {
-  const res = await axios.get(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`)
+export async function getSiteConfig(siteId: number) {
+  const res = await axios.get(`${API_BASE_URL}/sites/${siteId}`)
   return res.data
 }
 
-export async function updateSiteConfig(siteUrl: string, updates: Partial<SiteConfig>) {
-  const res = await axios.put(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`, updates)
+export async function getSiteConfigByDomain(domain: string) {
+  const res = await axios.get(`${API_BASE_URL}/sites/domain/${encodeURIComponent(domain)}`)
   return res.data
 }
 
-export async function deleteSiteConfig(siteUrl: string) {
-  const res = await axios.delete(`${API_BASE_URL}/sites/${encodeURIComponent(siteUrl)}`)
+export async function updateSiteConfig(siteId: number, updates: Partial<SiteConfig>) {
+  const res = await axios.put(`${API_BASE_URL}/sites/${siteId}`, updates)
+  return res.data
+}
+
+export async function updateSiteEngineConfigs(siteId: number, configs: {
+  google?: GoogleConfig
+  naver?: NaverConfig
+  daum?: DaumConfig
+  bing?: BingConfig
+}) {
+  const res = await axios.put(`${API_BASE_URL}/sites/${siteId}/engines`, configs)
+  return res.data
+}
+
+export async function deleteSiteConfig(siteId: number) {
+  const res = await axios.delete(`${API_BASE_URL}/sites/${siteId}`)
   return res.data
 }
 
@@ -187,14 +236,19 @@ export async function getAllSiteConfigs() {
   return res.data
 }
 
-// 인덱서 관련
-export async function bingManualIndex(options: { siteUrl: string, url?: string, urls?: string[] }) {
+export async function getActiveSiteConfigs() {
+  const res = await axios.get(`${API_BASE_URL}/sites/active`)
+  return res.data
+}
+
+// 인덱서 관련 (새로운 구조)
+export async function bingManualIndex(options: { siteId: number, url?: string, urls?: string[] }) {
   const res = await axios.post(`${API_BASE_URL}/bing-indexer/manual`, options)
   return res.data
 }
 
 export async function googleManualIndex(options: {
-  siteUrl: string
+  siteId: number
   url?: string
   urls?: string[]
   type?: 'URL_UPDATED' | 'URL_DELETED'
@@ -204,21 +258,18 @@ export async function googleManualIndex(options: {
 }
 
 export async function naverManualIndex(options: {
-  siteUrl: string
+  siteId: number
   urlsToIndex: string[]
-  naverId?: string
-  naverPw?: string
 }) {
   const res = await axios.post(`${API_BASE_URL}/naver-indexer/manual`, options)
   return res.data
 }
 
-export async function daumManualIndex(options: { siteUrl: string, urlsToIndex: string[], pin?: string }) {
+export async function daumManualIndex(options: { siteId: number, urlsToIndex: string[] }) {
   const res = await axios.post(`${API_BASE_URL}/daum-indexer/manual`, options)
   return res.data
 }
 
-// Google OAuth 관련 - 서버 기반 처리
 export async function getGoogleOAuthStatus() {
   const res = await axios.get(`${API_BASE_URL}/google-oauth/status`)
   return res.data
@@ -230,11 +281,10 @@ export async function googleOAuthLogout() {
 }
 
 export async function refreshGoogleToken() {
-  const res = await axios.post(`${API_BASE_URL}/google-oauth/refresh-token`)
+  const res = await axios.post(`${API_BASE_URL}/google-oauth/refresh`)
   return res.data
 }
 
-// Google Blogger API
 export async function getBloggerPosts(options: {
   blogId?: string
   blogUrl?: string
@@ -248,14 +298,12 @@ export async function getBloggerPosts(options: {
 }
 
 export async function getBloggerUserBlogs(accessToken: string) {
-  const res = await axios.get(`${API_BASE_URL}/google-blogger/user/blogs`, {
-    params: { accessToken },
-  })
+  const res = await axios.post(`${API_BASE_URL}/google-blogger/blogs`, { accessToken })
   return res.data
 }
 
 export async function getBloggerInfo(blogUrl: string, accessToken: string) {
-  const res = await axios.post(`${API_BASE_URL}/google-blogger/blogs/by-url`, {
+  const res = await axios.post(`${API_BASE_URL}/google-blogger/info`, {
     blogUrl,
     accessToken,
   })
@@ -263,61 +311,45 @@ export async function getBloggerInfo(blogUrl: string, accessToken: string) {
 }
 
 export async function getBloggerPost(blogId: string, postId: string, accessToken: string) {
-  const res = await axios.get(`${API_BASE_URL}/google-blogger/blogs/${blogId}/posts/${postId}`, {
-    params: { accessToken },
+  const res = await axios.post(`${API_BASE_URL}/google-blogger/post`, {
+    blogId,
+    postId,
+    accessToken,
   })
   return res.data
 }
 
-// 전역 설정 관리 (통합된 Settings API)
+// 레거시 전역 설정 (호환성용)
 export async function getGlobalSettings(): Promise<{ success: boolean, data: GlobalEngineSettings }> {
-  const res = await axios.get(`${API_BASE_URL}/settings`)
+  const res = await axios.get(`${API_BASE_URL}/settings/global`)
   return res.data
 }
 
 export async function updateGlobalSettings(settings: Partial<GlobalEngineSettings>) {
-  const res = await axios.put(`${API_BASE_URL}/settings`, settings)
+  const res = await axios.put(`${API_BASE_URL}/settings/global`, settings)
   return res.data
 }
 
-// 개별 엔진 설정 업데이트를 위한 헬퍼 함수들
 export async function updateGlobalGoogleSettings(settings: Partial<GlobalEngineSettings['google']>) {
-  const currentSettings = await getGlobalSettings()
-  const updatedSettings = {
-    ...currentSettings.data,
-    google: { ...currentSettings.data.google, ...settings },
-  }
-  return await updateGlobalSettings(updatedSettings)
+  const res = await axios.put(`${API_BASE_URL}/settings/google`, settings)
+  return res.data
 }
 
 export async function updateGlobalBingSettings(settings: Partial<GlobalEngineSettings['bing']>) {
-  const currentSettings = await getGlobalSettings()
-  const updatedSettings = {
-    ...currentSettings.data,
-    bing: { ...currentSettings.data.bing, ...settings },
-  }
-  return await updateGlobalSettings(updatedSettings)
+  const res = await axios.put(`${API_BASE_URL}/settings/bing`, settings)
+  return res.data
 }
 
 export async function updateGlobalNaverSettings(settings: Partial<GlobalEngineSettings['naver']>) {
-  const currentSettings = await getGlobalSettings()
-  const updatedSettings = {
-    ...currentSettings.data,
-    naver: { ...currentSettings.data.naver, ...settings },
-  }
-  return await updateGlobalSettings(updatedSettings)
+  const res = await axios.put(`${API_BASE_URL}/settings/naver`, settings)
+  return res.data
 }
 
 export async function updateGlobalDaumSettings(settings: Partial<GlobalEngineSettings['daum']>) {
-  const currentSettings = await getGlobalSettings()
-  const updatedSettings = {
-    ...currentSettings.data,
-    daum: { ...currentSettings.data.daum, ...settings },
-  }
-  return await updateGlobalSettings(updatedSettings)
+  const res = await axios.put(`${API_BASE_URL}/settings/daum`, settings)
+  return res.data
 }
 
-// 네이버 로그인 관련
 export interface NaverLoginStatus {
   isLoggedIn: boolean
   needsLogin: boolean
@@ -335,12 +367,12 @@ export async function openNaverLoginBrowser(): Promise<{ success: boolean, messa
 }
 
 export async function checkNaverLoginComplete(): Promise<{ success: boolean, message: string }> {
-  const res = await axios.post(`${API_BASE_URL}/naver-indexer/check-login-complete`)
+  const res = await axios.get(`${API_BASE_URL}/naver-indexer/check-login`)
   return res.data
 }
 
 export async function closeNaverLoginBrowser(): Promise<{ success: boolean, message: string }> {
-  const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-login-browser`)
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-login`)
   return res.data
 }
 
@@ -352,7 +384,7 @@ export async function checkExistingUrls(urls: string[], providers: IndexProvider
   return res.data
 }
 
-export async function getIndexingLogCount(siteUrl: string) {
-  const res = await axios.get(`${API_BASE_URL}/indexing-log/count?siteUrl=${siteUrl}`)
+export async function getIndexingLogCount(siteId: number) {
+  const res = await axios.get(`${API_BASE_URL}/indexing/logs/${siteId}/count`)
   return res.data
 }

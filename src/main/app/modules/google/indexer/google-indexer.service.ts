@@ -1,6 +1,6 @@
+import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
 import { GoogleAuthService } from '@main/app/shared/google-auth.service'
 import { PrismaService } from '@main/app/shared/prisma.service'
-import { SettingsService } from '@main/app/shared/settings.service'
 import { GoogleAuthError, GoogleConfigError, GoogleIndexerError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
@@ -9,7 +9,7 @@ import { firstValueFrom } from 'rxjs'
 export interface GoogleIndexerOptions {
   url?: string
   urls?: string[]
-  siteUrl: string // 필수로 변경: DB에서 설정을 찾기 위해 필요
+  siteId: number // siteUrl 대신 siteId 사용
   type?: 'URL_UPDATED' | 'URL_DELETED'
 }
 
@@ -22,86 +22,50 @@ export class GoogleIndexerService {
     private readonly httpService: HttpService,
     private readonly googleAuthService: GoogleAuthService,
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
+    private readonly siteConfigService: SiteConfigService,
   ) {}
 
-  private async getGoogleConfig() {
+  private async getGoogleConfigForSite(siteId: number) {
     try {
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
 
-      if (!globalSettings.google || !globalSettings.google.use) {
-        throw new GoogleConfigError('Google 색인이 비활성화되어 있습니다.', 'getGoogleConfig', 'indexing_service', {
+      if (!siteConfig.googleConfig || !siteConfig.googleConfig.use) {
+        throw new GoogleConfigError('Google 색인이 비활성화되어 있습니다.', 'getGoogleConfigForSite', 'indexing_service', {
           enabled: false,
+          siteId,
         })
       }
 
-      const config = globalSettings.google
+      const config = siteConfig.googleConfig
 
-      if (!config.serviceAccountJson) {
+      if (!config.serviceAccountEmail || !config.privateKey) {
         throw new GoogleConfigError(
-          'Google Service Account JSON 설정이 올바르지 않습니다.',
-          'getGoogleConfig',
+          'Google Service Account 설정이 올바르지 않습니다.',
+          'getGoogleConfigForSite',
           'service_account',
           {
-            hasServiceAccountJson: !!config.serviceAccountJson,
+            hasServiceAccountEmail: !!config.serviceAccountEmail,
+            hasPrivateKey: !!config.privateKey,
+            siteId,
           },
         )
       }
 
-      // Service Account JSON 유효성 검사
-      try {
-        const serviceAccountData = JSON.parse(config.serviceAccountJson)
-        const requiredFields = ['client_email', 'private_key', 'type']
-        const missingFields = requiredFields.filter(field => !serviceAccountData[field])
-
-        if (missingFields.length > 0) {
-          throw new GoogleConfigError(
-            `Service Account JSON에 필수 필드가 누락되었습니다: ${missingFields.join(', ')}`,
-            'getGoogleConfig',
-            'service_account_validation',
-            {
-              missingFields,
-            },
-          )
-        }
-
-        if (serviceAccountData.type !== 'service_account') {
-          throw new GoogleConfigError(
-            'Service Account JSON이 아닙니다. type이 "service_account"인지 확인해주세요.',
-            'getGoogleConfig',
-            'service_account_type',
-            {
-              actualType: serviceAccountData.type,
-            },
-          )
-        }
-      }
-      catch (parseError) {
-        if (parseError instanceof GoogleConfigError) {
-          throw parseError
-        }
-        throw new GoogleConfigError(
-          'Service Account JSON 파싱 실패: 유효하지 않은 JSON 형식입니다.',
-          'getGoogleConfig',
-          'json_parse',
-        )
-      }
-
-      return { config }
+      return { config, siteConfig }
     }
     catch (error) {
       if (error instanceof GoogleConfigError) {
         throw error
       }
-      throw new GoogleConfigError(`Google 설정 조회 실패: ${error.message}`, 'getGoogleConfig', 'settings_fetch')
+      throw new GoogleConfigError(`Google 설정 조회 실패: ${error.message}`, 'getGoogleConfigForSite', 'settings_fetch', { siteId })
     }
   }
 
-  async indexUrl(siteUrl: string, url: string, type: string = 'URL_UPDATED'): Promise<any> {
-    this.logger.log(`Google에 URL 인덱싱 요청: ${url}`)
+  async indexUrl(siteId: number, url: string, type: string = 'URL_UPDATED'): Promise<any> {
+    this.logger.log(`Google에 URL 인덱싱 요청: ${url} (Site ID: ${siteId})`)
 
     try {
-      const { config } = await this.getGoogleConfig()
+      const { config } = await this.getGoogleConfigForSite(siteId)
       const payload = {
         url,
         type,
@@ -114,7 +78,7 @@ export class GoogleIndexerService {
       catch (error) {
         throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {
           url,
-          siteUrl,
+          siteId,
           type,
         })
       }
@@ -124,7 +88,7 @@ export class GoogleIndexerService {
       // 성공 로그 기록
       await this.prisma.indexingLog.create({
         data: {
-          siteUrl,
+          siteId,
           targetUrl: url,
           provider: 'GOOGLE',
           status: 'SUCCESS',
@@ -142,7 +106,7 @@ export class GoogleIndexerService {
       // 실패 로그 기록
       await this.prisma.indexingLog.create({
         data: {
-          siteUrl,
+          siteId,
           targetUrl: url,
           provider: 'GOOGLE',
           status: 'FAILED',
@@ -159,7 +123,7 @@ export class GoogleIndexerService {
       if (error.response?.status === 401) {
         throw new GoogleAuthError('Google API 인증이 실패했습니다. 토큰을 확인해주세요.', 'indexUrl', {
           url,
-          siteUrl,
+          siteId,
           type,
           responseStatus: 401,
         })
@@ -169,7 +133,7 @@ export class GoogleIndexerService {
           'Google Indexing API 권한이 없습니다. 서비스 계정 권한을 확인해주세요.',
           'indexUrl',
           url,
-          siteUrl,
+          siteId.toString(),
           { type, responseStatus: 403, responseData: error.response?.data },
         )
       }
@@ -178,12 +142,12 @@ export class GoogleIndexerService {
           'Google API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'indexUrl',
           url,
-          siteUrl,
+          siteId.toString(),
           { type, responseStatus: 429, responseData: error.response?.data },
         )
       }
 
-      throw new GoogleIndexerError(`Google 색인 요청 실패: ${error.message}`, 'indexUrl', url, siteUrl, {
+      throw new GoogleIndexerError(`Google 색인 요청 실패: ${error.message}`, 'indexUrl', url, siteId.toString(), {
         type,
         responseStatus: error.response?.status,
         responseData: error.response?.data,
@@ -192,167 +156,106 @@ export class GoogleIndexerService {
     }
   }
 
-  async getIndexStatus(siteUrl: string, url: string): Promise<any> {
-    this.logger.log(`Google 인덱스 상태 조회: ${url}`)
+  async getIndexStatus(siteId: number, url: string): Promise<any> {
+    this.logger.log(`Google 인덱스 상태 조회: ${url} (Site ID: ${siteId})`)
 
     try {
-      const { config } = await this.getGoogleConfig()
+      const { config } = await this.getGoogleConfigForSite(siteId)
 
-      // Google Search Console API로 상태 조회 로직 구현
-      // 실제 구현에서는 Search Console API를 사용
-      this.logger.log(`Google 인덱스 상태 조회 완료: ${url}`)
-
-      return {
-        url,
-        indexStatus: 'UNKNOWN', // 실제로는 API 응답에서 가져옴
-        lastCrawlTime: null,
-        coverageState: 'UNKNOWN',
+      let headers
+      try {
+        headers = await this.googleAuthService.getAuthHeaders()
       }
+      catch (error) {
+        throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {
+          url,
+          siteId,
+        })
+      }
+
+      const response = await firstValueFrom(
+        this.httpService.get(`https://indexing.googleapis.com/v3/urlNotifications/metadata?url=${encodeURIComponent(url)}`, {
+          headers,
+        }),
+      )
+
+      this.logger.log(`Google 인덱스 상태 조회 성공: ${url}`)
+      return response.data
     }
     catch (error) {
-      this.logger.error(`Google 인덱스 상태 조회 실패: ${url}`, error)
+      this.logger.error(`Google 인덱스 상태 조회 실패: ${error.message}`, error.stack)
 
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError) {
         throw error
       }
 
-      throw new GoogleIndexerError(`Google 인덱스 상태 조회 실패: ${error.message}`, 'getIndexStatus', url, siteUrl, {
+      if (error.response?.status === 404) {
+        return { status: 'NOT_INDEXED', message: '인덱스되지 않은 URL입니다.' }
+      }
+
+      throw new GoogleIndexerError(`Google 인덱스 상태 조회 실패: ${error.message}`, 'getIndexStatus', url, siteId.toString(), {
         responseStatus: error.response?.status,
         responseData: error.response?.data,
       })
     }
   }
 
-  async batchIndexUrls(siteUrl: string, urls: string[], type: string = 'URL_UPDATED'): Promise<any[]> {
-    await this.getGoogleConfig() // 설정 확인
+  async batchIndexUrls(siteId: number, urls: string[], type: string = 'URL_UPDATED'): Promise<any[]> {
+    this.logger.log(`Google 배치 URL 인덱싱 시작: ${urls.length}개 URL (Site ID: ${siteId})`)
+
     const results = []
+    const concurrencyLimit = 3
+    const delayBetweenRequests = 1000
 
-    try {
-      for (const url of urls) {
-        try {
-          const result = await this.indexUrl(siteUrl, url, type)
-          results.push({ url, success: true, result })
-        }
-        catch (error) {
-          results.push({
-            url,
-            success: false,
-            error: {
-              code: error.code || 'UNKNOWN_ERROR',
-              message: error.message,
-              service: error.service || 'Google Indexer',
-              operation: error.operation || 'batchIndexUrls',
-            },
-          })
+    // URLs를 청크로 나누기
+    for (let i = 0; i < urls.length; i += concurrencyLimit) {
+      const chunk = urls.slice(i, i + concurrencyLimit)
+      const chunkPromises = chunk.map(url => this.indexUrl(siteId, url, type))
+
+      try {
+        const chunkResults = await Promise.allSettled(chunkPromises)
+        results.push(...chunkResults)
+
+        // 마지막 청크가 아니면 지연
+        if (i + concurrencyLimit < urls.length) {
+          await new Promise(resolve => setTimeout(resolve, delayBetweenRequests))
         }
       }
-
-      return results
-    }
-    catch (error) {
-      if (error instanceof GoogleAuthError || error instanceof GoogleConfigError) {
-        throw error
+      catch (error) {
+        this.logger.error(`배치 인덱싱 청크 실패 (${i}-${i + chunk.length}):`, error)
       }
-
-      throw new GoogleIndexerError(
-        `Google 다중 색인 요청 실패: ${error.message}`,
-        'batchIndexUrls',
-        undefined,
-        siteUrl,
-        { urlCount: urls.length, type },
-      )
     }
+
+    this.logger.log(`Google 배치 URL 인덱싱 완료: ${results.length}개 결과`)
+    return results
   }
 
   async manualIndexing(options: GoogleIndexerOptions): Promise<any> {
-    if (!options.siteUrl) {
-      throw new GoogleIndexerError('siteUrl이 필요합니다.', 'manualIndexing', undefined, undefined, {
-        providedOptions: options,
-      })
+    const { url, urls, siteId, type = 'URL_UPDATED' } = options
+
+    if (!siteId) {
+      throw new GoogleIndexerError('Site ID가 필요합니다.', 'manualIndexing', '', '0', { options })
     }
 
-    const type = options.type || 'URL_UPDATED'
+    // 단일 URL 처리
+    if (url) {
+      return await this.indexUrl(siteId, url, type)
+    }
 
-    if (options.url) {
-      return this.indexUrl(options.siteUrl, options.url, type)
+    // 다중 URL 처리
+    if (urls && urls.length > 0) {
+      return await this.batchIndexUrls(siteId, urls, type)
     }
-    else if (options.urls && options.urls.length > 0) {
-      return this.batchIndexUrls(options.siteUrl, options.urls, type)
-    }
-    else {
-      throw new GoogleIndexerError('URL 또는 URLs가 필요합니다.', 'manualIndexing', undefined, options.siteUrl, {
-        providedOptions: options,
-      })
-    }
+
+    throw new GoogleIndexerError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), { options })
   }
 
-  async indexUrls(urls: string[]): Promise<any> {
-    try {
-      this.logger.log(`Google 인덱싱 시작: ${urls.length}개 URL`)
-
-      // 전역 Google 설정 조회
-      const { config } = await this.getGoogleConfig()
-
-      const results = []
-
-      for (const url of urls) {
-        const result = await this.indexSingleUrl(url, config)
-        results.push(result)
-
-        // 인덱싱 로그 저장
-        await this.prisma.indexingLog.create({
-          data: {
-            siteUrl: 'global', // 전역 설정이므로 임시값
-            targetUrl: url,
-            provider: 'GOOGLE',
-            status: result.success ? 'SUCCESS' : 'FAILED',
-            message: result.success ? result.message : result.error,
-            responseData: JSON.stringify(result),
-          },
-        })
-      }
-
-      this.logger.log(`Google 인덱싱 완료: ${results.length}개 URL`)
-      return results
+  // 레거시 호환성을 위한 메서드 (필요한 경우)
+  async indexUrls(urls: string[], siteId?: number): Promise<any> {
+    if (!siteId) {
+      throw new GoogleIndexerError('Site ID가 필요합니다.', 'indexUrls', '', '0', { urls })
     }
-    catch (error) {
-      this.logger.error('Google 인덱싱 실패:', error)
 
-      if (
-        error instanceof GoogleAuthError
-        || error instanceof GoogleConfigError
-        || error instanceof GoogleIndexerError
-      ) {
-        throw error
-      }
-
-      throw new GoogleIndexerError(`Google 인덱싱 실패: ${error.message}`, 'indexUrls', undefined, 'global', {
-        urlCount: urls.length,
-      })
-    }
-  }
-
-  private async indexSingleUrl(url: string, config: any): Promise<any> {
-    try {
-      // Google Indexing API 호출 로직
-      // 실제 구현은 서비스 계정 키와 Google API 클라이언트를 사용
-      this.logger.log(`Google 인덱싱 요청: ${url}`)
-
-      // 임시 응답 (실제로는 Google API 호출)
-      return {
-        success: true,
-        url,
-        message: 'Google 인덱싱 요청 성공',
-        timestamp: new Date().toISOString(),
-      }
-    }
-    catch (error) {
-      return {
-        success: false,
-        url,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      }
-    }
+    return await this.batchIndexUrls(siteId, urls)
   }
 }

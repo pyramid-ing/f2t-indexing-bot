@@ -23,32 +23,52 @@ async function main() {
     console.log('기본 앱 설정 생성 완료')
   }
 
-  // 전역 엔진 설정이 없으면 생성
-  const globalEngineSettings = await prisma.settings.findFirst({ where: { id: 2 } })
-  if (!globalEngineSettings) {
-    const defaultGlobalSettings = {
-      google: {
-        use: false,
-        serviceAccountEmail: '',
-        privateKey: '',
-        oauth2ClientId: '',
-        oauth2ClientSecret: '',
-        oauth2AccessToken: '',
-        oauth2RefreshToken: '',
-        oauth2TokenExpiry: '',
-      },
-      bing: { use: false, apiKey: '' },
-      naver: { use: false, naverId: '', password: '' },
-      daum: { use: false, siteUrl: '', password: '' },
+  // 기본 사이트 설정 예시 생성 (선택적)
+  const existingSites = await prisma.site.count()
+  if (existingSites === 0) {
+    const defaultGoogleConfig = {
+      use: false,
+      serviceAccountEmail: '',
+      privateKey: '',
+      oauth2ClientId: '',
+      oauth2ClientSecret: '',
+      oauth2AccessToken: '',
+      oauth2RefreshToken: '',
+      oauth2TokenExpiry: '',
     }
 
-    await prisma.settings.create({
+    const defaultBingConfig = {
+      use: false,
+      apiKey: '',
+    }
+
+    const defaultNaverConfig = {
+      use: false,
+      naverId: '',
+      password: '',
+      loginUrl: '',
+    }
+
+    const defaultDaumConfig = {
+      use: false,
+      siteUrl: '',
+      password: '',
+      loginUrl: '',
+    }
+
+    await prisma.site.create({
       data: {
-        id: 2,
-        data: JSON.stringify(defaultGlobalSettings),
+        domain: 'example.com',
+        name: '예시 사이트',
+        siteUrl: 'https://example.com',
+        isActive: false,
+        googleConfig: JSON.stringify(defaultGoogleConfig),
+        naverConfig: JSON.stringify(defaultNaverConfig),
+        daumConfig: JSON.stringify(defaultDaumConfig),
+        bingConfig: JSON.stringify(defaultBingConfig),
       },
     })
-    console.log('전역 엔진 설정 생성 완료')
+    console.log('기본 사이트 설정 생성 완료')
   }
 
   console.log('시드 데이터 초기화 완료')

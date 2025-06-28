@@ -7,9 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 전역 앱 설정 (기존 유지)
 model Settings {
   id        Int      @id @default(autoincrement())
-  data      String
+  data      String   // JSON: { appVersion, initialized, setupCompleted, theme, language }
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -22,26 +23,44 @@ model Auth {
   updatedAt DateTime @updatedAt
 }
 
-// 사이트 설정 모델 (간소화됨)
+// 사이트별 설정 모델 (확장됨)
 model Site {
-  id        Int      @id @default(autoincrement())
-  siteUrl   String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  domain      String   @unique  // 도메인명 (예: example.com)
+  name        String              // 사이트 표시명
+  siteUrl     String              // 전체 URL (예: https://example.com)
+  isActive    Boolean  @default(true)  // 활성화 여부
+  
+  // 검색엔진별 설정 (JSON 형태로 저장)
+  googleConfig String  @default("{}")   // Google 설정
+  naverConfig  String  @default("{}")   // Naver 설정  
+  daumConfig   String  @default("{}")   // Daum 설정
+  bingConfig   String  @default("{}")   // Bing 설정
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // 관계: 이 사이트의 색인 로그들
+  indexingLogs IndexingLog[]
 }
 
-// 색인 작업 로그
+// 색인 작업 로그 (수정됨)
 model IndexingLog {
   id          Int           @id @default(autoincrement())
-  siteUrl     String
-  targetUrl   String
-  provider    IndexProvider
-  status      IndexStatus
-  message     String?
-  responseData String?      // JSON으로 저장
+  siteId      Int           // Site 테이블과 연결
+  site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  targetUrl   String        // 색인할 URL
+  provider    IndexProvider // 색인 제공자
+  status      IndexStatus   // 색인 상태
+  message     String?       // 결과 메시지
+  responseData String?      // 응답 데이터 (JSON)
   
   createdAt   DateTime      @default(now())
   completedAt DateTime?
+  
+  @@index([siteId])
+  @@index([provider])
+  @@index([status])
 }
 
 // 색인 제공자 enum

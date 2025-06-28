@@ -1,19 +1,13 @@
+import type { NaverConfig } from '../../api'
 import { GlobalOutlined, SaveOutlined } from '@ant-design/icons'
 import { Button, Card, Col, Form, Input, message, Row, Switch, Typography } from 'antd'
 import React from 'react'
 
 const { Title, Text } = Typography
 
-interface NaverEngineSettings {
-  use: boolean
-  naverId: string
-  password: string
-  headless: boolean
-}
-
 interface NaverSettingsProps {
-  settings: NaverEngineSettings
-  onSave: (values: Partial<NaverEngineSettings>) => Promise<void>
+  settings: NaverConfig
+  onSave: (values: Partial<NaverConfig>) => Promise<void>
   onToggleUse: (checked: boolean) => Promise<void>
   loading: boolean
 }
@@ -21,27 +15,14 @@ interface NaverSettingsProps {
 const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, onToggleUse, loading }) => {
   const [form] = Form.useForm()
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Partial<NaverConfig>) => {
     try {
-      // 프론트엔드의 `showBrowser` 값을 백엔드의 `headless` 값으로 변환
-      const settingsToSave = {
-        ...values,
-        headless: !values.showBrowser,
-      }
-      delete settingsToSave.showBrowser
-
-      await onSave(settingsToSave)
+      await onSave(values)
       message.success('네이버 설정이 저장되었습니다.')
     }
     catch (error) {
       message.error('네이버 설정 저장에 실패했습니다.')
     }
-  }
-
-  // 백엔드의 `headless` 값을 프론트엔드의 `showBrowser` 값으로 변환하여 Form에 설정
-  const initialValues = {
-    ...settings,
-    showBrowser: !settings.headless,
   }
 
   return (
@@ -63,7 +44,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, onToggl
       )}
     >
       {settings.use && (
-        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={initialValues}>
+        <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={settings}>
           <div style={{ marginBottom: 24 }}>
             <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
               네이버 서치어드바이저를 통해 URL을 네이버 검색엔진에 등록합니다.
@@ -101,12 +82,11 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, onToggl
             <Row gutter={16}>
               <Col span={24}>
                 <Form.Item
-                  name="showBrowser"
-                  label="브라우저 창 모드"
-                  help="스위치를 켜면 인덱싱 과정이 보이는 브라우저 창이 나타납니다 (디버깅용)."
-                  valuePropName="checked"
+                  name="loginUrl"
+                  label="로그인 URL (선택사항)"
+                  help="특별한 로그인 URL이 있는 경우 입력해주세요"
                 >
-                  <Switch checkedChildren="창 보임" unCheckedChildren="창 숨김" />
+                  <Input placeholder="https://nid.naver.com/nidlogin.login" disabled={!settings.use} />
                 </Form.Item>
               </Col>
             </Row>
