@@ -58,6 +58,10 @@ export class BingIndexerService {
 
   async submitUrlToBing(siteId: number, url: string): Promise<any> {
     try {
+      // 사이트 존재 여부 및 도메인 일치 검증
+      await this.siteConfigService.validateSiteExists(siteId)
+      await this.siteConfigService.validateUrlDomain(siteId, url)
+
       const { apiKey, siteConfig } = await this.getBingConfigForSite(siteId)
       const payload = this.createPayload(siteConfig.siteUrl, [url])
 
@@ -153,6 +157,14 @@ export class BingIndexerService {
 
   async submitMultipleUrlsToBing(siteId: number, urls: string[]): Promise<any> {
     try {
+      // 사이트 존재 여부 검증
+      await this.siteConfigService.validateSiteExists(siteId)
+
+      // 각 URL에 대해 도메인 일치 검증
+      for (const url of urls) {
+        await this.siteConfigService.validateUrlDomain(siteId, url)
+      }
+
       const { apiKey, siteConfig } = await this.getBingConfigForSite(siteId)
       const payload = this.createPayload(siteConfig.siteUrl, urls)
 

@@ -4,7 +4,7 @@ import { PrismaService } from '@main/app/shared/prisma.service'
 import { GoogleAuthError, GoogleConfigError, GoogleIndexerError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
-import { IndexProvider, IndexStatus } from '@prisma/client'
+// import { IndexProvider, IndexStatus } from '@prisma/client' // 문자열로 대체
 import { firstValueFrom } from 'rxjs'
 
 export interface GoogleIndexerOptions {
@@ -89,6 +89,10 @@ export class GoogleIndexerService {
     this.logger.log(`Google에 URL 인덱싱 요청: ${url} (Site ID: ${siteId})`)
 
     try {
+      // 사이트 존재 여부 및 도메인 일치 검증
+      await this.siteConfigService.validateSiteExists(siteId)
+      await this.siteConfigService.validateUrlDomain(siteId, url)
+
       const { config } = await this.getGoogleConfigForSite(siteId)
       const payload = {
         url,
@@ -113,8 +117,8 @@ export class GoogleIndexerService {
         data: {
           siteId,
           targetUrl: url,
-          provider: IndexProvider.GOOGLE,
-          status: IndexStatus.SUCCESS,
+          provider: 'GOOGLE',
+          status: 'SUCCESS',
           message: `Type: ${type}`,
           responseData: JSON.stringify(response.data),
         },
@@ -130,8 +134,8 @@ export class GoogleIndexerService {
         data: {
           siteId,
           targetUrl: url,
-          provider: IndexProvider.GOOGLE,
-          status: IndexStatus.FAILED,
+          provider: 'GOOGLE',
+          status: 'FAILED',
           message: error.message,
           responseData: JSON.stringify(error.response?.data || {}),
         },
@@ -229,6 +233,14 @@ export class GoogleIndexerService {
 
   async batchIndexUrls(siteId: number, urls: string[], type: string = 'URL_UPDATED'): Promise<any> {
     this.logger.log(`Google 배치 URL 인덱싱 시작: ${urls.length}개 URL (Site ID: ${siteId})`)
+
+    // 사이트 존재 여부 검증
+    await this.siteConfigService.validateSiteExists(siteId)
+
+    // 각 URL에 대해 도메인 일치 검증
+    for (const url of urls) {
+      await this.siteConfigService.validateUrlDomain(siteId, url)
+    }
 
     const allResults = []
     const concurrencyLimit = 3

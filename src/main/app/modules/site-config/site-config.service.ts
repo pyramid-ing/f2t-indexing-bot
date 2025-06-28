@@ -241,4 +241,53 @@ export class SiteConfigService {
       return url.replace('www.', '')
     }
   }
+
+  /**
+   * URL에서 프로토콜과 도메인을 추출합니다.
+   */
+  private extractProtocolAndDomain(url: string): string {
+    try {
+      const urlObj = new URL(url)
+      return `${urlObj.protocol}//${urlObj.hostname}`.replace('www.', '')
+    } catch {
+      // URL이 아닌 경우 그대로 반환
+      return url.replace('www.', '')
+    }
+  }
+
+  /**
+   * 인덱싱할 URL이 사이트의 도메인과 일치하는지 검증합니다.
+   * 프로토콜과 도메인을 모두 비교합니다.
+   */
+  async validateUrlDomain(siteId: number, urlToIndex: string): Promise<void> {
+    const siteConfig = await this.getSiteConfig(siteId)
+
+    if (!siteConfig) {
+      throw new Error(`등록되지 않은 사이트입니다: siteId=${siteId}`)
+    }
+
+    const urlDomain = this.extractProtocolAndDomain(urlToIndex)
+    const siteDomain = this.extractProtocolAndDomain(siteConfig.siteUrl)
+
+    if (urlDomain !== siteDomain) {
+      throw new Error(`도메인이 일치하지 않습니다. 인덱싱할 URL: ${urlDomain}, 등록된 사이트: ${siteDomain}`)
+    }
+  }
+
+  /**
+   * 사이트 존재 여부를 검증합니다.
+   */
+  async validateSiteExists(siteId: number): Promise<SiteConfigData> {
+    const siteConfig = await this.getSiteConfig(siteId)
+
+    if (!siteConfig) {
+      throw new Error(`등록되지 않은 사이트입니다: siteId=${siteId}`)
+    }
+
+    if (!siteConfig.isActive) {
+      throw new Error(`비활성화된 사이트입니다: siteId=${siteId}`)
+    }
+
+    return siteConfig
+  }
 }

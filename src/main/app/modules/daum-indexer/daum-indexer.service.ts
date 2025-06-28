@@ -109,6 +109,16 @@ export class DaumIndexerService {
     const { urlsToIndex, siteId, siteUrl } = options
 
     try {
+      // siteId가 있는 경우 사이트 존재 여부 및 도메인 일치 검증
+      if (siteId) {
+        await this.siteConfigService.validateSiteExists(siteId)
+
+        // 각 URL에 대해 도메인 일치 검증
+        for (const url of urlsToIndex) {
+          await this.siteConfigService.validateUrlDomain(siteId, url)
+        }
+      }
+
       // DB에서 Daum 설정 가져오기 (사이트별 설정 우선)
       const dbConfig = await this.getDaumConfig(siteId, siteUrl)
       const daumSiteUrl = dbConfig.siteUrl

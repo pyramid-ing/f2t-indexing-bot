@@ -138,6 +138,14 @@ export class NaverIndexerService implements OnModuleInit {
     const { siteId, urlsToIndex } = options
 
     try {
+      // 사이트 존재 여부 검증
+      await this.siteConfigService.validateSiteExists(siteId)
+
+      // 각 URL에 대해 도메인 일치 검증
+      for (const url of urlsToIndex) {
+        await this.siteConfigService.validateUrlDomain(siteId, url)
+      }
+
       // DB에서 네이버 설정 가져오기 (NaverAccount에서 조회)
       const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
       const dbConfig = await this.getNaverConfig(siteId!)
