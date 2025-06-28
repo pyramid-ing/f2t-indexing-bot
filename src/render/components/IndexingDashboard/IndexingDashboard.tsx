@@ -20,7 +20,7 @@ import {
   UserOutlined,
   YahooOutlined,
 } from '@ant-design/icons'
-import { Alert, Button, Card, Checkbox, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   bingManualIndex,
@@ -256,12 +256,14 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           return
         }
 
-        // 검색엔진이 선택되지 않았으면 활성화된 모든 검색엔진 사용
-        let services = (taskValues.services || []) as any[]
+        // 활성화된 모든 검색엔진 사용
+        let services = getAvailableServices(globalSettings, currentSite)
         if (services.length === 0) {
-          services = getAvailableServices(globalSettings, currentSite)
-          message.info(`활성화된 모든 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
+          message.error('활성화된 검색엔진이 없습니다. 설정에서 검색엔진을 먼저 활성화해주세요.')
+          setLoading(false)
+          return
         }
+        message.info(`활성화된 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
 
         // 네이버가 포함되어 있지만 로그인되지 않은 경우 네이버만 제외
         if (services.includes('naver') && !naverLoginStatus?.isLoggedIn) {
@@ -655,39 +657,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                     )
                   : null}
 
-              {/* 디버그 정보 */}
-              <div style={{ background: '#f0f0f0', padding: 12, borderRadius: 6, marginBottom: 16, fontSize: 12 }}>
-                <div><strong>디버그 정보:</strong></div>
-                <div>
-                  Global Settings:
-                  {globalSettings ? 'Loaded' : 'Not Loaded'}
-                </div>
-                <div>
-                  Selected Site:
-                  {selectedSite ? selectedSite.name : 'None'}
-                </div>
-                <div>
-                  Available Services: [
-                  {getAvailableServices(globalSettings, selectedSite).join(', ')}
-                  ]
-                </div>
-                {selectedSite && (
-                  <div>
-                    Site Configs: Google(
-                    {selectedSite.googleConfig?.use ? 'ON' : 'OFF'}
-                    ),
-                    Bing(
-                    {selectedSite.bingConfig?.use ? 'ON' : 'OFF'}
-                    ),
-                    Naver(
-                    {selectedSite.naverConfig?.use ? 'ON' : 'OFF'}
-                    ),
-                    Daum(
-                    {selectedSite.daumConfig?.use ? 'ON' : 'OFF'}
-                    )
-                  </div>
-                )}
-              </div>
             </div>
             <Form
               form={form}
@@ -695,7 +664,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               onFinish={async values =>
                 await handleManualIndexing({
                   urls: urlsInput.split('\n').filter((u: string) => u.trim() !== ''),
-                  services: values.services,
                 })}
             >
               <Form.Item name="urls" label="URL 목록" rules={[{ required: true, message: 'URL을 입력해주세요' }]}>
@@ -709,48 +677,29 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   }}
                 />
               </Form.Item>
-              <Form.Item
-                name="services"
-                label={(
-                  <span>
-                    검색 엔진
-                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
-                      (선택 안하면 활성화된 모든 엔진 사용)
-                    </Text>
-                  </span>
-                )}
-              >
-                <Checkbox.Group>
-                  <Space wrap>
-                    {getAvailableServices(globalSettings, selectedSite).map(service => (
-                      <Checkbox
-                        key={service}
-                        value={service}
-                      >
-                        <Space>
+              {getAvailableServices(globalSettings, selectedSite).length > 0 && (
+                <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f6f8fa', borderRadius: 6, border: '1px solid #d1d9e0' }}>
+                  <Text strong style={{ color: '#0969da' }}>사용할 검색엔진:</Text>
+                  <div style={{ marginTop: 8 }}>
+                    <Space wrap>
+                      {getAvailableServices(globalSettings, selectedSite).map(service => (
+                        <Space key={service}>
                           {getServiceIcon(service)}
-                          {' '}
-                          {service.charAt(0).toUpperCase() + service.slice(1)}
+                          <Text>{service.charAt(0).toUpperCase() + service.slice(1)}</Text>
                           {service === 'naver' && !naverLoginStatus?.isLoggedIn && (
                             <Text type="secondary" style={{ fontSize: 11 }}>
                               (로그인 필요)
                             </Text>
                           )}
                         </Space>
-                      </Checkbox>
-                    ))}
-                  </Space>
-                </Checkbox.Group>
-                {getAvailableServices(globalSettings, selectedSite).length > 0 && (
-                  <div style={{ marginTop: 8 }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      활성화된 검색엔진:
-                      {' '}
-                      {getAvailableServices(globalSettings, selectedSite).join(', ')}
-                    </Text>
+                      ))}
+                    </Space>
                   </div>
-                )}
-              </Form.Item>
+                  <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
+                    설정에서 활성화된 검색엔진들이 자동으로 사용됩니다.
+                  </Text>
+                </div>
+              )}
               {globalSettings?.naver?.use && (
                 <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16, marginBottom: 16 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>

@@ -1,22 +1,52 @@
 import { PrismaService } from '@main/app/shared/prisma.service'
 import { Injectable } from '@nestjs/common'
 
+// 검색엔진별 설정 인터페이스
+export interface GoogleSiteConfig {
+  use: boolean
+  serviceAccountJson: string
+}
+
+export interface BingSiteConfig {
+  use: boolean
+  apiKey: string
+}
+
+export interface NaverSiteConfig {
+  use: boolean
+  naverId: string
+  password: string
+  loginUrl?: string
+  headless?: boolean
+}
+
+export interface DaumSiteConfig {
+  use: boolean
+  siteUrl: string
+  password: string // PIN 코드
+  loginUrl?: string
+  headless?: boolean
+}
+
 export interface SiteConfigData {
+  id?: number
   domain: string
   name: string
   siteUrl: string
   isActive?: boolean
-  googleConfig?: any
-  naverConfig?: any
-  daumConfig?: any
-  bingConfig?: any
+  googleConfig?: GoogleSiteConfig
+  naverConfig?: NaverSiteConfig
+  daumConfig?: DaumSiteConfig
+  bingConfig?: BingSiteConfig
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface EngineConfig {
-  google?: any
-  naver?: any
-  daum?: any
-  bing?: any
+  google?: GoogleSiteConfig
+  naver?: NaverSiteConfig
+  daum?: DaumSiteConfig
+  bing?: BingSiteConfig
 }
 
 @Injectable()
@@ -49,7 +79,7 @@ export class SiteConfigService {
     }
   }
 
-  async getSiteConfig(siteId: number) {
+  async getSiteConfig(siteId: number): Promise<SiteConfigData> {
     const site = await this.prisma.site.findUnique({
       where: { id: siteId },
     })

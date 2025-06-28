@@ -1,7 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
 import { PrismaService } from '@main/app/shared/prisma.service'
 import { SettingsService } from '@main/app/shared/settings.service'
+import { sleep } from '@main/app/utils/sleep'
 import { DaumAuthError, DaumConfigError, DaumSubmissionError } from '@main/filters/error.types'
 import { Injectable, Logger } from '@nestjs/common'
 import { Page } from 'puppeteer-core'
@@ -12,7 +14,8 @@ puppeteer.use(StealthPlugin())
 
 export interface DaumIndexerOptions {
   urlsToIndex: string[]
-  siteUrl: string // 필수로 변경: DB에서 설정을 찾기 위해 필요
+  siteId?: number // siteId 추가 (사이트별 설정 우선 사용)
+  siteUrl?: string // 옵션으로 변경
   pin?: string // 옵션으로 변경: DB에서 가져올 수 있음
 }
 
@@ -23,44 +26,55 @@ export class DaumIndexerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly siteConfigService: SiteConfigService,
   ) {}
 
-  private async getDaumConfig(siteUrl: string) {
+  private async getDaumConfig(siteId?: number, siteUrl?: string) {
     try {
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
+      // 1. 사이트별 설정 우선 확인
+      if (siteId) {
+        try {
+          const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
 
-      if (!globalSettings.daum || !globalSettings.daum.use) {
-        throw new DaumConfigError('Daum 색인이 비활성화되어 있습니다.', 'getDaumConfig', 'indexing_service', {
-          enabled: false,
-        })
-      }
+          if (siteConfig.daumConfig && siteConfig.daumConfig.use) {
+            const config = siteConfig.daumConfig
 
-      if (!globalSettings.daum.password) {
-        throw new DaumConfigError('Daum 비밀번호가 설정되지 않았습니다.', 'getDaumConfig', 'password', {
-          hasPassword: false,
-        })
-      }
+            if (!config.siteUrl) {
+              throw new DaumConfigError('사이트별 Daum 설정에서 사이트 URL이 필요합니다.', 'getDaumConfig', 'site_url', {
+                siteId,
+                hasSiteUrl: false,
+              })
+            }
 
-      return {
-        siteUrl: globalSettings.daum.siteUrl || siteUrl,
-        password: globalSettings.daum.password,
-        headless: globalSettings.daum.headless ?? true, // 기본값은 true
+            if (!config.password) {
+              throw new DaumConfigError('사이트별 Daum 설정에서 PIN 코드가 필요합니다.', 'getDaumConfig', 'pin_code', {
+                siteId,
+                hasPinCode: false,
+              })
+            }
+
+            return {
+              siteUrl: config.siteUrl,
+              password: config.password,
+              headless: config.headless ?? true,
+            }
+          }
+        }
+        catch (error) {
+          // 사이트별 설정이 없거나 비활성화된 경우 글로벌 설정으로 fallback
+          this.logger.log(`사이트별 Daum 설정을 사용할 수 없음, 글로벌 설정으로 fallback: ${error.message}`)
+        }
       }
     }
     catch (error) {
       if (error instanceof DaumConfigError) {
         throw error
       }
-      throw new DaumConfigError(`Daum 설정 조회 실패: ${error.message}`, 'getDaumConfig', 'settings_fetch')
+      throw new DaumConfigError(`Daum 설정 조회 실패: ${error.message}`, 'getDaumConfig', 'settings_fetch', { siteId })
     }
   }
 
-  private sleep(ms: number) {
-    return new Promise(res => setTimeout(res, ms))
-  }
-
   private getDaumCookiePath(siteUrl?: string) {
-    const isProd = process.env.NODE_ENV === 'production'
     const cookieDir = process.env.COOKIE_DIR
     if (!fs.existsSync(cookieDir))
       fs.mkdirSync(cookieDir, { recursive: true })
@@ -90,13 +104,13 @@ export class DaumIndexerService {
     options: DaumIndexerOptions,
     headless?: boolean,
   ): Promise<{ url: string, status: string, msg: string }[]> {
-    const { urlsToIndex, siteUrl } = options
+    const { urlsToIndex, siteId, siteUrl } = options
 
     try {
-      // DB에서 Daum 설정 가져오기
-      const dbConfig = await this.getDaumConfig(siteUrl)
+      // DB에서 Daum 설정 가져오기 (사이트별 설정 우선)
+      const dbConfig = await this.getDaumConfig(siteId, siteUrl)
       const daumSiteUrl = dbConfig.siteUrl
-      const pin = options.pin || dbConfig.password
+      const pin = dbConfig.password
       const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
 
       const launchOptions: any = {
@@ -133,7 +147,7 @@ export class DaumIndexerService {
       try {
         if (await this.loadCookies(page, daumSiteUrl)) {
           await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-          await this.sleep(1000)
+          await sleep(1000)
           const isLoginPage = await page.evaluate(() => {
             return !!document.querySelector('form.form_register input#authSiteUrl')
           })
@@ -144,7 +158,7 @@ export class DaumIndexerService {
         }
         if (!loggedIn) {
           await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-          await this.sleep(2000)
+          await sleep(2000)
           const isLoginPage = await page.evaluate(() => {
             return !!document.querySelector('form.form_register input#authSiteUrl')
           })
@@ -173,7 +187,7 @@ export class DaumIndexerService {
             this.logger.log('다음 로그인 완료')
             if (page.url().includes('/dashboard')) {
               await page.goto('https://webmaster.daum.net/tool/collect', { waitUntil: 'networkidle2' })
-              await this.sleep(2000)
+              await sleep(2000)
             }
             await this.saveCookies(page, daumSiteUrl)
           }
@@ -217,7 +231,7 @@ export class DaumIndexerService {
             })
             if (isSuccess)
               break
-            await this.sleep(pollInterval)
+            await sleep(pollInterval)
           }
 
           let result
@@ -225,54 +239,57 @@ export class DaumIndexerService {
             msg = '수집요청 완료'
             result = { url, status: 'success', msg }
             await page.click('.btn_confirm')
-            await this.sleep(500)
+            await sleep(500)
 
             // 성공 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteUrl: 'global', // 전역 설정이므로 임시값
-                targetUrl: url,
-                provider: 'DAUM',
-                status: 'SUCCESS',
-                message: msg,
-                responseData: JSON.stringify(result),
-              },
-            })
+            // TODO: indexingLog 모델이 구현되면 활성화
+            // await this.prisma.indexingLog.create({
+            //   data: {
+            //     siteUrl: 'global', // 전역 설정이므로 임시값
+            //     targetUrl: url,
+            //     provider: 'DAUM',
+            //     status: 'SUCCESS',
+            //     message: msg,
+            //     responseData: JSON.stringify(result),
+            //   },
+            // })
           }
           else {
             msg = '수집요청 실패 또는 레이어 미노출'
             result = { url, status: 'fail', msg }
 
             // 실패 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteUrl: 'global', // 전역 설정이므로 임시값
-                targetUrl: url,
-                provider: 'DAUM',
-                status: 'FAILED',
-                message: msg,
-                responseData: JSON.stringify(result),
-              },
-            })
+            // TODO: indexingLog 모델이 구현되면 활성화
+            // await this.prisma.indexingLog.create({
+            //   data: {
+            //     siteUrl: 'global', // 전역 설정이므로 임시값
+            //     targetUrl: url,
+            //     provider: 'DAUM',
+            //     status: 'FAILED',
+            //     message: msg,
+            //     responseData: JSON.stringify(result),
+            //   },
+            // })
           }
           results.push(result)
-          await this.sleep(1000)
+          await sleep(1000)
         }
         catch (e: any) {
           const result = { url, status: 'error', msg: `[에러] ${e?.message || e}` }
           results.push(result)
 
           // 에러 로그 기록
-          await this.prisma.indexingLog.create({
-            data: {
-              siteUrl: 'global', // 전역 설정이므로 임시값
-              targetUrl: url,
-              provider: 'DAUM',
-              status: 'FAILED',
-              message: result.msg,
-              responseData: JSON.stringify(result),
-            },
-          })
+          // TODO: indexingLog 모델이 구현되면 활성화
+          // await this.prisma.indexingLog.create({
+          //   data: {
+          //     siteUrl: 'global', // 전역 설정이므로 임시값
+          //     targetUrl: url,
+          //     provider: 'DAUM',
+          //     status: 'FAILED',
+          //     message: result.msg,
+          //     responseData: JSON.stringify(result),
+          //   },
+          // })
         }
       }
       await browser.close()
