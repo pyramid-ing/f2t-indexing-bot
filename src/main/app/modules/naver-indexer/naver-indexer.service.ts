@@ -16,7 +16,7 @@ import { NaverAccountService } from './naver-account.service'
 puppeteer.use(StealthPlugin())
 
 export interface NaverIndexerOptions {
-  siteUrl?: string
+  siteId: number
   urlsToIndex: string[]
   naverId?: string // 네이버 아이디 - NaverAccount에서 정보를 가져옴
   naverPw?: string // 네이버 비번 - NaverAccount에서 정보를 가져옴 (선택)
@@ -76,26 +76,48 @@ export class NaverIndexerService implements OnModuleInit {
     this.logger.log('쿠키를 저장했습니다.')
   }
 
-  private async getNaverConfig(naverId?: string) {
+  private async getNaverConfig(siteId: number) {
     try {
-      if (!naverId) {
-        throw new NaverAuthError('네이버 아이디가 필요합니다.', 'getNaverConfig', {
-          hasNaverId: false,
+      // 사이트 설정 조회
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
+      if (!siteConfig) {
+        throw new NaverAuthError(`등록되지 않은 사이트입니다: ${siteId}`, 'getNaverConfig', {
+          siteId,
+          exists: false,
         })
       }
 
-      // NaverAccount에서 계정 정보 조회
-      const account = await this.naverAccountService.getAccountByNaverId(naverId)
+      // 네이버 설정 확인
+      if (!siteConfig.naverConfig || !siteConfig.naverConfig.use) {
+        throw new NaverAuthError(`사이트의 네이버 설정이 비활성화되어 있습니다: ${siteId}`, 'getNaverConfig', {
+          siteId,
+          naverConfigEnabled: false,
+        })
+      }
+
+      const naverAccountId = siteConfig.naverConfig.selectedNaverAccountId
+      if (!naverAccountId) {
+        throw new NaverAuthError(`사이트에 네이버 계정이 선택되지 않았습니다: ${siteId}`, 'getNaverConfig', {
+          siteId,
+          hasSelectedAccount: false,
+        })
+      }
+
+      // 선택된 네이버 계정 조회
+      const account = await this.naverAccountService.getAccountById(naverAccountId)
       if (!account) {
-        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ${naverId}`, 'getNaverConfig', {
-          naverId,
+        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ID ${naverAccountId}`, 'getNaverConfig', {
+          siteId,
+          accountId: naverAccountId,
           exists: false,
         })
       }
 
       if (!account.isActive) {
-        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${naverId}`, 'getNaverConfig', {
-          naverId,
+        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${account.naverId}`, 'getNaverConfig', {
+          siteId,
+          accountId: naverAccountId,
+          naverId: account.naverId,
           isActive: false,
         })
       }
@@ -103,13 +125,13 @@ export class NaverIndexerService implements OnModuleInit {
       return {
         naverId: account.naverId,
         password: account.password,
-        headless: true, // 기본값은 true
+        headless: siteConfig.naverConfig.headless ?? true, // 사이트 설정의 headless 값 사용, 기본값 true
       }
     } catch (error) {
       if (error instanceof NaverAuthError) {
         throw error
       }
-      throw new NaverAuthError(`Naver 설정 조회 실패: ${error.message}`, 'getNaverConfig')
+      throw new NaverAuthError(`Naver 설정 조회 실패: ${error.message}`, 'getNaverConfig', { siteId })
     }
   }
 
@@ -117,14 +139,12 @@ export class NaverIndexerService implements OnModuleInit {
     options: NaverIndexerOptions,
     headless?: boolean,
   ): Promise<{ url: string; status: string; msg: string }[]> {
-    const { siteUrl, urlsToIndex } = options
+    const { siteId, urlsToIndex } = options
 
     try {
-      if (!siteUrl) {
-        throw new NaverAuthError('siteUrl이 필요합니다.', 'manualIndexing')
-      }
       // DB에서 네이버 설정 가져오기 (NaverAccount에서 조회)
-      const dbConfig = await this.getNaverConfig(options.naverId)
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
+      const dbConfig = await this.getNaverConfig(siteId!)
       const naverId = options.naverId || dbConfig.naverId
       const naverPw = options.naverPw || dbConfig.password
       const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
@@ -163,12 +183,9 @@ export class NaverIndexerService implements OnModuleInit {
       let needLogin = false
       try {
         await this.loadCookies(page, naverId)
-        await page.goto(
-          `https://searchadvisor.naver.com/console/site/request/crawl?site=${encodeURIComponent(siteUrl)}`,
-          {
-            waitUntil: 'networkidle2',
-          },
-        )
+        await page.goto(`https://searchadvisor.naver.com/console/site/request/crawl?site=${siteConfig.siteUrl}`, {
+          waitUntil: 'networkidle2',
+        })
         await this.sleep(2001)
         // 1차: authorize로 이동되면 로그인 필요
         if (page.url().startsWith('https://nid.naver.com/oauth2.0/authorize')) {
@@ -290,12 +307,9 @@ export class NaverIndexerService implements OnModuleInit {
           this.logger.log('네이버 로그인 성공, 쿠키 저장')
           await this.saveCookies(page, naverId)
           // 색인 요청 페이지로 이동
-          await page.goto(
-            `https://searchadvisor.naver.com/console/site/request/crawl?site=${encodeURIComponent(siteUrl)}`,
-            {
-              waitUntil: 'networkidle2',
-            },
-          )
+          await page.goto('https://searchadvisor.naver.com/console/site/request/crawl', {
+            waitUntil: 'networkidle2',
+          })
           await this.sleep(2000)
         } else {
           await browser.close()
@@ -366,16 +380,16 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 로그 기록 (RETRY 상태로 기록)
-            await this.prisma.indexingLog.create({
-              data: {
-                siteUrl: 'global',
-                targetUrl: url,
-                provider: 'NAVER',
-                status: 'RETRY',
-                message: result.msg,
-              },
-            })
+            // 로그 기록 (RETRY 상태로 기록) - 임시 비활성화
+            // await this.prisma.indexingLog.create({
+            //   data: {
+            //     siteUrl: 'global',
+            //     targetUrl: url,
+            //     provider: 'NAVER',
+            //     status: 'RETRY',
+            //     message: result.msg,
+            //   },
+            // })
 
             continue
           }
@@ -389,16 +403,16 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 성공 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteUrl: 'global',
-                targetUrl: url,
-                provider: 'NAVER',
-                status: 'SUCCESS',
-                message: result.msg,
-              },
-            })
+            // 성공 로그 기록 - 임시 비활성화
+            // await this.prisma.indexingLog.create({
+            //   data: {
+            //     siteUrl: 'global',
+            //     targetUrl: url,
+            //     provider: 'NAVER',
+            //     status: 'SUCCESS',
+            //     message: result.msg,
+            //   },
+            // })
           } else {
             result = {
               url,
@@ -407,16 +421,16 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 실패 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteUrl: 'global',
-                targetUrl: url,
-                provider: 'NAVER',
-                status: 'FAILED',
-                message: result.msg,
-              },
-            })
+            // 실패 로그 기록 - 임시 비활성화
+            // await this.prisma.indexingLog.create({
+            //   data: {
+            //     siteUrl: 'global',
+            //     targetUrl: url,
+            //     provider: 'NAVER',
+            //     status: 'FAILED',
+            //     message: result.msg,
+            //   },
+            // })
           }
           await this.sleep(1000)
         } catch (e: any) {
@@ -427,16 +441,16 @@ export class NaverIndexerService implements OnModuleInit {
           }
           results.push(result)
 
-          // 에러 로그 기록
-          await this.prisma.indexingLog.create({
-            data: {
-              siteUrl: 'global',
-              targetUrl: url,
-              provider: 'NAVER',
-              status: 'FAILED',
-              message: result.msg,
-            },
-          })
+          // 에러 로그 기록 - 임시 비활성화
+          // await this.prisma.indexingLog.create({
+          //   data: {
+          //     siteUrl: 'global',
+          //     targetUrl: url,
+          //     provider: 'NAVER',
+          //     status: 'FAILED',
+          //     message: result.msg,
+          //   },
+          // })
         }
       }
 
@@ -450,7 +464,7 @@ export class NaverIndexerService implements OnModuleInit {
           `${failedResults.length}/${urlsToIndex.length}개의 URL 색인 요청에 실패했습니다.`,
           'manualIndexing',
           undefined,
-          siteUrl,
+          undefined, // siteUrl 제거
           {
             failedCount: failedResults.length,
             totalCount: urlsToIndex.length,
@@ -470,10 +484,16 @@ export class NaverIndexerService implements OnModuleInit {
       ) {
         throw error
       }
-      throw new NaverSubmissionError(`색인 요청 중 에러 발생: ${error.message}`, 'manualIndexing', undefined, siteUrl, {
-        urlsToIndex,
-        headless,
-      })
+      throw new NaverSubmissionError(
+        `색인 요청 중 에러 발생: ${error.message}`,
+        'manualIndexing',
+        undefined,
+        undefined,
+        {
+          urlsToIndex,
+          headless,
+        },
+      )
     }
   }
 
@@ -515,7 +535,33 @@ export class NaverIndexerService implements OnModuleInit {
    */
   async checkLoginStatus(naverId?: string): Promise<NaverLoginStatus> {
     try {
-      const naverConfig = await this.getNaverConfig(naverId)
+      // naverId로 직접 네이버 계정 조회
+      if (!naverId) {
+        throw new NaverAuthError('네이버 아이디가 필요합니다.', 'checkLoginStatus', {
+          hasNaverId: false,
+        })
+      }
+
+      const account = await this.naverAccountService.getAccountByNaverId(naverId)
+      if (!account) {
+        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ${naverId}`, 'checkLoginStatus', {
+          naverId,
+          exists: false,
+        })
+      }
+
+      if (!account.isActive) {
+        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${naverId}`, 'checkLoginStatus', {
+          naverId,
+          isActive: false,
+        })
+      }
+
+      const naverConfig = {
+        naverId: account.naverId,
+        password: account.password,
+        headless: true, // 기본값
+      }
 
       const launchOptions: any = {
         headless: true,
@@ -610,7 +656,30 @@ export class NaverIndexerService implements OnModuleInit {
     }
 
     try {
-      const { naverId: configNaverId, password } = await this.getNaverConfig(naverId)
+      // naverId로 직접 네이버 계정 조회
+      if (!naverId) {
+        throw new NaverAuthError('네이버 아이디가 필요합니다.', 'openLoginBrowser', {
+          hasNaverId: false,
+        })
+      }
+
+      const account = await this.naverAccountService.getAccountByNaverId(naverId)
+      if (!account) {
+        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ${naverId}`, 'openLoginBrowser', {
+          naverId,
+          exists: false,
+        })
+      }
+
+      if (!account.isActive) {
+        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${naverId}`, 'openLoginBrowser', {
+          naverId,
+          isActive: false,
+        })
+      }
+
+      const configNaverId = account.naverId
+      const password = account.password
 
       const launchOptions: any = {
         headless: false, // 로그인 창은 항상 보여줘야 함
@@ -677,7 +746,32 @@ export class NaverIndexerService implements OnModuleInit {
         }
       }
 
-      const naverConfig = await this.getNaverConfig(naverId)
+      // naverId로 직접 네이버 계정 조회
+      if (!naverId) {
+        throw new NaverAuthError('네이버 아이디가 필요합니다.', 'checkLoginComplete', {
+          hasNaverId: false,
+        })
+      }
+
+      const account = await this.naverAccountService.getAccountByNaverId(naverId)
+      if (!account) {
+        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ${naverId}`, 'checkLoginComplete', {
+          naverId,
+          exists: false,
+        })
+      }
+
+      if (!account.isActive) {
+        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${naverId}`, 'checkLoginComplete', {
+          naverId,
+          isActive: false,
+        })
+      }
+
+      const naverConfig = {
+        naverId: account.naverId,
+        password: account.password,
+      }
 
       // 현재 페이지 URL 확인
       const currentUrl = this.loginPage.url()
@@ -744,77 +838,10 @@ export class NaverIndexerService implements OnModuleInit {
     }
   }
 
-  async indexUrls(urls: string[]): Promise<any> {
-    try {
-      this.logger.log(`Naver 인덱싱 시작: ${urls.length}개 URL`)
-
-      // 전역 Naver 설정 조회
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
-      const naverConfig = globalSettings.naver
-
-      if (!naverConfig.use) {
-        throw new NaverAuthError('Naver 인덱싱이 비활성화되어 있습니다.', 'indexUrls', {
-          enabled: false,
-        })
-      }
-
-      if (!naverConfig.naverId || !naverConfig.password) {
-        throw new NaverAuthError('Naver 인증 정보가 설정되지 않았습니다.', 'indexUrls', {
-          hasNaverId: !!naverConfig.naverId,
-          hasPassword: !!naverConfig.password,
-        })
-      }
-
-      // 임시 사이트 URL 사용 (전역 설정이므로)
-      const options: NaverIndexerOptions = {
-        siteUrl: 'global-site',
-        urlsToIndex: urls,
-        naverId: naverConfig.naverId,
-        naverPw: naverConfig.password,
-      }
-
-      const results = await this.manualIndexing(options, naverConfig.headless)
-
-      // 실패한 URL 추적
-      const failedUrls = results.filter(result => result.status === 'error' || result.status === 'fail')
-
-      // 실패한 URL이 있으면 에러 throw
-      if (failedUrls.length > 0) {
-        throw new NaverSubmissionError(
-          `${failedUrls.length}/${urls.length} URL Naver 인덱싱 실패`,
-          'indexUrls',
-          undefined,
-          'global',
-          {
-            failedUrls: failedUrls.map(result => ({
-              url: result.url,
-              error: result.msg,
-              status: result.status,
-            })),
-            totalCount: urls.length,
-            failedCount: failedUrls.length,
-            results,
-          },
-        )
-      }
-
-      this.logger.log(`Naver 인덱싱 완료: ${results.length}개 URL 처리`)
-      return { results }
-    } catch (error) {
-      this.logger.error('Naver 인덱싱 실패:', error)
-
-      if (
-        error instanceof NaverAuthError ||
-        error instanceof NaverLoginError ||
-        error instanceof NaverSubmissionError ||
-        error instanceof NaverBrowserError
-      ) {
-        throw error
-      }
-
-      throw new NaverSubmissionError(`Naver 인덱싱 실패: ${error.message}`, 'indexUrls', undefined, 'global', {
-        urlCount: urls.length,
-      })
-    }
-  }
+  // TODO: 전역 설정 기반 indexUrls는 deprecated됨 - 사이트별 설정으로 대체
+  // async indexUrls(urls: string[]): Promise<any> {
+  //   // 이 함수는 전역 설정을 사용하는 레거시 함수입니다.
+  //   // 새로운 구조에서는 manualIndexing을 siteId와 함께 사용하세요.
+  //   throw new NaverAuthError('indexUrls는 deprecated됨. manualIndexing을 사용하세요.', 'indexUrls')
+  // }
 }

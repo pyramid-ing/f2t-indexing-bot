@@ -14,7 +14,7 @@ export interface BingSiteConfig {
 
 export interface NaverSiteConfig {
   use: boolean
-  naverAccountId?: number // NaverAccount 테이블의 ID를 참조
+  selectedNaverAccountId?: number // NaverAccount 테이블의 ID를 참조
   loginUrl?: string
   headless?: boolean
 }

@@ -12,6 +12,7 @@ import {
   closeNaverLoginBrowser,
   daumManualIndex,
   findSiteConfigByUrl,
+  getAllNaverAccounts,
   getAllSiteConfigs,
   getErrorDetails,
   getErrorMessage,
@@ -189,15 +190,43 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
         message.info(`활성화된 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
 
-        // 네이버가 포함되어 있지만 로그인되지 않은 경우 네이버만 제외
-        if (services.includes('naver') && !naverLoginStatus?.isLoggedIn) {
-          services = services.filter(s => s !== 'naver')
-          message.warning('네이버는 로그인이 필요하여 제외되었습니다. 다른 검색엔진으로 색인을 진행합니다.')
+        // 네이버가 포함되어 있는 경우 사이트별 네이버 계정 로그인 상태 확인
+        if (services.includes('naver')) {
+          try {
+            const naverAccountId = currentSite.naverConfig?.selectedNaverAccountId
+            let naverId: string | undefined = undefined
 
-          if (services.length === 0) {
-            message.error('네이버 로그인이 필요하거나 다른 검색엔진을 활성화해주세요.')
-            setLoading(false)
-            return
+            if (naverAccountId) {
+              const accounts = await getAllNaverAccounts()
+              const account = accounts.find(acc => acc.id === naverAccountId)
+              if (account) {
+                naverId = account.naverId
+              }
+            }
+
+            const currentNaverStatus = await checkNaverLoginStatus(naverId)
+            if (!currentNaverStatus?.isLoggedIn) {
+              services = services.filter(s => s !== 'naver')
+              message.warning(
+                `네이버는 로그인이 필요하여 제외되었습니다. (계정: ${naverId || '설정되지 않음'}) 다른 검색엔진으로 색인을 진행합니다.`,
+              )
+
+              if (services.length === 0) {
+                message.error('네이버 로그인이 필요하거나 다른 검색엔진을 활성화해주세요.')
+                setLoading(false)
+                return
+              }
+            }
+          } catch (error) {
+            console.error('네이버 로그인 상태 확인 실패:', error)
+            services = services.filter(s => s !== 'naver')
+            message.warning('네이버 로그인 상태 확인에 실패하여 제외되었습니다. 다른 검색엔진으로 색인을 진행합니다.')
+
+            if (services.length === 0) {
+              message.error('네이버 로그인 상태 확인 실패. 다른 검색엔진을 활성화해주세요.')
+              setLoading(false)
+              return
+            }
           }
         }
         const existingUrlsByProvider = await checkExistingUrls(urlList, services)
@@ -278,9 +307,29 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               result = await googleManualIndex({ siteId, urls: urlsForService, type: 'URL_UPDATED' })
               break
             case 'naver':
-              if (!naverLoginStatus?.isLoggedIn) {
-                throw new Error('네이버 로그인이 필요합니다.')
+              // 네이버 로그인 상태를 실시간으로 다시 확인
+              const currentSite = sites.find(s => s.id === siteId)
+              const naverAccountId = currentSite?.naverConfig?.selectedNaverAccountId
+
+              let naverIdForIndexing: string | undefined = undefined
+              if (naverAccountId) {
+                try {
+                  const accounts = await getAllNaverAccounts()
+                  const account = accounts.find(acc => acc.id === naverAccountId)
+                  if (account) {
+                    naverIdForIndexing = account.naverId
+                  }
+                } catch (error) {
+                  console.error('네이버 계정 조회 실패:', error)
+                }
               }
+
+              // 실시간 로그인 상태 확인
+              const currentNaverStatus = await checkNaverLoginStatus(naverIdForIndexing)
+              if (!currentNaverStatus?.isLoggedIn) {
+                throw new Error(`네이버 로그인이 필요합니다. (계정: ${naverIdForIndexing || '설정되지 않음'})`)
+              }
+
               result = await naverManualIndex({ siteId, urlsToIndex: urlsForService })
               break
             case 'daum':
@@ -502,10 +551,31 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   }, [detailedResults, filters])
 
   const checkNaverLogin = async () => {
-    if (!selectedSite?.naverConfig?.use) return
+    if (!selectedSite?.naverConfig?.use) {
+      setNaverLoginStatus(null)
+      return
+    }
+
     setNaverLoginChecking(true)
     try {
-      const status = await checkNaverLoginStatus()
+      // 사이트별 네이버 계정 ID 확인
+      const naverAccountId = selectedSite.naverConfig.selectedNaverAccountId
+
+      let naverId: string | undefined = undefined
+      if (naverAccountId) {
+        // 네이버 계정 ID로 naverId 조회
+        try {
+          const accounts = await getAllNaverAccounts()
+          const account = accounts.find(acc => acc.id === naverAccountId)
+          if (account) {
+            naverId = account.naverId
+          }
+        } catch (error) {
+          console.error('네이버 계정 조회 실패:', error)
+        }
+      }
+
+      const status = await checkNaverLoginStatus(naverId)
       setNaverLoginStatus(status)
     } catch (error) {
       console.error('네이버 로그인 상태 확인 실패:', error)
@@ -517,13 +587,30 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
   const handleNaverLogin = async () => {
     try {
-      const result = await openNaverLoginBrowser()
+      // 사이트별 네이버 계정 ID 확인
+      const naverAccountId = selectedSite?.naverConfig?.selectedNaverAccountId
+
+      let naverId: string | undefined = undefined
+      if (naverAccountId) {
+        // 네이버 계정 ID로 naverId 조회
+        try {
+          const accounts = await getAllNaverAccounts()
+          const account = accounts.find(acc => acc.id === naverAccountId)
+          if (account) {
+            naverId = account.naverId
+          }
+        } catch (error) {
+          console.error('네이버 계정 조회 실패:', error)
+        }
+      }
+
+      const result = await openNaverLoginBrowser(naverId)
       if (result.success) {
         setNaverLoginBrowserOpen(true)
         message.info('네이버 로그인 창이 열렸습니다. 수동으로 로그인해주세요.')
         const checkInterval = setInterval(async () => {
           try {
-            const completeResult = await checkNaverLoginComplete()
+            const completeResult = await checkNaverLoginComplete(naverId)
             if (completeResult.success) {
               clearInterval(checkInterval)
               setNaverLoginBrowserOpen(false)
