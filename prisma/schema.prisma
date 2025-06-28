@@ -23,6 +23,20 @@ model Auth {
   updatedAt DateTime @updatedAt
 }
 
+// 네이버 계정 관리 모델 (새로 추가)
+model NaverAccount {
+  id          Int      @id @default(autoincrement())
+  name        String              // 계정 표시명 (예: "블로그 계정", "메인 계정")
+  naverId     String   @unique    // 네이버 아이디
+  password    String              // 네이버 비밀번호 (암호화 권장)
+  isActive    Boolean  @default(true)  // 활성화 여부
+  isLoggedIn  Boolean  @default(false) // 로그인 상태
+  lastLogin   DateTime?           // 마지막 로그인 시간
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // 사이트별 설정 모델 (확장됨)
 model Site {
   id          Int      @id @default(autoincrement())

@@ -376,6 +376,73 @@ export async function closeNaverLoginBrowser(): Promise<{ success: boolean, mess
   return res.data
 }
 
+// 네이버 계정 관리 API
+export interface NaverAccount {
+  id: number
+  name: string
+  naverId: string
+  password: string
+  isActive: boolean
+  isLoggedIn: boolean
+  lastLogin?: string
+  createdAt: string
+  updatedAt: string
+}
+
+export async function getAllNaverAccounts(): Promise<NaverAccount[]> {
+  const res = await axios.get(`${API_BASE_URL}/naver-accounts`)
+  return res.data
+}
+
+export async function getActiveNaverAccounts(): Promise<NaverAccount[]> {
+  const res = await axios.get(`${API_BASE_URL}/naver-accounts/active`)
+  return res.data
+}
+
+export async function createNaverAccount(data: { name: string, naverId: string, password: string, isActive?: boolean }): Promise<NaverAccount> {
+  const res = await axios.post(`${API_BASE_URL}/naver-accounts`, data)
+  return res.data
+}
+
+export async function updateNaverAccount(id: number, data: Partial<NaverAccount>): Promise<NaverAccount> {
+  const res = await axios.put(`${API_BASE_URL}/naver-accounts/${id}`, data)
+  return res.data
+}
+
+export async function deleteNaverAccount(id: number): Promise<{ success: boolean, message: string }> {
+  const res = await axios.delete(`${API_BASE_URL}/naver-accounts/${id}`)
+  return res.data
+}
+
+export async function updateNaverAccountLoginStatus(id: number, isLoggedIn: boolean): Promise<NaverAccount> {
+  const res = await axios.put(`${API_BASE_URL}/naver-accounts/${id}/login-status`, { isLoggedIn })
+  return res.data
+}
+
+// URL에서 사이트 설정 자동 매칭
+export async function findSiteConfigByUrl(url: string): Promise<SiteConfig | null> {
+  try {
+    const urlObj = new URL(url)
+    const domain = urlObj.hostname.replace(/^www\./, '') // www 제거
+
+    const res = await getSiteConfigByDomain(domain)
+    if (res.success && res.data) {
+      return res.data
+    }
+
+    // 전체 호스트명으로도 시도
+    const res2 = await getSiteConfigByDomain(urlObj.hostname)
+    if (res2.success && res2.data) {
+      return res2.data
+    }
+
+    return null
+  }
+  catch (error) {
+    return null
+  }
+}
+
 export async function checkExistingUrls(urls: string[], providers: IndexProvider[]): Promise<Record<IndexProvider, string[]>> {
   const res = await axios.post(`${API_BASE_URL}/indexing/check-existing`, {
     urls,

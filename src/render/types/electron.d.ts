@@ -1,5 +1,4 @@
 export interface IElectronAPI {
-  getBackendPort: () => Promise<number>
   openExternal: (url: string) => void
 }
 

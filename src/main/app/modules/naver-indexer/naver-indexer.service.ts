@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { firstValueFrom } from 'rxjs'
+import { NaverAccountService } from './naver-account.service'
 
 puppeteer.use(StealthPlugin())
 
@@ -47,6 +48,7 @@ export class NaverIndexerService implements OnModuleInit {
     private readonly httpService: HttpService,
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly naverAccountService: NaverAccountService,
   ) {}
 
   async onModuleInit() {}

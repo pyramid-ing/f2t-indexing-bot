@@ -1,6 +1,6 @@
 import { HomeOutlined, SettingOutlined } from '@ant-design/icons'
 import { Layout, Menu } from 'antd'
-import React, { useEffect } from 'react'
+import React from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import styled from 'styled-components'
 import IndexingDashboardPage from './IndexingDashboardPage'
@@ -47,18 +47,6 @@ interface AppStatus {
 }
 
 const App: React.FC = () => {
-  useEffect(() => {
-    // 백엔드 포트 확인
-    window.electronAPI
-      .getBackendPort()
-      .then((port) => {
-        console.log('백엔드 포트:', port)
-      })
-      .catch((error) => {
-        console.error('백엔드 포트 확인 실패:', error)
-      })
-  }, [])
-
   return (
     <StyledLayout>
       <Sider width={200}>

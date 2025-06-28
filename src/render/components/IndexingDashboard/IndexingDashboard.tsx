@@ -1,4 +1,5 @@
 import type {
+  NaverAccount,
   NaverLoginStatus,
   SiteConfig,
 } from '../../api'
@@ -7,15 +8,19 @@ import type { IndexingTask } from './useIndexingTasks'
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  DeleteOutlined,
+  EditOutlined,
   GlobalOutlined,
   GoogleOutlined,
   LoadingOutlined,
   LoginOutlined,
   PlayCircleOutlined,
+  PlusOutlined,
   ReloadOutlined,
+  UserOutlined,
   YahooOutlined,
 } from '@ant-design/icons'
-import { Alert, Button, Card, Checkbox, Col, Form, Input, message, Row, Select, Space, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Checkbox, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   bingManualIndex,
@@ -23,7 +28,11 @@ import {
   checkNaverLoginComplete,
   checkNaverLoginStatus,
   closeNaverLoginBrowser,
+  createNaverAccount,
   daumManualIndex,
+  deleteNaverAccount,
+  findSiteConfigByUrl,
+  getAllNaverAccounts,
   getAllSiteConfigs,
   getErrorDetails,
   getErrorMessage,
@@ -31,6 +40,7 @@ import {
   googleManualIndex,
   naverManualIndex,
   openNaverLoginBrowser,
+  updateNaverAccount,
 } from '../../api'
 import IndexingDetailModal from './IndexingDetailModal'
 import IndexingTaskTable from './IndexingTaskTable'
@@ -48,7 +58,8 @@ interface Props {
 
 const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, addTask, updateTask }) => {
   const [sites, setSites] = useState<SiteConfig[]>([])
-  const [selectedSite, setSelectedSite] = useState<string | null>(null)
+  const [selectedSite, setSelectedSite] = useState<SiteConfig | null>(null)
+  const [urlsInput, setUrlsInput] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedTask, setSelectedTask] = useState<IndexingTask | null>(null)
@@ -56,7 +67,11 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   const [naverLoginStatus, setNaverLoginStatus] = useState<NaverLoginStatus | null>(null)
   const [naverLoginChecking, setNaverLoginChecking] = useState(false)
   const [naverLoginBrowserOpen, setNaverLoginBrowserOpen] = useState(false)
+  const [naverAccounts, setNaverAccounts] = useState<NaverAccount[]>([])
+  const [isNaverAccountModalVisible, setIsNaverAccountModalVisible] = useState(false)
+  const [isAddingNaverAccount, setIsAddingNaverAccount] = useState(false)
   const [form] = Form.useForm()
+  const [naverAccountForm] = Form.useForm()
   const [detailedResults, setDetailedResults] = useState<DetailedResult[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [filters, setFilters] = useState<{ status: string, services: string[] }>({ status: 'all', services: [] })
@@ -64,6 +79,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   useEffect(() => {
     loadSites()
     loadGlobalSettings()
+    loadNaverAccounts()
     checkNaverLogin()
   }, [])
 
@@ -73,23 +89,50 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     }
   }, [globalSettings])
 
+  // 네이버 로그인 상태가 변경되어도 폼은 자동으로 업데이트하지 않음
+  // 대신 실행 시에 동적으로 처리
+
+  // URL 입력 시 자동으로 사이트 매칭
   useEffect(() => {
-    if (naverLoginStatus && !naverLoginStatus.isLoggedIn) {
-      const currentServices = form.getFieldValue('services') as string[]
-      if (currentServices?.includes('naver')) {
-        form.setFieldsValue({ services: currentServices.filter(s => s !== 'naver') })
+    const detectSiteFromUrls = async () => {
+      if (!urlsInput.trim()) {
+        setSelectedSite(null)
+        return
+      }
+
+      const urls = urlsInput.split('\n').filter(url => url.trim() !== '')
+      if (urls.length === 0) {
+        setSelectedSite(null)
+        return
+      }
+
+      // 첫 번째 URL로 사이트 설정 찾기
+      const firstUrl = urls[0].trim()
+
+      try {
+        const siteConfig = await findSiteConfigByUrl(firstUrl)
+
+        if (siteConfig) {
+          setSelectedSite(siteConfig)
+        }
+        else {
+          setSelectedSite(null)
+        }
+      }
+      catch (error) {
+        setSelectedSite(null)
       }
     }
-  }, [naverLoginStatus, form])
+
+    const timeoutId = setTimeout(detectSiteFromUrls, 500) // 500ms 디바운스
+    return () => clearTimeout(timeoutId)
+  }, [urlsInput])
 
   const loadSites = async () => {
     try {
       const response = await getAllSiteConfigs()
       const data = response.data || []
       setSites(data)
-      if (data.length > 0) {
-        setSelectedSite(data[0].siteUrl)
-      }
     }
     catch (error) {
       message.error('사이트 목록을 불러오는 데 실패했습니다.')
@@ -101,7 +144,8 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
       const response = await getGlobalSettings()
       if (response.success && response.data) {
         setGlobalSettings(response.data)
-        form.setFieldsValue({ services: getAvailableServices(response.data) })
+        // 검색엔진 선택을 빈 배열로 초기화 (모든 활성화된 엔진 사용)
+        form.setFieldsValue({ services: [] })
       }
     }
     catch (error) {
@@ -110,27 +154,92 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     }
   }
 
-  const getSelectedSiteConfig = () => sites.find(site => site.siteUrl === selectedSite)
+  const loadNaverAccounts = async () => {
+    try {
+      const accounts = await getAllNaverAccounts()
+      setNaverAccounts(accounts)
+    }
+    catch (error) {
+      console.error('네이버 계정 목록 로드 실패:', error)
+    }
+  }
 
-  const getAvailableServices = (settings = globalSettings) => {
-    if (!settings)
+  const getAvailableServices = (settings = globalSettings, site = selectedSite) => {
+    // 선택된 사이트가 있으면 사이트별 설정 우선 사용
+    if (site) {
+      const services = []
+      if (site.googleConfig?.use) {
+        services.push('google')
+      }
+      if (site.bingConfig?.use) {
+        services.push('bing')
+      }
+      if (site.naverConfig?.use) {
+        services.push('naver')
+      }
+      if (site.daumConfig?.use) {
+        services.push('daum')
+      }
+      return services
+    }
+
+    // 전역 설정 사용
+    if (!settings) {
       return []
+    }
     const services = []
-    if (settings.google?.use)
+    if (settings.google?.use) {
       services.push('google')
-    if (settings.bing?.use)
+    }
+    if (settings.bing?.use) {
       services.push('bing')
-    if (settings.naver?.use)
+    }
+    if (settings.naver?.use) {
       services.push('naver')
-    if (settings.daum?.use)
+    }
+    if (settings.daum?.use) {
       services.push('daum')
+    }
     return services
   }
 
-  const handleManualIndexing = (taskValues: Partial<IndexingTask>) => {
-    const siteConfig = getSelectedSiteConfig()
-    if (!siteConfig) {
-      message.error('사이트를 선택해주세요.')
+  const handleManualIndexing = async (taskValues: Partial<IndexingTask>) => {
+    const urls = Array.isArray(taskValues.urls)
+      ? taskValues.urls
+      : (taskValues.urls as string).split('\n').filter(u => u.trim() !== '')
+
+    if (urls.length === 0) {
+      message.error('URL을 입력해주세요.')
+      return
+    }
+
+    // 사이트가 감지되지 않았다면 실시간으로 다시 시도
+    let currentSite = selectedSite
+    if (!currentSite) {
+      try {
+        const firstUrl = urls[0].trim()
+        const siteConfig = await findSiteConfigByUrl(firstUrl)
+        if (siteConfig) {
+          currentSite = siteConfig
+          setSelectedSite(siteConfig)
+        }
+      }
+      catch (error) {
+        // 사이트 감지 실패 시 무시하고 진행
+      }
+    }
+
+    // 여전히 사이트를 찾지 못했다면 에러 표시
+    if (!currentSite) {
+      try {
+        const firstUrl = urls[0].trim()
+        const urlObj = new URL(firstUrl)
+        const domain = urlObj.hostname.replace(/^www\./, '')
+        message.error(`등록되지 않은 사이트입니다: ${domain}\n설정에서 사이트를 먼저 등록해주세요.`)
+      }
+      catch (error) {
+        message.error('올바른 URL을 입력해주세요.')
+      }
       return
     }
 
@@ -147,7 +256,24 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           return
         }
 
-        const services = (taskValues.services || []) as any[]
+        // 검색엔진이 선택되지 않았으면 활성화된 모든 검색엔진 사용
+        let services = (taskValues.services || []) as any[]
+        if (services.length === 0) {
+          services = getAvailableServices(globalSettings, currentSite)
+          message.info(`활성화된 모든 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
+        }
+
+        // 네이버가 포함되어 있지만 로그인되지 않은 경우 네이버만 제외
+        if (services.includes('naver') && !naverLoginStatus?.isLoggedIn) {
+          services = services.filter(s => s !== 'naver')
+          message.warning('네이버는 로그인이 필요하여 제외되었습니다. 다른 검색엔진으로 색인을 진행합니다.')
+
+          if (services.length === 0) {
+            message.error('네이버 로그인이 필요하거나 다른 검색엔진을 활성화해주세요.')
+            setLoading(false)
+            return
+          }
+        }
         const existingUrlsByProvider = await checkExistingUrls(urlList, services)
         const groupedUrlsToSubmit = services.reduce(
           (acc, service) => {
@@ -175,7 +301,8 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
         const servicesWithUrls = Object.keys(groupedUrlsToSubmit)
         await executeIndexing({
-          siteUrl: siteConfig.siteUrl,
+          siteId: currentSite.id!,
+          siteUrl: currentSite.siteUrl,
           urls: urlList,
           services: servicesWithUrls,
           _groupedUrls: groupedUrlsToSubmit,
@@ -191,7 +318,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
   const executeIndexing = async (values: any) => {
     setLoading(true)
-    const { siteUrl, urls, services, _groupedUrls } = values
+    const { siteId, siteUrl, urls, services, _groupedUrls } = values
     const taskId = `task-${Date.now()}`
     addTask({
       id: taskId,
@@ -203,8 +330,12 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
       startTime: Date.now(),
       _groupedUrls,
     })
-    if (!_groupedUrls)
+
+    // URL 입력 필드와 상태 초기화
+    if (!_groupedUrls) {
       form.resetFields(['urls'])
+      setUrlsInput('')
+    }
 
     try {
       for (const service of services) {
@@ -218,18 +349,19 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           let result
           switch (service) {
             case 'bing':
-              result = await bingManualIndex({ siteUrl, urls: urlsForService })
+              result = await bingManualIndex({ siteId, urls: urlsForService })
               break
             case 'google':
-              result = await googleManualIndex({ siteUrl, urls: urlsForService, type: 'URL_UPDATED' })
+              result = await googleManualIndex({ siteId, urls: urlsForService, type: 'URL_UPDATED' })
               break
             case 'naver':
-              if (!naverLoginStatus?.isLoggedIn)
+              if (!naverLoginStatus?.isLoggedIn) {
                 throw new Error('네이버 로그인이 필요합니다.')
-              result = await naverManualIndex({ siteUrl, urlsToIndex: urlsForService })
+              }
+              result = await naverManualIndex({ siteId, urlsToIndex: urlsForService })
               break
             case 'daum':
-              result = await daumManualIndex({ siteUrl, urlsToIndex: urlsForService })
+              result = await daumManualIndex({ siteId, urlsToIndex: urlsForService })
               break
           }
           updateTask(taskId, t => ({ ...t, results: { ...t.results, [service]: { status: 'success', data: result } } }))
@@ -485,69 +617,179 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     }
   }
 
-  const availableServices = getAvailableServices()
-
   return (
     <div style={{ padding: '20px' }}>
       <Row gutter={16}>
         <Col span={24}>
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
             <div style={{ marginBottom: '16px' }}>
-              <Text strong>사이트 선택: </Text>
-              <Select
-                style={{ width: 300, marginLeft: 8 }}
-                value={selectedSite}
-                onChange={setSelectedSite}
-                placeholder="사이트를 선택하세요"
-              >
-                {sites.map(site => (
-                  <Select.Option key={site.siteUrl} value={site.siteUrl}>
-                    {site.name}
-                    {' '}
-                    (
-                    {site.siteUrl}
+              {selectedSite
+                ? (
+                    <Alert
+                      message={`감지된 사이트: ${selectedSite.name} (${selectedSite.siteUrl})`}
+                      type="success"
+                      showIcon
+                      action={(
+                        <Button
+                          size="small"
+                          type="text"
+                          onClick={() => {
+                            setSelectedSite(null)
+                            setUrlsInput('')
+                          }}
+                        >
+                          초기화
+                        </Button>
+                      )}
+                      style={{ marginBottom: 16 }}
+                    />
+                  )
+                : urlsInput.trim()
+                  ? (
+                      <Alert
+                        message="등록되지 않은 사이트입니다. 설정에서 사이트를 먼저 등록해주세요."
+                        type="warning"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
                     )
-                  </Select.Option>
-                ))}
-              </Select>
+                  : null}
+
+              {/* 디버그 정보 */}
+              <div style={{ background: '#f0f0f0', padding: 12, borderRadius: 6, marginBottom: 16, fontSize: 12 }}>
+                <div><strong>디버그 정보:</strong></div>
+                <div>
+                  Global Settings:
+                  {globalSettings ? 'Loaded' : 'Not Loaded'}
+                </div>
+                <div>
+                  Selected Site:
+                  {selectedSite ? selectedSite.name : 'None'}
+                </div>
+                <div>
+                  Available Services: [
+                  {getAvailableServices(globalSettings, selectedSite).join(', ')}
+                  ]
+                </div>
+                {selectedSite && (
+                  <div>
+                    Site Configs: Google(
+                    {selectedSite.googleConfig?.use ? 'ON' : 'OFF'}
+                    ),
+                    Bing(
+                    {selectedSite.bingConfig?.use ? 'ON' : 'OFF'}
+                    ),
+                    Naver(
+                    {selectedSite.naverConfig?.use ? 'ON' : 'OFF'}
+                    ),
+                    Daum(
+                    {selectedSite.daumConfig?.use ? 'ON' : 'OFF'}
+                    )
+                  </div>
+                )}
+              </div>
             </div>
             <Form
               form={form}
               layout="vertical"
-              onFinish={values =>
-                handleManualIndexing({
-                  urls: values.urls.split('\n').filter((u: string) => u.trim() !== ''),
+              onFinish={async values =>
+                await handleManualIndexing({
+                  urls: urlsInput.split('\n').filter((u: string) => u.trim() !== ''),
                   services: values.services,
                 })}
             >
               <Form.Item name="urls" label="URL 목록" rules={[{ required: true, message: 'URL을 입력해주세요' }]}>
-                <TextArea rows={6} placeholder="한 줄에 하나씩 URL을 입력해주세요." />
+                <TextArea
+                  rows={6}
+                  placeholder="한 줄에 하나씩 URL을 입력해주세요. 입력하시면 자동으로 사이트가 감지됩니다."
+                  value={urlsInput}
+                  onChange={(e) => {
+                    setUrlsInput(e.target.value)
+                    form.setFieldsValue({ urls: e.target.value })
+                  }}
+                />
               </Form.Item>
               <Form.Item
                 name="services"
-                label="검색 엔진"
-                rules={[{ required: true, message: '하나 이상의 엔진을 선택해주세요' }]}
+                label={(
+                  <span>
+                    검색 엔진
+                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                      (선택 안하면 활성화된 모든 엔진 사용)
+                    </Text>
+                  </span>
+                )}
               >
                 <Checkbox.Group>
                   <Space wrap>
-                    {getAvailableServices(globalSettings).map(service => (
+                    {getAvailableServices(globalSettings, selectedSite).map(service => (
                       <Checkbox
                         key={service}
                         value={service}
-                        disabled={service === 'naver' && !naverLoginStatus?.isLoggedIn}
                       >
                         <Space>
                           {getServiceIcon(service)}
                           {' '}
                           {service.charAt(0).toUpperCase() + service.slice(1)}
+                          {service === 'naver' && !naverLoginStatus?.isLoggedIn && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                              (로그인 필요)
+                            </Text>
+                          )}
                         </Space>
                       </Checkbox>
                     ))}
                   </Space>
                 </Checkbox.Group>
+                {getAvailableServices(globalSettings, selectedSite).length > 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      활성화된 검색엔진:
+                      {' '}
+                      {getAvailableServices(globalSettings, selectedSite).join(', ')}
+                    </Text>
+                  </div>
+                )}
               </Form.Item>
               {globalSettings?.naver?.use && (
                 <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                    <Text strong>
+                      <UserOutlined style={{ marginRight: 8 }} />
+                      네이버 계정 관리
+                    </Text>
+                    <Button
+                      size="small"
+                      icon={<PlusOutlined />}
+                      onClick={() => setIsNaverAccountModalVisible(true)}
+                    >
+                      계정 관리
+                    </Button>
+                  </div>
+
+                  {naverAccounts.length > 0 && (
+                    <div style={{ marginBottom: 16 }}>
+                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
+                        등록된 네이버 계정들:
+                      </Text>
+                      <Space wrap>
+                        {naverAccounts.map(account => (
+                          <Tag
+                            key={account.id}
+                            color={account.isLoggedIn ? 'green' : 'default'}
+                            icon={account.isLoggedIn ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                          >
+                            {account.name}
+                            {' '}
+                            (
+                            {account.naverId}
+                            )
+                          </Tag>
+                        ))}
+                      </Space>
+                    </div>
+                  )}
+
                   <Space align="center" style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <Space>
                       <Text strong>네이버 로그인 상태:</Text>
@@ -610,10 +852,24 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   htmlType="submit"
                   loading={loading}
                   icon={<PlayCircleOutlined />}
-                  disabled={loading || availableServices.length === 0}
+                  disabled={loading || getAvailableServices(globalSettings, selectedSite).length === 0 || !urlsInput.trim()}
                 >
                   인덱싱 시작
                 </Button>
+                {getAvailableServices(globalSettings, selectedSite).length === 0 && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12, color: '#ff4d4f' }}>
+                      {selectedSite ? '선택된 사이트에 활성화된 검색엔진이 없습니다. 설정에서 검색엔진을 활성화해주세요.' : '설정에서 검색엔진을 먼저 활성화해주세요.'}
+                    </Text>
+                  </div>
+                )}
+                {!urlsInput.trim() && (
+                  <div style={{ marginTop: 8 }}>
+                    <Text type="secondary" style={{ fontSize: 12, color: '#ff4d4f' }}>
+                      URL을 입력해주세요.
+                    </Text>
+                  </div>
+                )}
               </Form.Item>
             </Form>
           </Card>
@@ -635,6 +891,186 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         filteredDetailedResults={filteredDetailedResults}
         getExecutionTime={getExecutionTime}
       />
+
+      {/* 네이버 계정 관리 모달 */}
+      <Modal
+        title="네이버 계정 관리"
+        open={isNaverAccountModalVisible}
+        onCancel={() => {
+          setIsNaverAccountModalVisible(false)
+          setIsAddingNaverAccount(false)
+          naverAccountForm.resetFields()
+        }}
+        footer={null}
+        width={800}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setIsAddingNaverAccount(true)}
+            disabled={isAddingNaverAccount}
+          >
+            새 계정 추가
+          </Button>
+        </div>
+
+        {isAddingNaverAccount && (
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <Form
+              form={naverAccountForm}
+              layout="vertical"
+              onFinish={async (values) => {
+                try {
+                  await createNaverAccount(values)
+                  message.success('네이버 계정이 추가되었습니다.')
+                  await loadNaverAccounts()
+                  setIsAddingNaverAccount(false)
+                  naverAccountForm.resetFields()
+                }
+                catch (error) {
+                  message.error(`계정 추가 실패: ${getErrorMessage(error)}`)
+                }
+              }}
+            >
+              <Row gutter={16}>
+                <Col span={8}>
+                  <Form.Item
+                    name="name"
+                    label="계정 이름"
+                    rules={[{ required: true, message: '계정 이름을 입력해주세요' }]}
+                  >
+                    <Input placeholder="예: 메인 블로그 계정" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    name="naverId"
+                    label="네이버 아이디"
+                    rules={[{ required: true, message: '네이버 아이디를 입력해주세요' }]}
+                  >
+                    <Input placeholder="naver_id" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    name="password"
+                    label="비밀번호"
+                    rules={[{ required: true, message: '비밀번호를 입력해주세요' }]}
+                  >
+                    <Input.Password placeholder="password" />
+                  </Form.Item>
+                </Col>
+              </Row>
+              <Space>
+                <Button type="primary" htmlType="submit">
+                  추가
+                </Button>
+                <Button onClick={() => {
+                  setIsAddingNaverAccount(false)
+                  naverAccountForm.resetFields()
+                }}
+                >
+                  취소
+                </Button>
+              </Space>
+            </Form>
+          </Card>
+        )}
+
+        <Table
+          dataSource={naverAccounts}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          columns={[
+            {
+              title: '계정 이름',
+              dataIndex: 'name',
+              key: 'name',
+            },
+            {
+              title: '네이버 아이디',
+              dataIndex: 'naverId',
+              key: 'naverId',
+            },
+            {
+              title: '로그인 상태',
+              dataIndex: 'isLoggedIn',
+              key: 'isLoggedIn',
+              render: (isLoggedIn: boolean) => (
+                <Tag color={isLoggedIn ? 'green' : 'default'}>
+                  {isLoggedIn ? '로그인됨' : '로그인 필요'}
+                </Tag>
+              ),
+            },
+            {
+              title: '마지막 로그인',
+              dataIndex: 'lastLogin',
+              key: 'lastLogin',
+              render: (lastLogin: string) =>
+                lastLogin ? new Date(lastLogin).toLocaleDateString() : '-',
+            },
+            {
+              title: '활성 상태',
+              dataIndex: 'isActive',
+              key: 'isActive',
+              render: (isActive: boolean) => (
+                <Tag color={isActive ? 'blue' : 'default'}>
+                  {isActive ? '활성' : '비활성'}
+                </Tag>
+              ),
+            },
+            {
+              title: '작업',
+              key: 'actions',
+              render: (_, record) => (
+                <Space>
+                  <Button
+                    size="small"
+                    icon={<EditOutlined />}
+                    onClick={async () => {
+                      try {
+                        await updateNaverAccount(record.id, { isActive: !record.isActive })
+                        message.success('계정 상태가 변경되었습니다.')
+                        await loadNaverAccounts()
+                      }
+                      catch (error) {
+                        message.error(`상태 변경 실패: ${getErrorMessage(error)}`)
+                      }
+                    }}
+                  >
+                    {record.isActive ? '비활성화' : '활성화'}
+                  </Button>
+                  <Button
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={() => {
+                      Modal.confirm({
+                        title: '계정 삭제',
+                        content: `정말로 "${record.name}" 계정을 삭제하시겠습니까?`,
+                        onOk: async () => {
+                          try {
+                            await deleteNaverAccount(record.id)
+                            message.success('계정이 삭제되었습니다.')
+                            await loadNaverAccounts()
+                          }
+                          catch (error) {
+                            message.error(`계정 삭제 실패: ${getErrorMessage(error)}`)
+                          }
+                        },
+                      })
+                    }}
+                  >
+                    삭제
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
+      </Modal>
     </div>
   )
 }

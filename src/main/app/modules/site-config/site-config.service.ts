@@ -28,7 +28,7 @@ export class SiteConfigService {
       // 도메인 추출 (URL에서 도메인만 추출)
       const domain = this.extractDomain(data.siteUrl)
 
-      return await (this.prisma as any).site.create({
+      return await this.prisma.site.create({
         data: {
           domain,
           name: data.name,
@@ -50,7 +50,7 @@ export class SiteConfigService {
   }
 
   async getSiteConfig(siteId: number) {
-    const site = await (this.prisma as any).site.findUnique({
+    const site = await this.prisma.site.findUnique({
       where: { id: siteId },
     })
 
@@ -74,7 +74,7 @@ export class SiteConfigService {
   }
 
   async getSiteConfigByDomain(domain: string) {
-    const site = await (this.prisma as any).site.findUnique({
+    const site = await this.prisma.site.findUnique({
       where: { domain },
     })
 
@@ -98,7 +98,7 @@ export class SiteConfigService {
   }
 
   async updateSiteConfig(siteId: number, updates: Partial<SiteConfigData>) {
-    const site = await (this.prisma as any).site.findUnique({
+    const site = await this.prisma.site.findUnique({
       where: { id: siteId },
     })
 
@@ -125,14 +125,14 @@ export class SiteConfigService {
     if (updates.bingConfig)
       updateData.bingConfig = JSON.stringify(updates.bingConfig)
 
-    return await (this.prisma as any).site.update({
+    return await this.prisma.site.update({
       where: { id: siteId },
       data: updateData,
     })
   }
 
   async updateSiteEngineConfigs(siteId: number, configs: EngineConfig) {
-    const site = await (this.prisma as any).site.findUnique({
+    const site = await this.prisma.site.findUnique({
       where: { id: siteId },
     })
 
@@ -151,14 +151,14 @@ export class SiteConfigService {
     if (configs.bing)
       updateData.bingConfig = JSON.stringify(configs.bing)
 
-    return await (this.prisma as any).site.update({
+    return await this.prisma.site.update({
       where: { id: siteId },
       data: updateData,
     })
   }
 
   async deleteSiteConfig(siteId: number) {
-    const site = await (this.prisma as any).site.findUnique({
+    const site = await this.prisma.site.findUnique({
       where: { id: siteId },
     })
 
@@ -166,7 +166,7 @@ export class SiteConfigService {
       throw new Error('사이트를 찾을 수 없습니다.')
     }
 
-    await (this.prisma as any).site.delete({
+    await this.prisma.site.delete({
       where: { id: siteId },
     })
 
@@ -174,7 +174,7 @@ export class SiteConfigService {
   }
 
   async getAllSiteConfigs() {
-    const sites = await (this.prisma as any).site.findMany({
+    const sites = await this.prisma.site.findMany({
       orderBy: { createdAt: 'desc' },
     })
 
@@ -194,7 +194,7 @@ export class SiteConfigService {
   }
 
   async getActiveSites() {
-    const sites = await (this.prisma as any).site.findMany({
+    const sites = await this.prisma.site.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
     })

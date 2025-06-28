@@ -1,8 +1,7 @@
-import type { UploadFile } from 'antd/es/upload/interface'
 import type { GoogleConfig } from '../../api'
-import { GoogleOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Form, Input, message, Switch, Typography, Upload } from 'antd'
-import React, { useState } from 'react'
+import { GoogleOutlined, SaveOutlined } from '@ant-design/icons'
+import { Alert, Button, Card, Form, Input, message, Switch, Typography } from 'antd'
+import React from 'react'
 import { getErrorDetails, getErrorMessage } from '../../api'
 
 const { Title, Text } = Typography
@@ -11,17 +10,42 @@ const { TextArea } = Input
 interface GoogleSettingsProps {
   settings: GoogleConfig
   onSave: (values: Partial<GoogleConfig>) => Promise<void>
-  onToggleUse: (checked: boolean) => Promise<void>
   loading: boolean
 }
 
-const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onToggleUse, loading }) => {
+const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loading }) => {
   const [form] = Form.useForm()
-  const [fileList, setFileList] = useState<UploadFile[]>([])
+  const [localUse, setLocalUse] = React.useState(settings.use)
+  const [jsonValue, setJsonValue] = React.useState(settings.serviceAccountJson || '')
+
+  // 설정이 변경되면 로컬 상태 업데이트
+  React.useEffect(() => {
+    setLocalUse(settings.use)
+    setJsonValue(settings.serviceAccountJson || '')
+    form.setFieldsValue({
+      serviceAccountJson: settings.serviceAccountJson || '',
+    })
+  }, [settings, form])
 
   const handleSubmit = async (values: Partial<GoogleConfig>) => {
     try {
-      await onSave(values)
+      // use가 true인데 필수 필드가 비어있으면 저장 불가
+      if (localUse) {
+        if (!values.serviceAccountJson) {
+          message.error('Service Account JSON을 입력해주세요.')
+          return
+        }
+        try {
+          JSON.parse(values.serviceAccountJson)
+        }
+        catch {
+          message.error('유효한 JSON 형식이 아닙니다.')
+          return
+        }
+      }
+
+      const finalValues = { ...values, use: localUse }
+      await onSave(finalValues)
       message.success('Google 설정이 저장되었습니다.')
     }
     catch (error) {
@@ -37,47 +61,9 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
     }
   }
 
-  const handleFileUpload = async (file: File) => {
-    try {
-      const text = await file.text()
-      // JSON 유효성 검사
-      JSON.parse(text)
-
-      // Form 필드 업데이트
-      form.setFieldsValue({
-        serviceAccountJson: text,
-      })
-
-      message.success('Service Account JSON 파일이 업로드되었습니다.')
-      return false // 자동 업로드 방지
-    }
-    catch (error) {
-      message.error('유효하지 않은 JSON 파일입니다.')
-      return false
-    }
-  }
-
-  const beforeUpload = (file: File) => {
-    const isJson = file.type === 'application/json' || file.name.endsWith('.json')
-    if (!isJson) {
-      message.error('JSON 파일만 업로드할 수 있습니다.')
-      return false
-    }
-    return handleFileUpload(file)
-  }
-
-  const uploadProps = {
-    beforeUpload,
-    fileList,
-    onChange: ({ fileList }: { fileList: UploadFile[] }) => {
-      setFileList(fileList)
-    },
-    onRemove: () => {
-      form.setFieldsValue({
-        serviceAccountJson: '',
-      })
-      setFileList([])
-    },
+  const handleUseToggle = (checked: boolean) => {
+    setLocalUse(checked)
+    // 바로 저장하지 않고 로컬 상태만 변경
   }
 
   return (
@@ -95,8 +81,8 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
             <Text type="secondary">Google Search Console API를 통한 URL 색인 요청</Text>
           </div>
           <Switch
-            checked={settings.use}
-            onChange={onToggleUse}
+            checked={localUse}
+            onChange={handleUseToggle}
             loading={loading}
             checkedChildren="사용"
             unCheckedChildren="미사용"
@@ -109,25 +95,50 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
         layout="vertical"
         onFinish={handleSubmit}
         initialValues={settings}
+        preserve={false}
       >
         {/* Service Account 설정 */}
         <Card title="Service Account 설정" className="mb-4">
-          <div className="mb-4">
-            <Text strong>Service Account JSON 파일 업로드</Text>
-            <br />
-            <Text type="secondary">
-              Google Cloud Console에서 다운로드한 Service Account 키 파일(JSON)을 업로드하세요.
-            </Text>
+          {/* 현재 설정 값 표시 */}
+          {settings.serviceAccountJson && (
+            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f6f8fa', borderRadius: 6, border: '1px solid #d1d9e0' }}>
+              <Text strong style={{ color: '#0969da' }}>현재 저장된 Service Account JSON:</Text>
+              <div style={{ marginTop: 8, fontSize: 11, fontFamily: 'monospace', color: '#656d76', maxHeight: 100, overflow: 'auto' }}>
+                {settings.serviceAccountJson.substring(0, 200)}
+                {settings.serviceAccountJson.length > 200 && '...'}
+              </div>
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                (처음 200자만 표시됩니다)
+              </Text>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
+              Service Account JSON
+            </label>
+            <TextArea
+              placeholder='{"type": "service_account", "project_id": "...", "private_key_id": "...", ...}'
+              rows={8}
+              disabled={!localUse}
+              className="font-mono text-xs"
+              value={jsonValue}
+              onChange={(e) => {
+                const newValue = e.target.value
+                setJsonValue(newValue)
+                form.setFieldsValue({ serviceAccountJson: newValue })
+              }}
+            />
           </div>
 
           <Form.Item
             name="serviceAccountJson"
-            label="Service Account JSON"
+            hidden
             rules={[
-              { required: settings.use, message: 'Service Account JSON을 업로드해주세요!' },
+              { required: localUse, message: 'Service Account JSON을 업로드해주세요!' },
               {
                 validator: (_, value) => {
-                  if (!settings.use || !value)
+                  if (!localUse || !value)
                     return Promise.resolve()
                   try {
                     JSON.parse(value)
@@ -140,23 +151,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
               },
             ]}
           >
-            <div>
-              <Upload {...uploadProps}>
-                <Button
-                  icon={<UploadOutlined />}
-                  disabled={!settings.use}
-                  className="mb-2"
-                >
-                  JSON 파일 선택
-                </Button>
-              </Upload>
-              <TextArea
-                placeholder='{"type": "service_account", "project_id": "...", "private_key_id": "...", ...}'
-                rows={8}
-                disabled={!settings.use}
-                className="font-mono text-xs"
-              />
-            </div>
+            <Input />
           </Form.Item>
 
           <Alert
@@ -182,10 +177,23 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, onTog
             htmlType="submit"
             icon={<SaveOutlined />}
             loading={loading}
-            disabled={!settings.use}
           >
             설정 저장
           </Button>
+          {!localUse && (
+            <div style={{ marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12, color: '#faad14' }}>
+                위의 스위치를 켜고 설정을 완료한 후 저장해주세요.
+              </Text>
+            </div>
+          )}
+          {localUse && (
+            <div style={{ marginTop: 8 }}>
+              <Text type="secondary" style={{ fontSize: 12, color: '#1890ff' }}>
+                Service Account JSON을 입력하고 저장 버튼을 눌러주세요.
+              </Text>
+            </div>
+          )}
         </Form.Item>
       </Form>
     </div>

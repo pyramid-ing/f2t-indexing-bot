@@ -135,11 +135,6 @@ const Settings: React.FC = () => {
     }
   }
 
-  const toggleEngineUse = async (engine: 'google' | 'bing' | 'naver' | 'daum', use: boolean) => {
-    const config = { ...engineSettings[engine], use }
-    await saveEngineConfig(engine, config)
-  }
-
   const saveGoogleSettings = async (settings: Partial<GoogleConfig>) => {
     const config = { ...engineSettings.google, ...settings }
     await saveEngineConfig('google', config)
@@ -262,7 +257,6 @@ const Settings: React.FC = () => {
             <GoogleSettings
               settings={engineSettings.google}
               onSave={saveGoogleSettings}
-              onToggleUse={use => toggleEngineUse('google', use)}
               loading={loading}
             />
           </Tabs.TabPane>
@@ -271,7 +265,6 @@ const Settings: React.FC = () => {
             <BingSettings
               settings={engineSettings.bing}
               onSave={saveBingSettings}
-              onToggleUse={use => toggleEngineUse('bing', use)}
               loading={loading}
             />
           </Tabs.TabPane>
@@ -280,7 +273,6 @@ const Settings: React.FC = () => {
             <NaverSettings
               settings={engineSettings.naver}
               onSave={saveNaverSettings}
-              onToggleUse={use => toggleEngineUse('naver', use)}
               loading={loading}
             />
           </Tabs.TabPane>
@@ -289,7 +281,6 @@ const Settings: React.FC = () => {
             <DaumSettings
               settings={engineSettings.daum}
               onSave={saveDaumSettings}
-              onToggleUse={use => toggleEngineUse('daum', use)}
               loading={loading}
             />
           </Tabs.TabPane>
