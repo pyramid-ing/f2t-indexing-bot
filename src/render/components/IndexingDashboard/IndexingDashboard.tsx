@@ -190,45 +190,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
         message.info(`활성화된 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
 
-        // 네이버가 포함되어 있는 경우 사이트별 네이버 계정 로그인 상태 확인
-        if (services.includes('naver')) {
-          try {
-            const naverAccountId = currentSite.naverConfig?.selectedNaverAccountId
-            let naverId: string | undefined = undefined
 
-            if (naverAccountId) {
-              const accounts = await getAllNaverAccounts()
-              const account = accounts.find(acc => acc.id === naverAccountId)
-              if (account) {
-                naverId = account.naverId
-              }
-            }
-
-            const currentNaverStatus = await checkNaverLoginStatus(naverId)
-            if (!currentNaverStatus?.isLoggedIn) {
-              services = services.filter(s => s !== 'naver')
-              message.warning(
-                `네이버는 로그인이 필요하여 제외되었습니다. (계정: ${naverId || '설정되지 않음'}) 다른 검색엔진으로 색인을 진행합니다.`,
-              )
-
-              if (services.length === 0) {
-                message.error('네이버 로그인이 필요하거나 다른 검색엔진을 활성화해주세요.')
-                setLoading(false)
-                return
-              }
-            }
-          } catch (error) {
-            console.error('네이버 로그인 상태 확인 실패:', error)
-            services = services.filter(s => s !== 'naver')
-            message.warning('네이버 로그인 상태 확인에 실패하여 제외되었습니다. 다른 검색엔진으로 색인을 진행합니다.')
-
-            if (services.length === 0) {
-              message.error('네이버 로그인 상태 확인 실패. 다른 검색엔진을 활성화해주세요.')
-              setLoading(false)
-              return
-            }
-          }
-        }
         const existingUrlsByProvider = await checkExistingUrls(urlList, services)
         const groupedUrlsToSubmit = services.reduce(
           (acc, service) => {
@@ -307,29 +269,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               result = await googleManualIndex({ siteId, urls: urlsForService, type: 'URL_UPDATED' })
               break
             case 'naver':
-              // 네이버 로그인 상태를 실시간으로 다시 확인
-              const currentSite = sites.find(s => s.id === siteId)
-              const naverAccountId = currentSite?.naverConfig?.selectedNaverAccountId
-
-              let naverIdForIndexing: string | undefined = undefined
-              if (naverAccountId) {
-                try {
-                  const accounts = await getAllNaverAccounts()
-                  const account = accounts.find(acc => acc.id === naverAccountId)
-                  if (account) {
-                    naverIdForIndexing = account.naverId
-                  }
-                } catch (error) {
-                  console.error('네이버 계정 조회 실패:', error)
-                }
-              }
-
-              // 실시간 로그인 상태 확인
-              const currentNaverStatus = await checkNaverLoginStatus(naverIdForIndexing)
-              if (!currentNaverStatus?.isLoggedIn) {
-                throw new Error(`네이버 로그인이 필요합니다. (계정: ${naverIdForIndexing || '설정되지 않음'})`)
-              }
-
               result = await naverManualIndex({ siteId, urlsToIndex: urlsForService })
               break
             case 'daum':
