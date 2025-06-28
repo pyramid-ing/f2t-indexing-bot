@@ -190,7 +190,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
         message.info(`활성화된 검색엔진(${services.join(', ')})에 색인을 시작합니다.`)
 
-
         const existingUrlsByProvider = await checkExistingUrls(urlList, services)
         const groupedUrlsToSubmit = services.reduce(
           (acc, service) => {
