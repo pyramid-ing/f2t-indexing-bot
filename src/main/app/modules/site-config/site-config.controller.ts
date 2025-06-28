@@ -14,8 +14,7 @@ export class SiteConfigController {
     try {
       const sites = await this.siteConfigService.getAllSiteConfigs()
       return { success: true, data: sites }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 목록 조회 실패:', error)
       return { success: false, error: error.message }
     }
@@ -27,8 +26,7 @@ export class SiteConfigController {
     try {
       const sites = await this.siteConfigService.getActiveSites()
       return { success: true, data: sites }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('활성 사이트 목록 조회 실패:', error)
       return { success: false, error: error.message }
     }
@@ -40,8 +38,7 @@ export class SiteConfigController {
     try {
       const site = await this.siteConfigService.getSiteConfig(Number.parseInt(siteId))
       return { success: true, data: site }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 조회 실패:', error)
       return { success: false, error: error.message }
     }
@@ -53,8 +50,7 @@ export class SiteConfigController {
     try {
       const site = await this.siteConfigService.getSiteConfigByDomain(decodeURIComponent(domain))
       return { success: true, data: site }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('도메인별 사이트 조회 실패:', error)
       return { success: false, error: error.message }
     }
@@ -66,8 +62,7 @@ export class SiteConfigController {
     try {
       const site = await this.siteConfigService.createSiteConfig(siteData)
       return { success: true, data: site }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 생성 실패:', error)
       return { success: false, error: error.message }
     }
@@ -79,8 +74,7 @@ export class SiteConfigController {
     try {
       const site = await this.siteConfigService.updateSiteConfig(Number.parseInt(siteId), updateData)
       return { success: true, data: site }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 업데이트 실패:', error)
       return { success: false, error: error.message }
     }
@@ -92,8 +86,7 @@ export class SiteConfigController {
     try {
       const site = await this.siteConfigService.updateSiteEngineConfigs(Number.parseInt(siteId), configs)
       return { success: true, data: site }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 검색엔진 설정 업데이트 실패:', error)
       return { success: false, error: error.message }
     }
@@ -105,8 +98,7 @@ export class SiteConfigController {
     try {
       const result = await this.siteConfigService.deleteSiteConfig(Number.parseInt(siteId))
       return { success: true, message: result.message }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('사이트 삭제 실패:', error)
       return { success: false, error: error.message }
     }

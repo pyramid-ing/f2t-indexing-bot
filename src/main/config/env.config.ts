@@ -107,8 +107,7 @@ export class EnvConfig {
           LoggerConfig.info(`초기 데이터베이스 복사 완료: ${this.dbPath}`)
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       LoggerConfig.error(`데이터베이스 초기화 중 오류:`, error)
     }
   }

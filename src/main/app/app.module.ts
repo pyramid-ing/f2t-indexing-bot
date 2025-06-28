@@ -34,9 +34,7 @@ import { app, BrowserWindow } from 'electron'
           win.destroy()
         })
 
-        const URL = isDev
-          ? process.env.DS_RENDERER_URL
-          : `file://${join(app.getAppPath(), 'dist/render/index.html')}`
+        const URL = isDev ? process.env.DS_RENDERER_URL : `file://${join(app.getAppPath(), 'dist/render/index.html')}`
 
         win.loadURL(URL)
 

@@ -17,8 +17,7 @@ export class SettingsController {
       this.logger.log('설정 조회 요청')
       const settings = await this.settingsService.getGlobalEngineSettings()
       return { success: true, data: settings }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('설정 조회 실패:', error)
       return { success: false, error: error.message }
     }
@@ -45,8 +44,7 @@ export class SettingsController {
 
       this.logger.log('설정 업데이트 완료')
       return { success: true, data: updatedSettings }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('설정 업데이트 실패:', error)
       return { success: false, error: error.message }
     }
@@ -58,8 +56,7 @@ export class SettingsController {
       this.logger.log('앱 상태 조회 요청')
       const status = await this.settingsService.getAppStatus()
       return { success: true, data: status }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('앱 상태 조회 실패:', error)
       return { success: false, error: error.message }
     }

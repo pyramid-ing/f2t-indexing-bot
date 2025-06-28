@@ -17,8 +17,7 @@ export function useIndexingTasks() {
     try {
       const saved = localStorage.getItem('indexingTasks')
       return saved ? JSON.parse(saved) : []
-    }
-    catch {
+    } catch {
       return []
     }
   })

@@ -31,8 +31,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
     try {
       const data = await getAllNaverAccounts()
       setAccounts(data.filter(account => account.isActive)) // 활성화된 계정만 표시
-    }
-    catch (error) {
+    } catch (error) {
       message.error('네이버 계정 목록을 불러오는데 실패했습니다.')
     }
   }
@@ -50,8 +49,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
       }
       await onSave(finalValues)
       message.success('네이버 설정이 저장되었습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       message.error('네이버 설정 저장에 실패했습니다.')
     }
   }
@@ -68,7 +66,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
 
   return (
     <Card
-      title={(
+      title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>
             <GlobalOutlined style={{ color: '#03c75a', marginRight: 8 }} />
@@ -82,7 +80,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
             loading={loading}
           />
         </div>
-      )}
+      }
     >
       <div style={{ marginBottom: 24 }}>
         <Text type="secondary" style={{ marginBottom: 16, display: 'block' }}>
@@ -108,16 +106,13 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
                 <Select.Option key={account.id} value={account.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>
-                      <strong>{account.name}</strong>
-                      {' '}
-                      (
-                      {account.naverId}
-                      )
+                      <strong>{account.name}</strong> ({account.naverId})
                     </span>
-                    <span style={{
-                      color: account.isLoggedIn ? '#52c41a' : '#ff4d4f',
-                      fontSize: '12px',
-                    }}
+                    <span
+                      style={{
+                        color: account.isLoggedIn ? '#52c41a' : '#ff4d4f',
+                        fontSize: '12px',
+                      }}
                     >
                       {account.isLoggedIn ? '로그인됨' : '로그인 필요'}
                     </span>
@@ -139,20 +134,13 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
             >
               <Text strong style={{ color: '#389e0d' }}>
                 <UserOutlined style={{ marginRight: 8 }} />
-                선택된 계정:
-                {' '}
-                {selectedAccount.name}
-                {' '}
-                (
-                {selectedAccount.naverId}
-                )
+                선택된 계정: {selectedAccount.name} ({selectedAccount.naverId})
               </Text>
               <br />
               <Text type="secondary" style={{ fontSize: '12px' }}>
-                로그인 상태:
-                {' '}
-                {selectedAccount.isLoggedIn ? '로그인됨' : '로그인 필요'}
-                                 {selectedAccount.lastLogin && ` | 마지막 상태확인: ${new Date(selectedAccount.lastLogin).toLocaleString('ko-KR')}`}
+                로그인 상태: {selectedAccount.isLoggedIn ? '로그인됨' : '로그인 필요'}
+                {selectedAccount.lastLogin &&
+                  ` | 마지막 상태확인: ${new Date(selectedAccount.lastLogin).toLocaleString('ko-KR')}`}
               </Text>
             </div>
           )}
@@ -175,8 +163,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
               • 하루 최대 50개 URL 등록 가능
               <br />
               • 크롤링 방식으로 실패하는 경우가 종종 있습니다. 이 경우 확인해서 재등록이 필요합니다
-              <br />
-              • 주기적으로 수동 로그인이 필요합니다 (자동 로그인 제한)
+              <br />• 주기적으로 수동 로그인이 필요합니다 (자동 로그인 제한)
             </Text>
           </div>
         </div>

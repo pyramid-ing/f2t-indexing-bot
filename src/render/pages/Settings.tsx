@@ -2,12 +2,7 @@ import type { BingConfig, DaumConfig, GoogleConfig, NaverConfig, SiteConfig } fr
 import { SettingOutlined } from '@ant-design/icons'
 import { Button, Card, Form, Input, message, Modal, Select, Space, Tabs, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
-import {
-  createSiteConfig,
-  getAllSiteConfigs,
-  getSiteConfig,
-  updateSiteEngineConfigs,
-} from '../api'
+import { createSiteConfig, getAllSiteConfigs, getSiteConfig, updateSiteEngineConfigs } from '../api'
 import BingSettings from '../components/settings/BingSettings'
 import DaumSettings from '../components/settings/DaumSettings'
 import GoogleSettings from '../components/settings/GoogleSettings'
@@ -77,12 +72,10 @@ const Settings: React.FC = () => {
           setSelectedSiteId(response.data[0].id)
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 목록 로드 실패:', error)
       message.error('사이트 목록을 불러오는데 실패했습니다.')
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -108,12 +101,10 @@ const Settings: React.FC = () => {
           },
         })
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 설정 로드 실패:', error)
       message.error('사이트 설정을 불러오는데 실패했습니다.')
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -135,12 +126,10 @@ const Settings: React.FC = () => {
       }))
 
       message.success(`${engine.toUpperCase()} 설정이 저장되었습니다.`)
-    }
-    catch (error) {
+    } catch (error) {
       console.error(`${engine} 설정 저장 실패:`, error)
       message.error(`${engine.toUpperCase()} 설정 저장에 실패했습니다.`)
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -185,12 +174,10 @@ const Settings: React.FC = () => {
           setSelectedSiteId(response.data.id)
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 생성 실패:', error)
       message.error('사이트 생성에 실패했습니다.')
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -218,19 +205,12 @@ const Settings: React.FC = () => {
             >
               {sites.map(site => (
                 <Option key={site.id} value={site.id}>
-                  {site.name}
-                  {' '}
-                  (
-                  {site.domain}
-                  )
+                  {site.name} ({site.domain})
                 </Option>
               ))}
             </Select>
           </Space>
-          <Button
-            type="primary"
-            onClick={() => setNewSiteModalVisible(true)}
-          >
+          <Button type="primary" onClick={() => setNewSiteModalVisible(true)}>
             새 사이트 추가
           </Button>
         </div>
@@ -238,19 +218,13 @@ const Settings: React.FC = () => {
           <div className="mt-4 p-4 bg-gray-50 rounded">
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <strong>사이트명:</strong>
-                {' '}
-                {selectedSite.name}
+                <strong>사이트명:</strong> {selectedSite.name}
               </div>
               <div>
-                <strong>도메인:</strong>
-                {' '}
-                {selectedSite.domain}
+                <strong>도메인:</strong> {selectedSite.domain}
               </div>
               <div>
-                <strong>URL:</strong>
-                {' '}
-                {selectedSite.siteUrl}
+                <strong>URL:</strong> {selectedSite.siteUrl}
               </div>
             </div>
           </div>
@@ -268,35 +242,19 @@ const Settings: React.FC = () => {
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="Google" key="google" disabled={!selectedSiteId}>
-            <GoogleSettings
-              settings={engineSettings.google}
-              onSave={saveGoogleSettings}
-              loading={loading}
-            />
+            <GoogleSettings settings={engineSettings.google} onSave={saveGoogleSettings} loading={loading} />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="Bing" key="bing" disabled={!selectedSiteId}>
-            <BingSettings
-              settings={engineSettings.bing}
-              onSave={saveBingSettings}
-              loading={loading}
-            />
+            <BingSettings settings={engineSettings.bing} onSave={saveBingSettings} loading={loading} />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="네이버" key="naver" disabled={!selectedSiteId}>
-            <NaverSettings
-              settings={engineSettings.naver}
-              onSave={saveNaverSettings}
-              loading={loading}
-            />
+            <NaverSettings settings={engineSettings.naver} onSave={saveNaverSettings} loading={loading} />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="다음" key="daum" disabled={!selectedSiteId}>
-            <DaumSettings
-              settings={engineSettings.daum}
-              onSave={saveDaumSettings}
-              loading={loading}
-            />
+            <DaumSettings settings={engineSettings.daum} onSave={saveDaumSettings} loading={loading} />
           </Tabs.TabPane>
         </Tabs>
       </Card>
@@ -311,16 +269,8 @@ const Settings: React.FC = () => {
         }}
         footer={null}
       >
-        <Form
-          form={form}
-          onFinish={handleNewSite}
-          layout="vertical"
-        >
-          <Form.Item
-            name="name"
-            label="사이트명"
-            rules={[{ required: true, message: '사이트명을 입력해주세요!' }]}
-          >
+        <Form form={form} onFinish={handleNewSite} layout="vertical">
+          <Form.Item name="name" label="사이트명" rules={[{ required: true, message: '사이트명을 입력해주세요!' }]}>
             <Input placeholder="예: 내 블로그" />
           </Form.Item>
           <Form.Item
@@ -333,11 +283,7 @@ const Settings: React.FC = () => {
           >
             <Input placeholder="https://example.com" />
           </Form.Item>
-          <Form.Item
-            name="domain"
-            label="도메인"
-            rules={[{ required: true, message: '도메인을 입력해주세요!' }]}
-          >
+          <Form.Item name="domain" label="도메인" rules={[{ required: true, message: '도메인을 입력해주세요!' }]}>
             <Input placeholder="example.com" />
           </Form.Item>
           <Form.Item>
@@ -345,10 +291,11 @@ const Settings: React.FC = () => {
               <Button type="primary" htmlType="submit" loading={loading}>
                 추가
               </Button>
-              <Button onClick={() => {
-                setNewSiteModalVisible(false)
-                form.resetFields()
-              }}
+              <Button
+                onClick={() => {
+                  setNewSiteModalVisible(false)
+                  form.resetFields()
+                }}
               >
                 취소
               </Button>

@@ -31,10 +31,15 @@ export class GoogleIndexerService {
       const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
 
       if (!siteConfig.googleConfig || !siteConfig.googleConfig.use) {
-        throw new GoogleConfigError('Google 색인이 비활성화되어 있습니다.', 'getGoogleConfigForSite', 'indexing_service', {
-          enabled: false,
-          siteId,
-        })
+        throw new GoogleConfigError(
+          'Google 색인이 비활성화되어 있습니다.',
+          'getGoogleConfigForSite',
+          'indexing_service',
+          {
+            enabled: false,
+            siteId,
+          },
+        )
       }
 
       const config = siteConfig.googleConfig
@@ -54,8 +59,7 @@ export class GoogleIndexerService {
       // Service Account JSON 유효성 검사
       try {
         JSON.parse(config.serviceAccountJson)
-      }
-      catch (error) {
+      } catch (error) {
         throw new GoogleConfigError(
           'Google Service Account JSON 형식이 올바르지 않습니다.',
           'getGoogleConfigForSite',
@@ -68,12 +72,16 @@ export class GoogleIndexerService {
       }
 
       return { config, siteConfig }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof GoogleConfigError) {
         throw error
       }
-      throw new GoogleConfigError(`Google 설정 조회 실패: ${error.message}`, 'getGoogleConfigForSite', 'settings_fetch', { siteId })
+      throw new GoogleConfigError(
+        `Google 설정 조회 실패: ${error.message}`,
+        'getGoogleConfigForSite',
+        'settings_fetch',
+        { siteId },
+      )
     }
   }
 
@@ -90,8 +98,7 @@ export class GoogleIndexerService {
       let headers
       try {
         headers = await this.googleAuthService.getAuthHeaders(config.serviceAccountJson)
-      }
-      catch (error) {
+      } catch (error) {
         throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {
           url,
           siteId,
@@ -115,8 +122,7 @@ export class GoogleIndexerService {
 
       this.logger.log(`Google URL 인덱싱 성공: ${url}`)
       return response.data
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error(`Google 색인 요청 실패: ${error.message}`, error.stack)
 
       // 실패 로그 기록
@@ -143,8 +149,7 @@ export class GoogleIndexerService {
           type,
           responseStatus: 401,
         })
-      }
-      else if (error.response?.status === 403) {
+      } else if (error.response?.status === 403) {
         throw new GoogleIndexerError(
           'Google Indexing API 권한이 없습니다. 서비스 계정 권한을 확인해주세요.',
           'indexUrl',
@@ -152,8 +157,7 @@ export class GoogleIndexerService {
           siteId.toString(),
           { type, responseStatus: 403, responseData: error.response?.data },
         )
-      }
-      else if (error.response?.status === 429) {
+      } else if (error.response?.status === 429) {
         throw new GoogleIndexerError(
           'Google API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'indexUrl',
@@ -181,8 +185,7 @@ export class GoogleIndexerService {
       let headers
       try {
         headers = await this.googleAuthService.getAuthHeaders(config.serviceAccountJson)
-      }
-      catch (error) {
+      } catch (error) {
         throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {
           url,
           siteId,
@@ -190,15 +193,17 @@ export class GoogleIndexerService {
       }
 
       const response = await firstValueFrom(
-        this.httpService.get(`https://indexing.googleapis.com/v3/urlNotifications/metadata?url=${encodeURIComponent(url)}`, {
-          headers,
-        }),
+        this.httpService.get(
+          `https://indexing.googleapis.com/v3/urlNotifications/metadata?url=${encodeURIComponent(url)}`,
+          {
+            headers,
+          },
+        ),
       )
 
       this.logger.log(`Google 인덱스 상태 조회 성공: ${url}`)
       return response.data
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error(`Google 인덱스 상태 조회 실패: ${error.message}`, error.stack)
 
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError) {
@@ -209,10 +214,16 @@ export class GoogleIndexerService {
         return { status: 'NOT_INDEXED', message: '인덱스되지 않은 URL입니다.' }
       }
 
-      throw new GoogleIndexerError(`Google 인덱스 상태 조회 실패: ${error.message}`, 'getIndexStatus', url, siteId.toString(), {
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-      })
+      throw new GoogleIndexerError(
+        `Google 인덱스 상태 조회 실패: ${error.message}`,
+        'getIndexStatus',
+        url,
+        siteId.toString(),
+        {
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+        },
+      )
     }
   }
 
@@ -236,8 +247,7 @@ export class GoogleIndexerService {
         if (i + concurrencyLimit < urls.length) {
           await new Promise(resolve => setTimeout(resolve, delayBetweenRequests))
         }
-      }
-      catch (error) {
+      } catch (error) {
         this.logger.error(`배치 인덱싱 청크 실패 (${i}-${i + chunk.length}):`, error)
       }
     }
@@ -263,7 +273,9 @@ export class GoogleIndexerService {
       return await this.batchIndexUrls(siteId, urls, type)
     }
 
-    throw new GoogleIndexerError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), { options })
+    throw new GoogleIndexerError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), {
+      options,
+    })
   }
 
   // 레거시 호환성을 위한 메서드 (필요한 경우)

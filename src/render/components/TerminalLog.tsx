@@ -62,15 +62,13 @@ const TerminalLog: React.FC<{ logs: LogData[] }> = ({ logs }) => {
     return (
       <LogLine key={idx} level={log.level}>
         {parts.map((part, index) =>
-          /^https?:\/\//.test(part)
-            ? (
-                <a key={index} onClick={() => shell.openExternal(part)}>
-                  {part}
-                </a>
-              )
-            : (
-                <span key={index}>{part}</span>
-              ),
+          /^https?:\/\//.test(part) ? (
+            <a key={index} onClick={() => shell.openExternal(part)}>
+              {part}
+            </a>
+          ) : (
+            <span key={index}>{part}</span>
+          ),
         )}
       </LogLine>
     )

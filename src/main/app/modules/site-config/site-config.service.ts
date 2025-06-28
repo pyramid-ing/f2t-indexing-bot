@@ -69,8 +69,7 @@ export class SiteConfigService {
           bingConfig: JSON.stringify(data.bingConfig || {}),
         },
       })
-    }
-    catch (error) {
+    } catch (error) {
       if (error.code === 'P2002') {
         throw new Error('이미 존재하는 도메인입니다.')
       }
@@ -137,22 +136,16 @@ export class SiteConfigService {
 
     const updateData: any = {}
 
-    if (updates.name)
-      updateData.name = updates.name
+    if (updates.name) updateData.name = updates.name
     if (updates.siteUrl) {
       updateData.siteUrl = updates.siteUrl
       updateData.domain = this.extractDomain(updates.siteUrl)
     }
-    if (updates.isActive !== undefined)
-      updateData.isActive = updates.isActive
-    if (updates.googleConfig)
-      updateData.googleConfig = JSON.stringify(updates.googleConfig)
-    if (updates.naverConfig)
-      updateData.naverConfig = JSON.stringify(updates.naverConfig)
-    if (updates.daumConfig)
-      updateData.daumConfig = JSON.stringify(updates.daumConfig)
-    if (updates.bingConfig)
-      updateData.bingConfig = JSON.stringify(updates.bingConfig)
+    if (updates.isActive !== undefined) updateData.isActive = updates.isActive
+    if (updates.googleConfig) updateData.googleConfig = JSON.stringify(updates.googleConfig)
+    if (updates.naverConfig) updateData.naverConfig = JSON.stringify(updates.naverConfig)
+    if (updates.daumConfig) updateData.daumConfig = JSON.stringify(updates.daumConfig)
+    if (updates.bingConfig) updateData.bingConfig = JSON.stringify(updates.bingConfig)
 
     return await this.prisma.site.update({
       where: { id: siteId },
@@ -171,14 +164,10 @@ export class SiteConfigService {
 
     const updateData: any = {}
 
-    if (configs.google)
-      updateData.googleConfig = JSON.stringify(configs.google)
-    if (configs.naver)
-      updateData.naverConfig = JSON.stringify(configs.naver)
-    if (configs.daum)
-      updateData.daumConfig = JSON.stringify(configs.daum)
-    if (configs.bing)
-      updateData.bingConfig = JSON.stringify(configs.bing)
+    if (configs.google) updateData.googleConfig = JSON.stringify(configs.google)
+    if (configs.naver) updateData.naverConfig = JSON.stringify(configs.naver)
+    if (configs.daum) updateData.daumConfig = JSON.stringify(configs.daum)
+    if (configs.bing) updateData.bingConfig = JSON.stringify(configs.bing)
 
     return await this.prisma.site.update({
       where: { id: siteId },
@@ -247,8 +236,7 @@ export class SiteConfigService {
     try {
       const urlObj = new URL(url)
       return urlObj.hostname.replace('www.', '')
-    }
-    catch {
+    } catch {
       // URL이 아닌 경우 그대로 반환
       return url.replace('www.', '')
     }

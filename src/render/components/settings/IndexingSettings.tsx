@@ -12,8 +12,7 @@ const IndexingSettings: React.FC<SettingsComponentProps<IndexingSettingsType>> =
     try {
       await onSave(values)
       message.success('인덱싱 설정이 저장되었습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       message.error('설정 저장에 실패했습니다.')
     }
   }
@@ -104,8 +103,7 @@ const IndexingSettings: React.FC<SettingsComponentProps<IndexingSettingsType>> =
               • 지연시간을 너무 짧게 설정하면 API 제한에 걸릴 수 있습니다
               <br />
               • 배치 크기를 크게 하면 처리 속도는 빨라지지만 실패 시 영향이 큽니다
-              <br />
-              • 로깅을 활성화하면 문제 발생 시 원인 파악이 쉬워집니다
+              <br />• 로깅을 활성화하면 문제 발생 시 원인 파악이 쉬워집니다
             </Text>
           </div>
         </div>

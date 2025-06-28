@@ -1,6 +1,4 @@
-import type {
-  SiteConfig,
-} from '../../api'
+import type { SiteConfig } from '../../api'
 import { DeleteOutlined, EditOutlined, GlobalOutlined, PlusOutlined } from '@ant-design/icons'
 import { Button, Card, Form, Input, message, Modal, Popconfirm, Space, Table, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
@@ -31,8 +29,7 @@ const SiteSettings: React.FC = () => {
       setLoading(true)
       const response = await getAllSiteConfigs()
       setSites(response.data || [])
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 목록 로드 실패:', error)
       const errorMessage = getErrorMessage(error)
       const errorDetails = getErrorDetails(error)
@@ -43,8 +40,7 @@ const SiteSettings: React.FC = () => {
       }
 
       message.error(displayMessage)
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -66,8 +62,7 @@ const SiteSettings: React.FC = () => {
       await deleteSiteConfig(siteId)
       message.success('사이트가 삭제되었습니다.')
       loadSites()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 삭제 실패:', error)
       const errorMessage = getErrorMessage(error)
       const errorDetails = getErrorDetails(error)
@@ -88,8 +83,7 @@ const SiteSettings: React.FC = () => {
         try {
           const urlObj = new URL(url)
           return urlObj.hostname.replace('www.', '')
-        }
-        catch {
+        } catch {
           return url.replace('www.', '')
         }
       }
@@ -104,16 +98,14 @@ const SiteSettings: React.FC = () => {
       if (editingSite) {
         await updateSiteConfig(editingSite.id!, siteData)
         message.success('사이트가 수정되었습니다.')
-      }
-      else {
+      } else {
         await createSiteConfig(siteData)
         message.success('사이트가 추가되었습니다.')
       }
 
       setModalVisible(false)
       loadSites()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('사이트 저장 실패:', error)
       const errorMessage = getErrorMessage(error)
       const errorDetails = getErrorDetails(error)
@@ -235,8 +227,7 @@ const SiteSettings: React.FC = () => {
                 • 블로그 타입에 관계없이 URL만으로 사이트를 관리합니다
                 <br />
                 • 인덱싱할 URL은 인덱싱 실행 시점에 입력하므로 미리 설정할 필요가 없습니다
-                <br />
-                • 검색엔진별 상세 설정은 각 엔진 탭에서 전역으로 관리됩니다
+                <br />• 검색엔진별 상세 설정은 각 엔진 탭에서 전역으로 관리됩니다
               </Typography.Text>
             </div>
           </div>

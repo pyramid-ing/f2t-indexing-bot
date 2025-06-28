@@ -108,8 +108,7 @@ export function getErrorDetails(error: any): string | undefined {
     for (const [key, value] of Object.entries(details)) {
       if (typeof value === 'boolean') {
         detailStrings.push(`${key}: ${value ? '있음' : '없음'}`)
-      }
-      else if (typeof value === 'string' || typeof value === 'number') {
+      } else if (typeof value === 'string' || typeof value === 'number') {
         detailStrings.push(`${key}: ${value}`)
       }
     }
@@ -217,12 +216,15 @@ export async function updateSiteConfig(siteId: number, updates: Partial<SiteConf
   return res.data
 }
 
-export async function updateSiteEngineConfigs(siteId: number, configs: {
-  google?: GoogleConfig
-  naver?: NaverConfig
-  daum?: DaumConfig
-  bing?: BingConfig
-}) {
+export async function updateSiteEngineConfigs(
+  siteId: number,
+  configs: {
+    google?: GoogleConfig
+    naver?: NaverConfig
+    daum?: DaumConfig
+    bing?: BingConfig
+  },
+) {
   const res = await axios.put(`${API_BASE_URL}/sites/${siteId}/engines`, configs)
   return res.data
 }
@@ -243,7 +245,7 @@ export async function getActiveSiteConfigs() {
 }
 
 // 인덱서 관련 (새로운 구조)
-export async function bingManualIndex(options: { siteId: number, url?: string, urls?: string[] }) {
+export async function bingManualIndex(options: { siteId: number; url?: string; urls?: string[] }) {
   const res = await axios.post(`${API_BASE_URL}/bing-indexer/manual`, options)
   return res.data
 }
@@ -258,21 +260,18 @@ export async function googleManualIndex(options: {
   return res.data
 }
 
-export async function naverManualIndex(options: {
-  siteId: number
-  urlsToIndex: string[]
-}) {
+export async function naverManualIndex(options: { siteId: number; urlsToIndex: string[] }) {
   const res = await axios.post(`${API_BASE_URL}/naver-indexer/manual`, options)
   return res.data
 }
 
-export async function daumManualIndex(options: { siteId: number, urlsToIndex: string[] }) {
+export async function daumManualIndex(options: { siteId: number; urlsToIndex: string[] }) {
   const res = await axios.post(`${API_BASE_URL}/daum-indexer/manual`, options)
   return res.data
 }
 
 // 레거시 전역 설정 (호환성용)
-export async function getGlobalSettings(): Promise<{ success: boolean, data: GlobalEngineSettings }> {
+export async function getGlobalSettings(): Promise<{ success: boolean; data: GlobalEngineSettings }> {
   const res = await axios.get(`${API_BASE_URL}/settings/global`)
   return res.data
 }
@@ -289,17 +288,17 @@ export async function checkNaverLoginStatus(naverId?: string): Promise<NaverLogi
   return res.data
 }
 
-export async function openNaverLoginBrowser(naverId?: string): Promise<{ success: boolean, message: string }> {
+export async function openNaverLoginBrowser(naverId?: string): Promise<{ success: boolean; message: string }> {
   const res = await axios.post(`${API_BASE_URL}/naver-indexer/open-login`, { naverId })
   return res.data
 }
 
-export async function checkNaverLoginComplete(naverId?: string): Promise<{ success: boolean, message: string }> {
+export async function checkNaverLoginComplete(naverId?: string): Promise<{ success: boolean; message: string }> {
   const res = await axios.post(`${API_BASE_URL}/naver-indexer/check-login-complete`, { naverId })
   return res.data
 }
 
-export async function closeNaverLoginBrowser(): Promise<{ success: boolean, message: string }> {
+export async function closeNaverLoginBrowser(): Promise<{ success: boolean; message: string }> {
   const res = await axios.post(`${API_BASE_URL}/naver-indexer/close-login`)
   return res.data
 }
@@ -332,7 +331,12 @@ export async function getNaverAccountByNaverId(naverId: string): Promise<NaverAc
   return res.data.data
 }
 
-export async function createNaverAccount(data: { name: string, naverId: string, password: string, isActive?: boolean }): Promise<NaverAccount> {
+export async function createNaverAccount(data: {
+  name: string
+  naverId: string
+  password: string
+  isActive?: boolean
+}): Promise<NaverAccount> {
   const res = await axios.post(`${API_BASE_URL}/naver-accounts`, data)
   return res.data.data
 }
@@ -342,13 +346,20 @@ export async function updateNaverAccount(id: number, data: Partial<NaverAccount>
   return res.data.data
 }
 
-export async function deleteNaverAccount(id: number): Promise<{ success: boolean, message: string }> {
+export async function deleteNaverAccount(id: number): Promise<{ success: boolean; message: string }> {
   const res = await axios.delete(`${API_BASE_URL}/naver-accounts/${id}`)
   return res.data
 }
 
-export async function updateNaverAccountLoginStatus(naverId: string, isLoggedIn: boolean, lastLogin?: string): Promise<NaverAccount> {
-  const res = await axios.put(`${API_BASE_URL}/naver-accounts/naver-id/${naverId}/login-status`, { isLoggedIn, lastLogin })
+export async function updateNaverAccountLoginStatus(
+  naverId: string,
+  isLoggedIn: boolean,
+  lastLogin?: string,
+): Promise<NaverAccount> {
+  const res = await axios.put(`${API_BASE_URL}/naver-accounts/naver-id/${naverId}/login-status`, {
+    isLoggedIn,
+    lastLogin,
+  })
   return res.data.data
 }
 
@@ -370,13 +381,15 @@ export async function findSiteConfigByUrl(url: string): Promise<SiteConfig | nul
     }
 
     return null
-  }
-  catch (error) {
+  } catch (error) {
     return null
   }
 }
 
-export async function checkExistingUrls(urls: string[], providers: IndexProvider[]): Promise<Record<IndexProvider, string[]>> {
+export async function checkExistingUrls(
+  urls: string[],
+  providers: IndexProvider[],
+): Promise<Record<IndexProvider, string[]>> {
   const res = await axios.post(`${API_BASE_URL}/indexing/check-existing`, {
     urls,
     providers,

@@ -39,8 +39,7 @@ export class SettingsService {
       }
 
       return JSON.parse(settings.data)
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('전역 엔진 설정 조회 실패:', error)
       throw error
     }
@@ -67,8 +66,7 @@ export class SettingsService {
       })
 
       this.logger.log('Google 전역 설정 업데이트 완료')
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Google 전역 설정 업데이트 실패:', error)
       throw error
     }
@@ -95,8 +93,7 @@ export class SettingsService {
       })
 
       this.logger.log('Bing 전역 설정 업데이트 완료')
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Bing 전역 설정 업데이트 실패:', error)
       throw error
     }
@@ -123,8 +120,7 @@ export class SettingsService {
       })
 
       this.logger.log('Naver 전역 설정 업데이트 완료')
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Naver 전역 설정 업데이트 실패:', error)
       throw error
     }
@@ -151,8 +147,7 @@ export class SettingsService {
       })
 
       this.logger.log('Daum 전역 설정 업데이트 완료')
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Daum 전역 설정 업데이트 실패:', error)
       throw error
     }
@@ -182,8 +177,7 @@ export class SettingsService {
       }
 
       return JSON.parse(settings.data)
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('앱 상태 조회 실패:', error)
       throw error
     }

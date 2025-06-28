@@ -39,12 +39,13 @@ export class BingIndexerService {
         apiKey: siteConfig.bingConfig.apiKey,
         siteConfig,
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof BingConfigError) {
         throw error
       }
-      throw new BingConfigError(`Bing 설정 조회 실패: ${error.message}`, 'getBingConfigForSite', 'settings_fetch', { siteId })
+      throw new BingConfigError(`Bing 설정 조회 실패: ${error.message}`, 'getBingConfigForSite', 'settings_fetch', {
+        siteId,
+      })
     }
   }
 
@@ -80,16 +81,21 @@ export class BingIndexerService {
       })
 
       if (response.data && response.data.d && response.data.d.ErrorCode) {
-        throw new BingSubmissionError(`Bing API 오류: ${response.data.d.Message}`, 'submitUrlToBing', url, siteId.toString(), {
-          errorCode: response.data.d.ErrorCode,
-          errorMessage: response.data.d.Message,
-          responseData: response.data,
-        })
+        throw new BingSubmissionError(
+          `Bing API 오류: ${response.data.d.Message}`,
+          'submitUrlToBing',
+          url,
+          siteId.toString(),
+          {
+            errorCode: response.data.d.ErrorCode,
+            errorMessage: response.data.d.Message,
+            responseData: response.data,
+          },
+        )
       }
 
       return response.data
-    }
-    catch (error) {
+    } catch (error) {
       // 실패 로그 기록
       await this.prisma.indexingLog.create({
         data: {
@@ -113,8 +119,7 @@ export class BingIndexerService {
           siteId,
           responseStatus: 401,
         })
-      }
-      else if (error.response?.status === 403) {
+      } else if (error.response?.status === 403) {
         throw new BingSubmissionError(
           'Bing API 권한이 없습니다. 사이트 등록 및 API 키 권한을 확인해주세요.',
           'submitUrlToBing',
@@ -122,8 +127,7 @@ export class BingIndexerService {
           siteId.toString(),
           { responseStatus: 403, responseData: error.response?.data },
         )
-      }
-      else if (error.response?.status === 429) {
+      } else if (error.response?.status === 429) {
         throw new BingSubmissionError(
           'Bing API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'submitUrlToBing',
@@ -133,11 +137,17 @@ export class BingIndexerService {
         )
       }
 
-      throw new BingSubmissionError(`Bing 색인 요청 실패: ${error.message}`, 'submitUrlToBing', url, siteId.toString(), {
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-        axiosCode: error.code,
-      })
+      throw new BingSubmissionError(
+        `Bing 색인 요청 실패: ${error.message}`,
+        'submitUrlToBing',
+        url,
+        siteId.toString(),
+        {
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+          axiosCode: error.code,
+        },
+      )
     }
   }
 
@@ -183,8 +193,7 @@ export class BingIndexerService {
       }
 
       return response.data
-    }
-    catch (error) {
+    } catch (error) {
       // 각 URL마다 실패 로그 기록
       for (const url of urls) {
         await this.prisma.indexingLog.create({
@@ -210,8 +219,7 @@ export class BingIndexerService {
           siteId,
           responseStatus: 401,
         })
-      }
-      else if (error.response?.status === 403) {
+      } else if (error.response?.status === 403) {
         throw new BingSubmissionError(
           'Bing API 권한이 없습니다. 사이트 등록 및 API 키 권한을 확인해주세요.',
           'submitMultipleUrlsToBing',
@@ -219,8 +227,7 @@ export class BingIndexerService {
           siteId.toString(),
           { responseStatus: 403, responseData: error.response?.data, urlCount: urls.length },
         )
-      }
-      else if (error.response?.status === 429) {
+      } else if (error.response?.status === 429) {
         throw new BingSubmissionError(
           'Bing API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.',
           'submitMultipleUrlsToBing',
@@ -230,12 +237,18 @@ export class BingIndexerService {
         )
       }
 
-      throw new BingSubmissionError(`Bing 다중 색인 요청 실패: ${error.message}`, 'submitMultipleUrlsToBing', undefined, siteId.toString(), {
-        responseStatus: error.response?.status,
-        responseData: error.response?.data,
-        urlCount: urls.length,
-        axiosCode: error.code,
-      })
+      throw new BingSubmissionError(
+        `Bing 다중 색인 요청 실패: ${error.message}`,
+        'submitMultipleUrlsToBing',
+        undefined,
+        siteId.toString(),
+        {
+          responseStatus: error.response?.status,
+          responseData: error.response?.data,
+          urlCount: urls.length,
+          axiosCode: error.code,
+        },
+      )
     }
   }
 
@@ -256,7 +269,9 @@ export class BingIndexerService {
       return await this.submitMultipleUrlsToBing(siteId, urls)
     }
 
-    throw new BingSubmissionError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), { options })
+    throw new BingSubmissionError('처리할 URL이 제공되지 않았습니다.', 'manualIndexing', '', siteId.toString(), {
+      options,
+    })
   }
 
   // 레거시 호환성을 위한 메서드 (필요한 경우)

@@ -83,12 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, o
         {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
       </div>
 
-      {!collapsed && (
-        <VersionInfo>
-          v
-          {appVersion}
-        </VersionInfo>
-      )}
+      {!collapsed && <VersionInfo>v{appVersion}</VersionInfo>}
     </StyledSider>
   )
 }

@@ -18,8 +18,8 @@ interface Props {
   onClose: () => void
   selectedTask: any
   detailedResults: DetailedResult[]
-  filters: { status: string, services: string[] }
-  setFilters: (f: { status: string, services: string[] }) => void
+  filters: { status: string; services: string[] }
+  setFilters: (f: { status: string; services: string[] }) => void
   selectedRowKeys: React.Key[]
   setSelectedRowKeys: (keys: React.Key[]) => void
   handleReRequest: (isSingle: boolean, record?: DetailedResult) => void
@@ -64,17 +64,13 @@ const IndexingDetailModal: React.FC<Props> = ({
       key: 'status',
       width: 100,
       render: (status: string) =>
-        status === 'success'
-          ? (
-              <Tag color="success">성공</Tag>
-            )
-          : status === 'failed'
-            ? (
-                <Tag color="error">실패</Tag>
-              )
-            : (
-                <Tag color="processing">진행중</Tag>
-              ),
+        status === 'success' ? (
+          <Tag color="success">성공</Tag>
+        ) : status === 'failed' ? (
+          <Tag color="error">실패</Tag>
+        ) : (
+          <Tag color="processing">진행중</Tag>
+        ),
     },
     {
       title: '결과 메시지',
@@ -91,13 +87,11 @@ const IndexingDetailModal: React.FC<Props> = ({
       key: 'action',
       width: 100,
       render: (_: any, record: DetailedResult) =>
-        record.status === 'failed'
-          ? (
-              <Button size="small" onClick={() => handleReRequest(true, record)}>
-                재시도
-              </Button>
-            )
-          : null,
+        record.status === 'failed' ? (
+          <Button size="small" onClick={() => handleReRequest(true, record)}>
+            재시도
+          </Button>
+        ) : null,
     },
   ]
 
@@ -117,19 +111,13 @@ const IndexingDetailModal: React.FC<Props> = ({
       {selectedTask && (
         <div>
           <p>
-            <strong>사이트:</strong>
-            {' '}
-            {selectedTask.siteUrl}
+            <strong>사이트:</strong> {selectedTask.siteUrl}
           </p>
           <p>
-            <strong>실행 시간:</strong>
-            {' '}
-            {new Date(selectedTask.startTime).toLocaleString()}
+            <strong>실행 시간:</strong> {new Date(selectedTask.startTime).toLocaleString()}
           </p>
           <p>
-            <strong>총 소요 시간:</strong>
-            {' '}
-            {getExecutionTime(selectedTask)}
+            <strong>총 소요 시간:</strong> {getExecutionTime(selectedTask)}
           </p>
           <Divider />
           <Space style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between' }}>
@@ -159,9 +147,7 @@ const IndexingDetailModal: React.FC<Props> = ({
               </Select>
             </Space>
             <Button type="primary" onClick={() => handleReRequest(false)} disabled={selectedRowKeys.length === 0}>
-              선택 항목 재요청 (
-              {selectedRowKeys.length}
-              )
+              선택 항목 재요청 ({selectedRowKeys.length})
             </Button>
           </Space>
           <Table

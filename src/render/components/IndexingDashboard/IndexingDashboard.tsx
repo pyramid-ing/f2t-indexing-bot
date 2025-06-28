@@ -1,15 +1,7 @@
-import type {
-  NaverLoginStatus,
-  SiteConfig,
-} from '../../api'
+import type { NaverLoginStatus, SiteConfig } from '../../api'
 import type { DetailedResult } from './IndexingDetailModal'
 import type { IndexingTask } from './useIndexingTasks'
-import {
-  GlobalOutlined,
-  GoogleOutlined,
-  PlayCircleOutlined,
-  YahooOutlined,
-} from '@ant-design/icons'
+import { GlobalOutlined, GoogleOutlined, PlayCircleOutlined, YahooOutlined } from '@ant-design/icons'
 import { Alert, Button, Card, Col, Form, Input, message, Row, Select, Space, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
@@ -58,7 +50,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   const [form] = Form.useForm()
   const [detailedResults, setDetailedResults] = useState<DetailedResult[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
-  const [filters, setFilters] = useState<{ status: string, services: string[] }>({ status: 'all', services: [] })
+  const [filters, setFilters] = useState<{ status: string; services: string[] }>({ status: 'all', services: [] })
 
   useEffect(() => {
     loadSites()
@@ -97,12 +89,10 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
         if (siteConfig) {
           setSelectedSite(siteConfig)
-        }
-        else {
+        } else {
           setSelectedSite(null)
         }
-      }
-      catch (error) {
+      } catch (error) {
         setSelectedSite(null)
       }
     }
@@ -116,8 +106,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
       const response = await getAllSiteConfigs()
       const data = response.data || []
       setSites(data)
-    }
-    catch (error) {
+    } catch (error) {
       message.error('사이트 목록을 불러오는 데 실패했습니다.')
     }
   }
@@ -130,8 +119,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         // 검색엔진 선택을 빈 배열로 초기화 (모든 활성화된 엔진 사용)
         form.setFieldsValue({ services: [] })
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('전역 설정 로드 실패:', error)
       message.error('전역 설정을 불러오는데 실패했습니다.')
     }
@@ -198,8 +186,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           currentSite = siteConfig
           setSelectedSite(siteConfig)
         }
-      }
-      catch (error) {
+      } catch (error) {
         // 사이트 감지 실패 시 무시하고 진행
       }
     }
@@ -211,8 +198,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         const urlObj = new URL(firstUrl)
         const domain = urlObj.hostname.replace(/^www\./, '')
         message.error(`등록되지 않은 사이트입니다: ${domain}\n설정에서 사이트를 먼저 등록해주세요.`)
-      }
-      catch (error) {
+      } catch (error) {
         message.error('올바른 URL을 입력해주세요.')
       }
       return
@@ -256,8 +242,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           (acc, service) => {
             const existingForService = existingUrlsByProvider[service.toUpperCase()] || []
             const urlsToSubmit = urlList.filter(url => !existingForService.includes(url))
-            if (urlsToSubmit.length > 0)
-              acc[service] = urlsToSubmit
+            if (urlsToSubmit.length > 0) acc[service] = urlsToSubmit
             return acc
           },
           {} as Record<string, string[]>,
@@ -284,8 +269,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
           services: servicesWithUrls,
           _groupedUrls: groupedUrlsToSubmit,
         })
-      }
-      catch (error) {
+      } catch (error) {
         console.error('인덱싱 준비 중 오류:', error)
         message.error(`인덱싱 준비 중 오류가 발생했습니다: ${getErrorMessage(error)}`)
         setLoading(false)
@@ -317,8 +301,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     try {
       for (const service of services) {
         const urlsForService = _groupedUrls ? _groupedUrls[service] : urls
-        if (!urlsForService || urlsForService.length === 0)
-          continue
+        if (!urlsForService || urlsForService.length === 0) continue
 
         updateTask(taskId, t => ({ ...t, results: { ...t.results, [service]: { status: 'running' } } }))
 
@@ -342,8 +325,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               break
           }
           updateTask(taskId, t => ({ ...t, results: { ...t.results, [service]: { status: 'success', data: result } } }))
-        }
-        catch (error) {
+        } catch (error) {
           updateTask(taskId, t => ({
             ...t,
             results: {
@@ -366,16 +348,13 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
       if (hasAnyFailure) {
         message.warning('일부 서비스에서 인덱싱에 실패했습니다.')
-      }
-      else {
+      } else {
         message.success('모든 서비스에서 인덱싱이 성공적으로 완료되었습니다.')
       }
-    }
-    catch (error) {
+    } catch (error) {
       updateTask(taskId, t => ({ ...t, status: 'failed', endTime: Date.now() }))
       message.error('인덱싱 작업 중 오류가 발생했습니다.')
-    }
-    finally {
+    } finally {
       setLoading(false)
     }
   }
@@ -405,21 +384,18 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   }
 
   const getExecutionTime = (task: IndexingTask) => {
-    if (!task.endTime)
-      return '-'
+    if (!task.endTime) return '-'
     const duration = task.endTime - task.startTime
     return `${(duration / 1000).toFixed(2)}초`
   }
 
   const flattenResults = (task: IndexingTask): DetailedResult[] => {
-    if (!task.results)
-      return []
+    if (!task.results) return []
     const flatList: DetailedResult[] = []
 
     task.services.forEach((service, serviceIndex) => {
       const result = task.results?.[service]
-      if (!result)
-        return
+      if (!result) return
 
       const processIndividualResults = (resultsArray: any[]) => {
         resultsArray.forEach((res, resIndex) => {
@@ -439,8 +415,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         const detailedResults = result.data?.details?.results || (Array.isArray(result.data) ? result.data : null)
         if (detailedResults) {
           processIndividualResults(detailedResults)
-        }
-        else {
+        } else {
           task.urls.forEach((url, urlIndex) =>
             flatList.push({
               id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
@@ -452,10 +427,10 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
             }),
           )
         }
-      }
-      else if (result.status === 'success' && result.data) {
+      } else if (result.status === 'success' && result.data) {
         if (service === 'bing') {
-          const isBingSuccess = (result.data && (result.data.success || result.data.d === null || Object.keys(result.data).length === 0))
+          const isBingSuccess =
+            result.data && (result.data.success || result.data.d === null || Object.keys(result.data).length === 0)
           if (isBingSuccess) {
             const urlsForService = task._groupedUrls?.[service] || task.urls
             urlsForService.forEach((url, urlIndex) => {
@@ -473,12 +448,10 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
         if (Array.isArray(result.data.results)) {
           processIndividualResults(result.data.results)
-        }
-        else if (Array.isArray(result.data)) {
+        } else if (Array.isArray(result.data)) {
           processIndividualResults(result.data)
         }
-      }
-      else if (result.status === 'running') {
+      } else if (result.status === 'running') {
         task.urls.forEach((url, urlIndex) =>
           flatList.push({
             id: `${service}-${url}-${serviceIndex}-${urlIndex}`,
@@ -496,13 +469,11 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
   const handleReRequest = (isSingle: boolean, record?: DetailedResult) => {
     const itemsToReRequest = isSingle && record ? [record] : detailedResults.filter(r => selectedRowKeys.includes(r.id))
-    if (itemsToReRequest.length === 0)
-      return message.warning('재요청할 항목을 선택해주세요.')
+    if (itemsToReRequest.length === 0) return message.warning('재요청할 항목을 선택해주세요.')
 
     const groupedByService = itemsToReRequest.reduce(
       (acc, item) => {
-        if (!acc[item.service])
-          acc[item.service] = []
+        if (!acc[item.service]) acc[item.service] = []
         acc[item.service].push(item.url)
         return acc
       },
@@ -515,12 +486,11 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
       _groupedUrls: groupedByService,
     })
     message.success(`${itemsToReRequest.length}개 항목 재요청 시작.`)
-    if (!isSingle)
-      setSelectedRowKeys([])
+    if (!isSingle) setSelectedRowKeys([])
   }
 
   const filteredDetailedResults = useMemo(() => {
-    return detailedResults.filter((item) => {
+    return detailedResults.filter(item => {
       const statusMatch = filters.status === 'all' || item.status === filters.status
       const serviceMatch = filters.services.length === 0 || filters.services.includes(item.service)
       return statusMatch && serviceMatch
@@ -528,18 +498,15 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   }, [detailedResults, filters])
 
   const checkNaverLogin = async () => {
-    if (!globalSettings?.naver?.use)
-      return
+    if (!globalSettings?.naver?.use) return
     setNaverLoginChecking(true)
     try {
       const status = await checkNaverLoginStatus()
       setNaverLoginStatus(status)
-    }
-    catch (error) {
+    } catch (error) {
       console.error('네이버 로그인 상태 확인 실패:', error)
       setNaverLoginStatus({ isLoggedIn: false, needsLogin: true, message: '로그인 상태 확인 실패' })
-    }
-    finally {
+    } finally {
       setNaverLoginChecking(false)
     }
   }
@@ -559,8 +526,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               message.success('네이버 로그인이 완료되었습니다!')
               await checkNaverLogin()
             }
-          }
-          catch (error) {
+          } catch (error) {
             console.log('로그인 완료 확인 중 오류:', error)
           }
         }, 5000)
@@ -571,12 +537,10 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
             message.warning('로그인 확인을 중단했습니다. 로그인 완료 후 상태를 새로고침해주세요.')
           }
         }, 120000)
-      }
-      else {
+      } else {
         message.error(result.message)
       }
-    }
-    catch (error) {
+    } catch (error) {
       console.error('네이버 로그인 브라우저 열기 실패:', error)
       message.error('네이버 로그인 창 열기에 실패했습니다.')
     }
@@ -587,8 +551,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
       await closeNaverLoginBrowser()
       setNaverLoginBrowserOpen(false)
       message.info('네이버 로그인 브라우저를 닫았습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       console.error('브라우저 닫기 실패:', error)
       message.error('브라우저 닫기에 실패했습니다.')
     }
@@ -600,38 +563,33 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         <Col span={16}>
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
             <div style={{ marginBottom: '16px' }}>
-              {selectedSite
-                ? (
-                    <Alert
-                      message={`감지된 사이트: ${selectedSite.name} (${selectedSite.siteUrl})`}
-                      type="success"
-                      showIcon
-                      action={(
-                        <Button
-                          size="small"
-                          type="text"
-                          onClick={() => {
-                            setSelectedSite(null)
-                            setUrlsInput('')
-                          }}
-                        >
-                          초기화
-                        </Button>
-                      )}
-                      style={{ marginBottom: 16 }}
-                    />
-                  )
-                : urlsInput.trim()
-                  ? (
-                      <Alert
-                        message="등록되지 않은 사이트입니다. 설정에서 사이트를 먼저 등록해주세요."
-                        type="warning"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                      />
-                    )
-                  : null}
-
+              {selectedSite ? (
+                <Alert
+                  message={`감지된 사이트: ${selectedSite.name} (${selectedSite.siteUrl})`}
+                  type="success"
+                  showIcon
+                  action={
+                    <Button
+                      size="small"
+                      type="text"
+                      onClick={() => {
+                        setSelectedSite(null)
+                        setUrlsInput('')
+                      }}
+                    >
+                      초기화
+                    </Button>
+                  }
+                  style={{ marginBottom: 16 }}
+                />
+              ) : urlsInput.trim() ? (
+                <Alert
+                  message="등록되지 않은 사이트입니다. 설정에서 사이트를 먼저 등록해주세요."
+                  type="warning"
+                  showIcon
+                  style={{ marginBottom: 16 }}
+                />
+              ) : null}
             </div>
             <Form
               form={form}
@@ -639,22 +597,33 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
               onFinish={async values =>
                 await handleManualIndexing({
                   urls: urlsInput.split('\n').filter((u: string) => u.trim() !== ''),
-                })}
+                })
+              }
             >
               <Form.Item name="urls" label="URL 목록" rules={[{ required: true, message: 'URL을 입력해주세요' }]}>
                 <TextArea
                   rows={6}
                   placeholder="한 줄에 하나씩 URL을 입력해주세요. 입력하시면 자동으로 사이트가 감지됩니다."
                   value={urlsInput}
-                  onChange={(e) => {
+                  onChange={e => {
                     setUrlsInput(e.target.value)
                     form.setFieldsValue({ urls: e.target.value })
                   }}
                 />
               </Form.Item>
               {getAvailableServices(globalSettings, selectedSite).length > 0 && (
-                <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f6f8fa', borderRadius: 6, border: '1px solid #d1d9e0' }}>
-                  <Text strong style={{ color: '#0969da' }}>사용할 검색엔진:</Text>
+                <div
+                  style={{
+                    marginBottom: 16,
+                    padding: 12,
+                    backgroundColor: '#f6f8fa',
+                    borderRadius: 6,
+                    border: '1px solid #d1d9e0',
+                  }}
+                >
+                  <Text strong style={{ color: '#0969da' }}>
+                    사용할 검색엔진:
+                  </Text>
                   <div style={{ marginTop: 8 }}>
                     <Space wrap>
                       {getAvailableServices(globalSettings, selectedSite).map(service => (
@@ -682,14 +651,18 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   htmlType="submit"
                   loading={loading}
                   icon={<PlayCircleOutlined />}
-                  disabled={loading || getAvailableServices(globalSettings, selectedSite).length === 0 || !urlsInput.trim()}
+                  disabled={
+                    loading || getAvailableServices(globalSettings, selectedSite).length === 0 || !urlsInput.trim()
+                  }
                 >
                   인덱싱 시작
                 </Button>
                 {getAvailableServices(globalSettings, selectedSite).length === 0 && (
                   <div style={{ marginTop: 8 }}>
                     <Text type="secondary" style={{ fontSize: 12, color: '#ff4d4f' }}>
-                      {selectedSite ? '선택된 사이트에 활성화된 검색엔진이 없습니다. 설정에서 검색엔진을 활성화해주세요.' : '설정에서 검색엔진을 먼저 활성화해주세요.'}
+                      {selectedSite
+                        ? '선택된 사이트에 활성화된 검색엔진이 없습니다. 설정에서 검색엔진을 활성화해주세요.'
+                        : '설정에서 검색엔진을 먼저 활성화해주세요.'}
                     </Text>
                   </div>
                 )}

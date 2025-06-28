@@ -40,10 +40,15 @@ export class DaumIndexerService {
             const config = siteConfig.daumConfig
 
             if (!config.siteUrl) {
-              throw new DaumConfigError('사이트별 Daum 설정에서 사이트 URL이 필요합니다.', 'getDaumConfig', 'site_url', {
-                siteId,
-                hasSiteUrl: false,
-              })
+              throw new DaumConfigError(
+                '사이트별 Daum 설정에서 사이트 URL이 필요합니다.',
+                'getDaumConfig',
+                'site_url',
+                {
+                  siteId,
+                  hasSiteUrl: false,
+                },
+              )
             }
 
             if (!config.password) {
@@ -59,14 +64,12 @@ export class DaumIndexerService {
               headless: config.headless ?? true,
             }
           }
-        }
-        catch (error) {
+        } catch (error) {
           // 사이트별 설정이 없거나 비활성화된 경우 글로벌 설정으로 fallback
           this.logger.log(`사이트별 Daum 설정을 사용할 수 없음, 글로벌 설정으로 fallback: ${error.message}`)
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof DaumConfigError) {
         throw error
       }
@@ -76,8 +79,7 @@ export class DaumIndexerService {
 
   private getDaumCookiePath(siteUrl?: string) {
     const cookieDir = process.env.COOKIE_DIR
-    if (!fs.existsSync(cookieDir))
-      fs.mkdirSync(cookieDir, { recursive: true })
+    if (!fs.existsSync(cookieDir)) fs.mkdirSync(cookieDir, { recursive: true })
     const safeSite = (siteUrl || 'default').replace(/[^\w\-]/g, '_')
     return path.join(cookieDir, `daum_${safeSite}.json`)
   }
@@ -103,7 +105,7 @@ export class DaumIndexerService {
   async manualIndexing(
     options: DaumIndexerOptions,
     headless?: boolean,
-  ): Promise<{ url: string, status: string, msg: string }[]> {
+  ): Promise<{ url: string; status: string; msg: string }[]> {
     const { urlsToIndex, siteId, siteUrl } = options
 
     try {
@@ -135,8 +137,7 @@ export class DaumIndexerService {
         await page.setExtraHTTPHeaders({
           'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         })
-      }
-      catch (error) {
+      } catch (error) {
         throw new DaumSubmissionError(`브라우저 초기화 실패: ${error.message}`, 'manualIndexing', undefined, siteUrl, {
           headless: useHeadless,
           executablePath: launchOptions.executablePath,
@@ -190,13 +191,11 @@ export class DaumIndexerService {
               await sleep(2000)
             }
             await this.saveCookies(page, daumSiteUrl)
-          }
-          else {
+          } else {
             this.logger.warn('로그인 폼이 감지되지 않음, 이미 로그인된 상태일 수 있음')
           }
         }
-      }
-      catch (error) {
+      } catch (error) {
         await browser.close()
         if (error instanceof DaumAuthError) {
           throw error
@@ -207,15 +206,14 @@ export class DaumIndexerService {
         })
       }
 
-      const results: { url: string, status: string, msg: string }[] = []
+      const results: { url: string; status: string; msg: string }[] = []
 
       for (const url of urlsToIndex) {
         try {
           await page.waitForSelector('#collectReqUrl', { timeout: 10000 })
           await page.evaluate(() => {
             const input = document.querySelector('#collectReqUrl') as HTMLInputElement
-            if (input)
-              input.value = ''
+            if (input) input.value = ''
           })
           await page.type('#collectReqUrl', url, { delay: 2 })
           await page.click('.btn_result')
@@ -229,8 +227,7 @@ export class DaumIndexerService {
               const layer = document.querySelector('.webmaster_layer.layer_collect')
               return layer && !layer.classList.contains('hide')
             })
-            if (isSuccess)
-              break
+            if (isSuccess) break
             await sleep(pollInterval)
           }
 
@@ -253,8 +250,7 @@ export class DaumIndexerService {
             //     responseData: JSON.stringify(result),
             //   },
             // })
-          }
-          else {
+          } else {
             msg = '수집요청 실패 또는 레이어 미노출'
             result = { url, status: 'fail', msg }
 
@@ -273,8 +269,7 @@ export class DaumIndexerService {
           }
           results.push(result)
           await sleep(1000)
-        }
-        catch (e: any) {
+        } catch (e: any) {
           const result = { url, status: 'error', msg: `[에러] ${e?.message || e}` }
           results.push(result)
 
@@ -312,8 +307,7 @@ export class DaumIndexerService {
         )
       }
       return results
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof DaumAuthError || error instanceof DaumSubmissionError || error instanceof DaumConfigError) {
         throw error
       }
@@ -385,8 +379,7 @@ export class DaumIndexerService {
 
       this.logger.log(`Daum 인덱싱 완료: ${results.length}개 URL 처리`)
       return { results }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Daum 인덱싱 실패:', error)
 
       if (error instanceof DaumAuthError || error instanceof DaumSubmissionError || error instanceof DaumConfigError) {

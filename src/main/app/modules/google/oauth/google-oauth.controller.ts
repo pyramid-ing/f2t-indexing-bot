@@ -119,12 +119,11 @@ export class GoogleOAuthController {
         </body>
         </html> 
       `)
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('OAuth 콜백 처리 오류:', error)
 
-      const errorMessage
-        = error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError
+      const errorMessage =
+        error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError
           ? `${error.service} ${error.operation}: ${error.message}`
           : error.message
 
@@ -159,8 +158,7 @@ export class GoogleOAuthController {
         message: 'Google 토큰이 성공적으로 저장되었습니다.',
         userInfo: result.userInfo,
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('토큰 교환 실패:', error)
 
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError) {
@@ -214,8 +212,7 @@ export class GoogleOAuthController {
 
       this.logger.log('OAuth 토큰 저장 완료')
       return { tokens, userInfo }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError || error instanceof GoogleTokenError) {
         throw error
       }
@@ -273,8 +270,7 @@ export class GoogleOAuthController {
         expiresAt: Date.now() + data.expires_in * 1000,
         scope: data.scope,
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof GoogleTokenError) {
         throw error
       }
@@ -326,8 +322,7 @@ export class GoogleOAuthController {
         message: '토큰이 성공적으로 갱신되었습니다.',
         accessToken: newTokens.accessToken,
       }
-    }
-    catch (error) {
+    } catch (error) {
       throw new Error(`토큰 갱신 실패: ${error.message}`)
     }
   }
@@ -386,8 +381,7 @@ export class GoogleOAuthController {
             userInfo,
             message: '토큰이 자동으로 갱신되었습니다.',
           }
-        }
-        catch (error) {
+        } catch (error) {
           return {
             isLoggedIn: false,
             message: '토큰 갱신 실패. 다시 로그인해주세요.',
@@ -402,8 +396,7 @@ export class GoogleOAuthController {
         userInfo,
         message: '로그인 상태입니다.',
       }
-    }
-    catch (error) {
+    } catch (error) {
       return {
         isLoggedIn: false,
         message: '로그인 상태 확인 실패.',
@@ -430,8 +423,7 @@ export class GoogleOAuthController {
         success: true,
         message: 'Google 계정 연동이 해제되었습니다.',
       }
-    }
-    catch (error) {
+    } catch (error) {
       throw new Error(`로그아웃 실패: ${error.message}`)
     }
   }

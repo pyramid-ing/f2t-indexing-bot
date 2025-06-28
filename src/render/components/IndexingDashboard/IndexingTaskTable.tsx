@@ -38,8 +38,7 @@ const IndexingTaskTable: React.FC<Props> = ({ tasks, loading, onShowDetail }) =>
       title: '소요 시간',
       key: 'duration',
       render: (_: any, record: IndexingTask) => {
-        if (!record.endTime)
-          return '-'
+        if (!record.endTime) return '-'
         const duration = record.endTime - record.startTime
         return `${(duration / 1000).toFixed(2)}초`
       },

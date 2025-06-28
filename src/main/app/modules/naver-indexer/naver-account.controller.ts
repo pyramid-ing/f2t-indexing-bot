@@ -51,14 +51,10 @@ export class NaverAccountController {
   @Put('naver-id/:naverId/login-status')
   async updateLoginStatus(
     @Param('naverId') naverId: string,
-    @Body() body: { isLoggedIn: boolean, lastLogin?: string },
+    @Body() body: { isLoggedIn: boolean; lastLogin?: string },
   ) {
     const lastLogin = body.lastLogin ? new Date(body.lastLogin) : undefined
-    const account = await this.naverAccountService.updateLoginStatus(
-      naverId,
-      body.isLoggedIn,
-      lastLogin,
-    )
+    const account = await this.naverAccountService.updateLoginStatus(naverId, body.isLoggedIn, lastLogin)
     return { success: true, data: account, message: '로그인 상태가 업데이트되었습니다.' }
   }
 }

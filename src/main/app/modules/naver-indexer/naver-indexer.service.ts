@@ -32,8 +32,7 @@ export interface NaverLoginStatus {
 function getNaverCookiePath(naverId?: string) {
   const isProd = process.env.NODE_ENV === 'production'
   const cookieDir = process.env.COOKIE_DIR
-  if (!require('node:fs').existsSync(cookieDir))
-    require('node:fs').mkdirSync(cookieDir, { recursive: true })
+  if (!require('node:fs').existsSync(cookieDir)) require('node:fs').mkdirSync(cookieDir, { recursive: true })
   const naverIdForFile = (naverId || 'default').replace(/[^\w\-]/g, '_')
   return path.join(cookieDir, `naver_${naverIdForFile}.json`)
 }
@@ -65,8 +64,7 @@ export class NaverIndexerService implements OnModuleInit {
       const cookies = JSON.parse(fs.readFileSync(cookiePath, 'utf-8'))
       await page.setCookie(...cookies)
       this.logger.log('쿠키를 불러와 세션을 복원합니다.')
-    }
-    else {
+    } else {
       throw new Error('쿠키 파일이 존재하지 않습니다. 먼저 수동으로 로그인 후 쿠키를 저장해 주세요.')
     }
   }
@@ -107,8 +105,7 @@ export class NaverIndexerService implements OnModuleInit {
         password: account.password,
         headless: true, // 기본값은 true
       }
-    }
-    catch (error) {
+    } catch (error) {
       if (error instanceof NaverAuthError) {
         throw error
       }
@@ -119,7 +116,7 @@ export class NaverIndexerService implements OnModuleInit {
   async manualIndexing(
     options: NaverIndexerOptions,
     headless?: boolean,
-  ): Promise<{ url: string, status: string, msg: string }[]> {
+  ): Promise<{ url: string; status: string; msg: string }[]> {
     const { siteUrl, urlsToIndex } = options
 
     try {
@@ -156,8 +153,7 @@ export class NaverIndexerService implements OnModuleInit {
           'accept-language': 'ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7',
         })
         await page.emulateTimezone('Asia/Seoul')
-      }
-      catch (error) {
+      } catch (error) {
         throw new NaverBrowserError(`브라우저 초기화 실패: ${error.message}`, 'manualIndexing', {
           headless: useHeadless,
           executablePath: launchOptions.executablePath,
@@ -196,8 +192,7 @@ export class NaverIndexerService implements OnModuleInit {
           await page.click('button[type=submit]')
           await this.sleep(2000)
         }
-      }
-      catch (error) {
+      } catch (error) {
         if (error instanceof NaverLoginError) {
           throw error
         }
@@ -223,15 +218,13 @@ export class NaverIndexerService implements OnModuleInit {
           await page.waitForSelector('input#id', { timeout: 10000 })
           await page.evaluate(() => {
             const idInput = document.querySelector('input#id') as HTMLInputElement
-            if (idInput)
-              idInput.value = ''
+            if (idInput) idInput.value = ''
           })
           await page.type('input#id', naverId, { delay: 30 })
           await page.waitForSelector('input#pw', { timeout: 10000 })
           await page.evaluate(() => {
             const pwInput = document.querySelector('input#pw') as HTMLInputElement
-            if (pwInput)
-              pwInput.value = ''
+            if (pwInput) pwInput.value = ''
           })
           await page.type('input#pw', naverPw, { delay: 30 })
           // 로그인 실패(아이디/비번 오류) 감지
@@ -280,8 +273,7 @@ export class NaverIndexerService implements OnModuleInit {
             await page.click('button[type=submit]')
             await this.sleep(2000)
             captchaTries++
-          }
-          else {
+          } else {
             break
           }
         }
@@ -305,8 +297,7 @@ export class NaverIndexerService implements OnModuleInit {
             },
           )
           await this.sleep(2000)
-        }
-        else {
+        } else {
           await browser.close()
           throw new NaverAuthError('네이버 로그인 실패(캡챠 포함)', 'manualIndexing', {
             captchaTries,
@@ -318,13 +309,13 @@ export class NaverIndexerService implements OnModuleInit {
       let dialogAppeared = false
       let dialogMsg = ''
       page.removeAllListeners('dialog')
-      page.on('dialog', async (dialog) => {
+      page.on('dialog', async dialog => {
         dialogAppeared = true
         dialogMsg = dialog.message()
         await dialog.dismiss()
       })
 
-      const results: { url: string, status: string, msg: string }[] = []
+      const results: { url: string; status: string; msg: string }[] = []
 
       for (const url of urlsToIndex) {
         dialogAppeared = false
@@ -332,10 +323,9 @@ export class NaverIndexerService implements OnModuleInit {
         try {
           const inputSelector = 'input[type="text"][maxlength="2048"]'
           await page.waitForSelector(inputSelector, { timeout: 5000 })
-          await page.evaluate((selector) => {
+          await page.evaluate(selector => {
             const input = document.querySelector(selector) as HTMLInputElement
-            if (input)
-              input.value = ''
+            if (input) input.value = ''
           }, inputSelector)
           await page.type(inputSelector, url, { delay: 5 })
           await page.evaluate(() => {
@@ -355,19 +345,16 @@ export class NaverIndexerService implements OnModuleInit {
           const start = Date.now()
 
           while (Date.now() - start < timeoutMs) {
-            if (dialogAppeared)
-              break
-            isSuccess = await page.evaluate((url) => {
+            if (dialogAppeared) break
+            isSuccess = await page.evaluate(url => {
               const firstRowLink = document.querySelector(
                 '.v-data-table__wrapper tbody tr:first-child td:nth-child(2) a',
               )
-              if (!firstRowLink)
-                return false
+              if (!firstRowLink) return false
               const inputUrl = new URL(url)
               return firstRowLink.textContent?.trim() === inputUrl.pathname || firstRowLink.getAttribute('href') === url
             }, url)
-            if (isSuccess)
-              break
+            if (isSuccess) break
             await this.sleep(pollInterval)
           }
 
@@ -412,8 +399,7 @@ export class NaverIndexerService implements OnModuleInit {
                 message: result.msg,
               },
             })
-          }
-          else {
+          } else {
             result = {
               url,
               status: 'fail',
@@ -433,8 +419,7 @@ export class NaverIndexerService implements OnModuleInit {
             })
           }
           await this.sleep(1000)
-        }
-        catch (e: any) {
+        } catch (e: any) {
           const result = {
             url,
             status: 'error',
@@ -476,13 +461,12 @@ export class NaverIndexerService implements OnModuleInit {
       }
 
       return results
-    }
-    catch (error) {
+    } catch (error) {
       if (
-        error instanceof NaverAuthError
-        || error instanceof NaverLoginError
-        || error instanceof NaverSubmissionError
-        || error instanceof NaverBrowserError
+        error instanceof NaverAuthError ||
+        error instanceof NaverLoginError ||
+        error instanceof NaverSubmissionError ||
+        error instanceof NaverBrowserError
       ) {
         throw error
       }
@@ -514,15 +498,13 @@ export class NaverIndexerService implements OnModuleInit {
       // #account 영역에서 로그인 상태 확인
       return await page.evaluate(() => {
         const accountArea = document.querySelector('#account')
-        if (!accountArea)
-          return false
+        if (!accountArea) return false
 
         // "네이버를 더 안전하고 편리하게 이용하세요" 텍스트가 있으면 로그아웃 상태
         const text = accountArea.textContent || ''
         return !text.includes('네이버를 더 안전하고 편리하게 이용하세요')
       })
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('페이지에서 로그인 상태 확인 실패:', error)
       return false
     }
@@ -569,8 +551,7 @@ export class NaverIndexerService implements OnModuleInit {
         // 데이터베이스 로그인 상태 업데이트 (상태 확인 시점도 업데이트)
         try {
           await this.naverAccountService.updateLoginStatus(naverConfig.naverId, isLoggedIn, new Date())
-        }
-        catch (updateError) {
+        } catch (updateError) {
           this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
         }
 
@@ -580,23 +561,20 @@ export class NaverIndexerService implements OnModuleInit {
             needsLogin: true,
             message: '네이버 로그인이 필요합니다.',
           }
-        }
-        else {
+        } else {
           return {
             isLoggedIn: true,
             needsLogin: false,
             message: '네이버 로그인 상태입니다.',
           }
         }
-      }
-      catch (error) {
+      } catch (error) {
         await browser.close()
 
         // 오류 발생 시에도 로그인 상태를 false로 업데이트
         try {
           await this.naverAccountService.updateLoginStatus(naverConfig.naverId, false)
-        }
-        catch (updateError) {
+        } catch (updateError) {
           this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
         }
 
@@ -606,8 +584,7 @@ export class NaverIndexerService implements OnModuleInit {
           message: '쿠키가 만료되었거나 존재하지 않습니다. 로그인이 필요합니다.',
         }
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('네이버 로그인 상태 확인 실패:', error)
       return {
         isLoggedIn: false,
@@ -620,15 +597,14 @@ export class NaverIndexerService implements OnModuleInit {
   /**
    * 수동 로그인을 위한 브라우저 창 열기
    */
-  async openLoginBrowser(naverId?: string): Promise<{ success: boolean, message: string }> {
+  async openLoginBrowser(naverId?: string): Promise<{ success: boolean; message: string }> {
     if (this.loginBrowser) {
       this.logger.warn('이미 네이버 로그인 브라우저가 열려 있습니다.')
       try {
         // 이미 열려있는 페이지를 활성화 시도
         await this.loginPage?.bringToFront()
         return { success: true, message: '기존 로그인 창을 활성화했습니다.' }
-      }
-      catch (e) {
+      } catch (e) {
         // 무시하고 새로 열기
       }
     }
@@ -673,8 +649,7 @@ export class NaverIndexerService implements OnModuleInit {
       })
 
       return { success: true, message: '네이버 로그인 창을 열었습니다. ID/PW를 확인하고 로그인해주세요.' }
-    }
-    catch (error) {
+    } catch (error) {
       if (this.loginBrowser) {
         await this.loginBrowser.close()
         this.loginBrowser = null
@@ -693,7 +668,7 @@ export class NaverIndexerService implements OnModuleInit {
   /**
    * 사용자가 브라우저에서 로그인을 완료했는지 확인하고, 성공 시 쿠키를 저장합니다.
    */
-  async checkLoginComplete(naverId?: string): Promise<{ success: boolean, message: string }> {
+  async checkLoginComplete(naverId?: string): Promise<{ success: boolean; message: string }> {
     try {
       if (!this.loginBrowser || !this.loginPage) {
         return {
@@ -724,8 +699,7 @@ export class NaverIndexerService implements OnModuleInit {
           // 데이터베이스 로그인 상태 업데이트
           try {
             await this.naverAccountService.updateLoginStatus(naverConfig.naverId, true, new Date())
-          }
-          catch (updateError) {
+          } catch (updateError) {
             this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
           }
 
@@ -745,8 +719,7 @@ export class NaverIndexerService implements OnModuleInit {
         success: false,
         message: '아직 로그인이 완료되지 않았습니다. 계속 로그인을 진행해주세요.',
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('네이버 로그인 완료 확인 실패:', error)
       return {
         success: false,
@@ -766,8 +739,7 @@ export class NaverIndexerService implements OnModuleInit {
         this.loginPage = null
         this.logger.log('네이버 로그인 브라우저를 닫았습니다.')
       }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('브라우저 닫기 실패:', error)
     }
   }
@@ -828,15 +800,14 @@ export class NaverIndexerService implements OnModuleInit {
 
       this.logger.log(`Naver 인덱싱 완료: ${results.length}개 URL 처리`)
       return { results }
-    }
-    catch (error) {
+    } catch (error) {
       this.logger.error('Naver 인덱싱 실패:', error)
 
       if (
-        error instanceof NaverAuthError
-        || error instanceof NaverLoginError
-        || error instanceof NaverSubmissionError
-        || error instanceof NaverBrowserError
+        error instanceof NaverAuthError ||
+        error instanceof NaverLoginError ||
+        error instanceof NaverSubmissionError ||
+        error instanceof NaverBrowserError
       ) {
         throw error
       }

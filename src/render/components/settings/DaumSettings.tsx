@@ -35,8 +35,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
         // URL 형식 검증
         try {
           new URL(values.siteUrl)
-        }
-        catch {
+        } catch {
           message.error('올바른 URL 형식이 아닙니다.')
           return
         }
@@ -45,8 +44,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
       const finalValues = { ...values, use: localUse }
       await onSave(finalValues)
       message.success('다음 설정이 저장되었습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       message.error('다음 설정 저장에 실패했습니다.')
     }
   }
@@ -59,14 +57,18 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
   return (
     <div>
       <Title level={3}>
-        <span className="mr-2" style={{ color: '#0066cc' }}>🅳</span>
+        <span className="mr-2" style={{ color: '#0066cc' }}>
+          🅳
+        </span>
         다음 색인 설정
       </Title>
 
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <Text strong className="text-lg">다음 색인 서비스</Text>
+            <Text strong className="text-lg">
+              다음 색인 서비스
+            </Text>
             <br />
             <Text type="secondary">다음 검색등록을 통한 URL 등록</Text>
           </div>
@@ -93,10 +95,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
                   { type: 'url', message: '올바른 URL 형식이 아닙니다!' },
                 ]}
               >
-                <Input
-                  placeholder="https://example.com"
-                  disabled={!localUse}
-                />
+                <Input placeholder="https://example.com" disabled={!localUse} />
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -104,14 +103,9 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
                 name="password"
                 label="PIN코드"
                 help="다음 검색등록 시 설정한 PIN코드"
-                rules={[
-                  { required: localUse, message: 'PIN코드를 입력해주세요!' },
-                ]}
+                rules={[{ required: localUse, message: 'PIN코드를 입력해주세요!' }]}
               >
-                <Input.Password
-                  placeholder="abc12345"
-                  disabled={!localUse}
-                />
+                <Input.Password placeholder="abc12345" disabled={!localUse} />
               </Form.Item>
             </Col>
           </Row>
@@ -124,24 +118,14 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
                 help="브라우저 창을 표시할지 여부 (체크 해제 시 브라우저 창 표시)"
                 valuePropName="checked"
               >
-                <Switch
-                  checkedChildren="숨김"
-                  unCheckedChildren="표시"
-                  disabled={!localUse}
-                />
+                <Switch checkedChildren="숨김" unCheckedChildren="표시" disabled={!localUse} />
               </Form.Item>
             </Col>
           </Row>
-
         </Card>
 
         <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            icon={<SaveOutlined />}
-            loading={loading}
-          >
+          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
             설정 저장
           </Button>
           {!localUse && (

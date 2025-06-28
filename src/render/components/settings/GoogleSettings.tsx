@@ -37,8 +37,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
         }
         try {
           JSON.parse(values.serviceAccountJson)
-        }
-        catch {
+        } catch {
           message.error('유효한 JSON 형식이 아닙니다.')
           return
         }
@@ -47,8 +46,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
       const finalValues = { ...values, use: localUse }
       await onSave(finalValues)
       message.success('Google 설정이 저장되었습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       const errorMessage = getErrorMessage(error)
       const errorDetails = getErrorDetails(error)
 
@@ -76,7 +74,9 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <Text strong className="text-lg">Google 색인 서비스</Text>
+            <Text strong className="text-lg">
+              Google 색인 서비스
+            </Text>
             <br />
             <Text type="secondary">Google Search Console API를 통한 URL 색인 요청</Text>
           </div>
@@ -90,20 +90,33 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
         </div>
       </Card>
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        initialValues={settings}
-        preserve={false}
-      >
+      <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={settings} preserve={false}>
         {/* Service Account 설정 */}
         <Card title="Service Account 설정" className="mb-4">
           {/* 현재 설정 값 표시 */}
           {settings.serviceAccountJson && (
-            <div style={{ marginBottom: 16, padding: 12, backgroundColor: '#f6f8fa', borderRadius: 6, border: '1px solid #d1d9e0' }}>
-              <Text strong style={{ color: '#0969da' }}>현재 저장된 Service Account JSON:</Text>
-              <div style={{ marginTop: 8, fontSize: 11, fontFamily: 'monospace', color: '#656d76', maxHeight: 100, overflow: 'auto' }}>
+            <div
+              style={{
+                marginBottom: 16,
+                padding: 12,
+                backgroundColor: '#f6f8fa',
+                borderRadius: 6,
+                border: '1px solid #d1d9e0',
+              }}
+            >
+              <Text strong style={{ color: '#0969da' }}>
+                현재 저장된 Service Account JSON:
+              </Text>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                  color: '#656d76',
+                  maxHeight: 100,
+                  overflow: 'auto',
+                }}
+              >
                 {settings.serviceAccountJson.substring(0, 200)}
                 {settings.serviceAccountJson.length > 200 && '...'}
               </div>
@@ -114,16 +127,14 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
           )}
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>
-              Service Account JSON
-            </label>
+            <label style={{ display: 'block', marginBottom: 8, fontWeight: 500 }}>Service Account JSON</label>
             <TextArea
               placeholder='{"type": "service_account", "project_id": "...", "private_key_id": "...", ...}'
               rows={8}
               disabled={!localUse}
               className="font-mono text-xs"
               value={jsonValue}
-              onChange={(e) => {
+              onChange={e => {
                 const newValue = e.target.value
                 setJsonValue(newValue)
                 form.setFieldsValue({ serviceAccountJson: newValue })
@@ -138,13 +149,11 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
               { required: localUse, message: 'Service Account JSON을 업로드해주세요!' },
               {
                 validator: (_, value) => {
-                  if (!localUse || !value)
-                    return Promise.resolve()
+                  if (!localUse || !value) return Promise.resolve()
                   try {
                     JSON.parse(value)
                     return Promise.resolve()
-                  }
-                  catch {
+                  } catch {
                     return Promise.reject(new Error('유효한 JSON 형식이 아닙니다.'))
                   }
                 },
@@ -156,7 +165,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
 
           <Alert
             message="Service Account 설정 방법"
-            description={(
+            description={
               <div>
                 <p>1. Google Cloud Console에서 프로젝트 생성</p>
                 <p>2. Google Search Console API 활성화</p>
@@ -164,7 +173,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
                 <p>4. Service Account를 Search Console 속성에 추가</p>
                 <p>5. 다운로드한 JSON 파일을 위에 업로드</p>
               </div>
-            )}
+            }
             type="info"
             showIcon
             className="mb-4"
@@ -172,12 +181,7 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
         </Card>
 
         <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            icon={<SaveOutlined />}
-            loading={loading}
-          >
+          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
             설정 저장
           </Button>
           {!localUse && (

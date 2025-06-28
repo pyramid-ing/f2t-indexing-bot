@@ -33,8 +33,7 @@ export async function getGoogleAuthStatus() {
   try {
     const response = await getGoogleOAuthStatus()
     return response
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Google OAuth 상태 확인 오류:', error)
     return {
       isLoggedIn: false,
@@ -49,8 +48,7 @@ export async function logoutGoogle() {
   try {
     const response = await googleOAuthLogout()
     return response
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Google OAuth 로그아웃 오류:', error)
     throw error
   }
@@ -61,8 +59,7 @@ export async function isGoogleLoggedIn(): Promise<boolean> {
   try {
     const status = await getGoogleAuthStatus()
     return status.isLoggedIn || false
-  }
-  catch (error) {
+  } catch (error) {
     return false
   }
 }
@@ -75,8 +72,7 @@ export async function getGoogleUserInfo(): Promise<any> {
       return status.userInfo
     }
     throw new Error('로그인되지 않았거나 사용자 정보가 없습니다.')
-  }
-  catch (error) {
+  } catch (error) {
     console.error('사용자 정보 조회 오류:', error)
     throw error
   }
@@ -93,8 +89,7 @@ export function startGoogleLogin(clientId: string) {
   // Electron에서 외부 브라우저로 열기
   if ((window as any).electron?.shell?.openExternal) {
     ;(window as any).electron.shell.openExternal(authUrl)
-  }
-  else {
+  } else {
     window.open(authUrl, '_blank')
   }
 
@@ -130,8 +125,7 @@ export async function getValidAccessToken(): Promise<string | null> {
       return 'valid' // 실제 토큰 값은 서버에서 관리
     }
     return null
-  }
-  catch (error) {
+  } catch (error) {
     console.error('토큰 확인 실패:', error)
     return null
   }

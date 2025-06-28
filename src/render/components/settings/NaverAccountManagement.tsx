@@ -21,8 +21,7 @@ const NaverAccountManagement: React.FC = () => {
     try {
       const data = await getAllNaverAccounts()
       setAccounts(data)
-    }
-    catch (error) {
+    } catch (error) {
       message.error('네이버 계정 목록을 불러오는데 실패했습니다.')
     }
   }
@@ -56,8 +55,7 @@ const NaverAccountManagement: React.FC = () => {
         // 수정
         await updateNaverAccount(editingAccount.id, values)
         message.success('네이버 계정이 수정되었습니다.')
-      }
-      else {
+      } else {
         // 생성
         await createNaverAccount(values)
         message.success('네이버 계정이 생성되었습니다.')
@@ -65,12 +63,10 @@ const NaverAccountManagement: React.FC = () => {
 
       setIsAccountModalOpen(false)
       fetchAccounts()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('네이버 계정 저장 실패:', error)
       message.error('네이버 계정 저장에 실패했습니다.')
-    }
-    finally {
+    } finally {
       setAccountLoading(false)
     }
   }
@@ -81,8 +77,7 @@ const NaverAccountManagement: React.FC = () => {
       await deleteNaverAccount(accountId)
       message.success('네이버 계정이 삭제되었습니다.')
       fetchAccounts()
-    }
-    catch (error) {
+    } catch (error) {
       console.error('네이버 계정 삭제 실패:', error)
       message.error('네이버 계정 삭제에 실패했습니다.')
     }
@@ -104,9 +99,7 @@ const NaverAccountManagement: React.FC = () => {
       dataIndex: 'isActive',
       key: 'isActive',
       render: (isActive: boolean) => (
-        <span style={{ color: isActive ? '#52c41a' : '#ff4d4f' }}>
-          {isActive ? '활성' : '비활성'}
-        </span>
+        <span style={{ color: isActive ? '#52c41a' : '#ff4d4f' }}>{isActive ? '활성' : '비활성'}</span>
       ),
     },
     {
@@ -114,9 +107,7 @@ const NaverAccountManagement: React.FC = () => {
       dataIndex: 'isLoggedIn',
       key: 'isLoggedIn',
       render: (isLoggedIn: boolean) => (
-        <span style={{ color: isLoggedIn ? '#52c41a' : '#ff4d4f' }}>
-          {isLoggedIn ? '로그인됨' : '로그인 필요'}
-        </span>
+        <span style={{ color: isLoggedIn ? '#52c41a' : '#ff4d4f' }}>{isLoggedIn ? '로그인됨' : '로그인 필요'}</span>
       ),
     },
     {
@@ -124,11 +115,7 @@ const NaverAccountManagement: React.FC = () => {
       key: 'actions',
       render: (_: any, record: NaverAccount) => (
         <Space>
-          <Button
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => handleEditAccount(record)}
-          >
+          <Button size="small" icon={<EditOutlined />} onClick={() => handleEditAccount(record)}>
             수정
           </Button>
           <Popconfirm
@@ -138,11 +125,7 @@ const NaverAccountManagement: React.FC = () => {
             okText="삭제"
             cancelText="취소"
           >
-            <Button
-              size="small"
-              icon={<DeleteOutlined />}
-              danger
-            >
+            <Button size="small" icon={<DeleteOutlined />} danger>
               삭제
             </Button>
           </Popconfirm>
@@ -154,36 +137,26 @@ const NaverAccountManagement: React.FC = () => {
   return (
     <>
       <Card
-        title={(
+        title={
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span>
               <UserOutlined style={{ color: '#03c75a', marginRight: 8 }} />
               네이버 계정 관리
             </span>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={handleAddAccount}
-            >
+            <Button type="primary" icon={<PlusOutlined />} onClick={handleAddAccount}>
               계정 추가
             </Button>
           </div>
-        )}
+        }
       >
         <div style={{ marginBottom: 16 }}>
           <Text type="secondary">
-            네이버 서치어드바이저에 사용할 계정들을 관리합니다.
-            각 사이트별 설정에서 이 계정들 중 하나를 선택하여 사용할 수 있습니다.
+            네이버 서치어드바이저에 사용할 계정들을 관리합니다. 각 사이트별 설정에서 이 계정들 중 하나를 선택하여 사용할
+            수 있습니다.
           </Text>
         </div>
 
-        <Table
-          columns={accountColumns}
-          dataSource={accounts}
-          rowKey="id"
-          size="small"
-          pagination={false}
-        />
+        <Table columns={accountColumns} dataSource={accounts} rowKey="id" size="small" pagination={false} />
       </Card>
 
       {/* 계정 생성/수정 모달 */}
@@ -196,15 +169,8 @@ const NaverAccountManagement: React.FC = () => {
         cancelText="취소"
         confirmLoading={accountLoading}
       >
-        <Form
-          form={accountForm}
-          layout="vertical"
-        >
-          <Form.Item
-            name="name"
-            label="계정명"
-            rules={[{ required: true, message: '계정명을 입력해주세요.' }]}
-          >
+        <Form form={accountForm} layout="vertical">
+          <Form.Item name="name" label="계정명" rules={[{ required: true, message: '계정명을 입력해주세요.' }]}>
             <Input placeholder="예: 메인 계정, 블로그 계정" />
           </Form.Item>
 
@@ -224,12 +190,7 @@ const NaverAccountManagement: React.FC = () => {
             <Input.Password placeholder="네이버 비밀번호" />
           </Form.Item>
 
-          <Form.Item
-            name="isActive"
-            label="활성화"
-            valuePropName="checked"
-            initialValue={true}
-          >
+          <Form.Item name="isActive" label="활성화" valuePropName="checked" initialValue={true}>
             <Switch />
           </Form.Item>
         </Form>

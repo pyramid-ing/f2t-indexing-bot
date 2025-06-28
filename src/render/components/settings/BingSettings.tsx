@@ -37,8 +37,7 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, loading }
       const finalValues = { ...values, use: localUse }
       await onSave(finalValues)
       message.success('Bing 설정이 저장되었습니다.')
-    }
-    catch (error) {
+    } catch (error) {
       message.error('Bing 설정 저장에 실패했습니다.')
     }
   }
@@ -58,7 +57,9 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, loading }
       <Card className="mb-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <Text strong className="text-lg">Bing 색인 서비스</Text>
+            <Text strong className="text-lg">
+              Bing 색인 서비스
+            </Text>
             <br />
             <Text type="secondary">Bing URL Submission API를 통한 URL 제출</Text>
           </div>
@@ -83,20 +84,12 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, loading }
               { min: 32, message: 'API Key는 최소 32자 이상이어야 합니다.' },
             ]}
           >
-            <Input.Password
-              placeholder="********************************"
-              disabled={!localUse}
-            />
+            <Input.Password placeholder="********************************" disabled={!localUse} />
           </Form.Item>
         </Card>
 
         <Form.Item>
-          <Button
-            type="primary"
-            htmlType="submit"
-            icon={<SaveOutlined />}
-            loading={loading}
-          >
+          <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}>
             설정 저장
           </Button>
           {!localUse && (

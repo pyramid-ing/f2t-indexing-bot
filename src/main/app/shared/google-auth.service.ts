@@ -15,8 +15,7 @@ export class GoogleAuthService {
       let serviceAccountData
       try {
         serviceAccountData = JSON.parse(serviceAccountJson)
-      }
-      catch (error) {
+      } catch (error) {
         throw new Error('Service Account JSON 파싱 실패: 유효하지 않은 JSON 형식입니다.')
       }
 
@@ -42,8 +41,7 @@ export class GoogleAuthService {
         },
         scopes: ['https://www.googleapis.com/auth/indexing'],
       })
-    }
-    catch (error) {
+    } catch (error) {
       throw new Error(`Google Auth 설정 실패: ${error.message}`)
     }
   }
@@ -59,8 +57,7 @@ export class GoogleAuthService {
       }
 
       return accessTokenResponse.token
-    }
-    catch (error) {
+    } catch (error) {
       throw new Error(`Google 인증 실패: ${error.message}`)
     }
   }
@@ -68,7 +65,7 @@ export class GoogleAuthService {
   async getAuthHeaders(serviceAccountJson: string): Promise<Record<string, string>> {
     const accessToken = await this.getAccessToken(serviceAccountJson)
     return {
-      'Authorization': `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     }
   }
