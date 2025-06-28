@@ -136,6 +136,7 @@ export interface NaverConfig {
   naverId: string
   password: string
   loginUrl: string
+  headless?: boolean
 }
 
 export interface DaumConfig {
@@ -143,6 +144,7 @@ export interface DaumConfig {
   siteUrl: string
   password: string
   loginUrl: string
+  headless?: boolean
 }
 
 // 사이트 설정 관련 (새로운 구조)

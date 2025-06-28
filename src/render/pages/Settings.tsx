@@ -46,12 +46,14 @@ const Settings: React.FC = () => {
       naverId: '',
       password: '',
       loginUrl: '',
+      headless: true,
     },
     daum: {
       use: false,
       siteUrl: '',
       password: '',
       loginUrl: '',
+      headless: true,
     },
   })
 
@@ -94,8 +96,16 @@ const Settings: React.FC = () => {
         setEngineSettings({
           google: response.data.googleConfig || engineSettings.google,
           bing: response.data.bingConfig || engineSettings.bing,
-          naver: response.data.naverConfig || engineSettings.naver,
-          daum: response.data.daumConfig || engineSettings.daum,
+          naver: {
+            ...engineSettings.naver,
+            ...response.data.naverConfig,
+            headless: response.data.naverConfig?.headless ?? true,
+          },
+          daum: {
+            ...engineSettings.daum,
+            ...response.data.daumConfig,
+            headless: response.data.daumConfig?.headless ?? true,
+          },
         })
       }
     }

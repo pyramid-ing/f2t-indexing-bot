@@ -116,6 +116,23 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
             </Col>
           </Row>
 
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="headless"
+                label="창보기 모드"
+                help="브라우저 창을 표시할지 여부 (체크 해제 시 브라우저 창 표시)"
+                valuePropName="checked"
+              >
+                <Switch
+                  checkedChildren="숨김"
+                  unCheckedChildren="표시"
+                  disabled={!localUse}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
         </Card>
 
         <Form.Item>
