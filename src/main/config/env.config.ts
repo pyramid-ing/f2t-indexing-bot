@@ -13,7 +13,15 @@ export class EnvConfig {
   public static isPackaged = app?.isPackaged || false
   public static userDataPath = EnvConfig.isPackaged ? app.getPath('userData') : process.cwd()
   public static resourcePath = EnvConfig.isPackaged ? process.resourcesPath : process.cwd()
-  public static dbPath = EnvConfig.isPackaged ? path.join(EnvConfig.resourcePath, 'resources', 'initial.sqlite') : 'file:./db.sqlite'
+
+  // 패키지된 앱에서는 userData 폴더에 DB를 저장
+  public static dbPath = EnvConfig.isPackaged ? path.join(EnvConfig.userDataPath, 'app.sqlite') : './db.sqlite'
+
+  // 초기 DB 템플릿 경로 (resources 폴더)
+  public static initialDbPath = EnvConfig.isPackaged
+    ? path.join(EnvConfig.resourcePath, 'resources', 'initial.sqlite')
+    : './db.sqlite'
+
   public static dbUrl = `file:${EnvConfig.dbPath}`
 
   private static engineName = ''
@@ -26,6 +34,7 @@ export class EnvConfig {
     this.setupEngineNames()
     if (this.isPackaged) {
       this.setupPackagedEnvironment()
+      this.initializeDatabase()
     }
   }
 
@@ -80,6 +89,28 @@ export class EnvConfig {
     process.env.PRISMA_QUERY_ENGINE_LIBRARY = libPath
     process.env.PUPPETEER_EXECUTABLE_PATH = this.getDefaultChromePath()
     process.env.COOKIE_DIR = path.join(this.resourcePath, 'cookies')
+  }
+
+  private static initializeDatabase() {
+    try {
+      if (this.isPackaged) {
+        // 패키지된 앱에서는 초기 DB를 userData로 복사
+        if (!fs.existsSync(this.dbPath) && fs.existsSync(this.initialDbPath)) {
+          // userData 디렉토리가 없으면 생성
+          const dbDir = path.dirname(this.dbPath)
+          if (!fs.existsSync(dbDir)) {
+            fs.mkdirSync(dbDir, { recursive: true })
+          }
+
+          // 초기 DB를 userData로 복사
+          fs.copyFileSync(this.initialDbPath, this.dbPath)
+          LoggerConfig.info(`초기 데이터베이스 복사 완료: ${this.dbPath}`)
+        }
+      }
+    }
+    catch (error) {
+      LoggerConfig.error(`데이터베이스 초기화 중 오류:`, error)
+    }
   }
 
   public static getPrismaConfig() {
