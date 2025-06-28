@@ -50,6 +50,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   const [detailedResults, setDetailedResults] = useState<DetailedResult[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [filters, setFilters] = useState<{ status: string; services: string[] }>({ status: 'all', services: [] })
+  const [domainAlert, setDomainAlert] = useState<{ visible: boolean; message: string }>({ visible: false, message: '' })
 
   useEffect(() => {
     loadSites()
@@ -130,13 +131,95 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     return services
   }
 
+  // URL 정제 및 검증 함수
+  const cleanAndValidateUrl = (url: string): { isValid: boolean; cleanUrl: string; domain: string } => {
+    let cleanUrl = url.trim()
+
+    // @ 문자나 기타 특수문자로 시작하는 경우 제거
+    cleanUrl = cleanUrl.replace(/^[@#\s]+/, '')
+
+    // 프로토콜이 없으면 https:// 추가
+    if (cleanUrl && !cleanUrl.match(/^https?:\/\//)) {
+      cleanUrl = 'https://' + cleanUrl
+    }
+
+    try {
+      const urlObj = new URL(cleanUrl)
+      const domain = `${urlObj.protocol}//${urlObj.hostname}`.replace(/www\./g, '')
+      return {
+        isValid: true,
+        cleanUrl,
+        domain,
+      }
+    } catch {
+      return {
+        isValid: false,
+        cleanUrl,
+        domain: '',
+      }
+    }
+  }
+
+  // 도메인 일치 체크 함수
+  const validateUrlDomains = (urls: string[]): { isValid: boolean; message: string } => {
+    if (urls.length <= 1) {
+      return { isValid: true, message: '' }
+    }
+
+    const validUrls: { url: string; domain: string }[] = []
+    const invalidUrls: string[] = []
+
+    // 모든 URL 검증 및 도메인 추출
+    urls.forEach(url => {
+      const result = cleanAndValidateUrl(url)
+      if (result.isValid && result.domain) {
+        validUrls.push({ url: result.cleanUrl, domain: result.domain })
+      } else {
+        invalidUrls.push(url)
+      }
+    })
+
+    // 유효하지 않은 URL이 있는 경우
+    if (invalidUrls.length > 0) {
+      return {
+        isValid: false,
+        message: `유효하지 않은 URL이 포함되어 있습니다:\n${invalidUrls.join('\n')}\n\n올바른 URL 형식으로 입력해주세요.`,
+      }
+    }
+
+    // 유효한 URL들의 도메인 검사
+    const uniqueDomains = [...new Set(validUrls.map(item => item.domain))]
+
+    if (uniqueDomains.length > 1) {
+      return {
+        isValid: false,
+        message: `여러 도메인이 감지되었습니다. 한 번에 하나의 도메인만 인덱싱 할 수 있습니다.\n\n감지된 도메인:\n${uniqueDomains.join('\n')}`,
+      }
+    }
+
+    return { isValid: true, message: '' }
+  }
+
   const handleManualIndexing = async (taskValues: Partial<IndexingTask>) => {
+    // Alert 숨기기
+    setDomainAlert({ visible: false, message: '' })
+
     const urls = Array.isArray(taskValues.urls)
       ? taskValues.urls
       : (taskValues.urls as string).split('\n').filter(u => u.trim() !== '')
 
     if (urls.length === 0) {
       message.error('URL을 입력해주세요.')
+      return
+    }
+
+    // 도메인 일치 검증
+    const domainValidation = validateUrlDomains(urls)
+    if (!domainValidation.isValid) {
+      setDomainAlert({
+        visible: true,
+        message: domainValidation.message,
+      })
       return
     }
 
@@ -598,6 +681,20 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         >
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
             <div style={{ marginBottom: '16px' }}>
+              {/* 도메인 불일치 경고 Alert */}
+              {domainAlert.visible && (
+                <Alert
+                  message="등록 불가"
+                  description={domainAlert.message}
+                  type="error"
+                  showIcon
+                  closable
+                  onClose={() => setDomainAlert({ visible: false, message: '' })}
+                  style={{ marginBottom: 16, whiteSpace: 'pre-line' }}
+                />
+              )}
+
+              {/* 기존 사이트 감지 Alert */}
               {selectedSite ? (
                 <Alert
                   message={`감지된 사이트: ${selectedSite.name} (${selectedSite.siteUrl})`}
