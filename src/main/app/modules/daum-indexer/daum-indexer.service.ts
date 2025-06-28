@@ -239,33 +239,31 @@ export class DaumIndexerService {
             await sleep(500)
 
             // 성공 로그 기록
-            // TODO: indexingLog 모델이 구현되면 활성화
-            // await this.prisma.indexingLog.create({
-            //   data: {
-            //     siteUrl: 'global', // 전역 설정이므로 임시값
-            //     targetUrl: url,
-            //     provider: 'DAUM',
-            //     status: 'SUCCESS',
-            //     message: msg,
-            //     responseData: JSON.stringify(result),
-            //   },
-            // })
+            await this.prisma.indexingLog.create({
+              data: {
+                siteId: siteId || 1, // siteId가 없으면 기본값 사용
+                targetUrl: url,
+                provider: 'DAUM',
+                status: 'SUCCESS',
+                message: msg,
+                responseData: JSON.stringify(result),
+              },
+            })
           } else {
             msg = '수집요청 실패 또는 레이어 미노출'
             result = { url, status: 'fail', msg }
 
             // 실패 로그 기록
-            // TODO: indexingLog 모델이 구현되면 활성화
-            // await this.prisma.indexingLog.create({
-            //   data: {
-            //     siteUrl: 'global', // 전역 설정이므로 임시값
-            //     targetUrl: url,
-            //     provider: 'DAUM',
-            //     status: 'FAILED',
-            //     message: msg,
-            //     responseData: JSON.stringify(result),
-            //   },
-            // })
+            await this.prisma.indexingLog.create({
+              data: {
+                siteId: siteId || 1, // siteId가 없으면 기본값 사용
+                targetUrl: url,
+                provider: 'DAUM',
+                status: 'FAILED',
+                message: msg,
+                responseData: JSON.stringify(result),
+              },
+            })
           }
           results.push(result)
           await sleep(1000)
@@ -274,17 +272,16 @@ export class DaumIndexerService {
           results.push(result)
 
           // 에러 로그 기록
-          // TODO: indexingLog 모델이 구현되면 활성화
-          // await this.prisma.indexingLog.create({
-          //   data: {
-          //     siteUrl: 'global', // 전역 설정이므로 임시값
-          //     targetUrl: url,
-          //     provider: 'DAUM',
-          //     status: 'FAILED',
-          //     message: result.msg,
-          //     responseData: JSON.stringify(result),
-          //   },
-          // })
+          await this.prisma.indexingLog.create({
+            data: {
+              siteId: siteId || 1, // siteId가 없으면 기본값 사용
+              targetUrl: url,
+              provider: 'DAUM',
+              status: 'FAILED',
+              message: result.msg,
+              responseData: JSON.stringify(result),
+            },
+          })
         }
       }
       await browser.close()

@@ -380,16 +380,17 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 로그 기록 (RETRY 상태로 기록) - 임시 비활성화
-            // await this.prisma.indexingLog.create({
-            //   data: {
-            //     siteUrl: 'global',
-            //     targetUrl: url,
-            //     provider: 'NAVER',
-            //     status: 'RETRY',
-            //     message: result.msg,
-            //   },
-            // })
+            // 로그 기록 (RETRY 상태로 기록)
+            await this.prisma.indexingLog.create({
+              data: {
+                siteId,
+                targetUrl: url,
+                provider: 'NAVER',
+                status: 'RETRY',
+                message: result.msg,
+                responseData: JSON.stringify(result),
+              },
+            })
 
             continue
           }
@@ -403,16 +404,17 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 성공 로그 기록 - 임시 비활성화
-            // await this.prisma.indexingLog.create({
-            //   data: {
-            //     siteUrl: 'global',
-            //     targetUrl: url,
-            //     provider: 'NAVER',
-            //     status: 'SUCCESS',
-            //     message: result.msg,
-            //   },
-            // })
+            // 성공 로그 기록
+            await this.prisma.indexingLog.create({
+              data: {
+                siteId,
+                targetUrl: url,
+                provider: 'NAVER',
+                status: 'SUCCESS',
+                message: result.msg,
+                responseData: JSON.stringify(result),
+              },
+            })
           } else {
             result = {
               url,
@@ -421,16 +423,17 @@ export class NaverIndexerService implements OnModuleInit {
             }
             results.push(result)
 
-            // 실패 로그 기록 - 임시 비활성화
-            // await this.prisma.indexingLog.create({
-            //   data: {
-            //     siteUrl: 'global',
-            //     targetUrl: url,
-            //     provider: 'NAVER',
-            //     status: 'FAILED',
-            //     message: result.msg,
-            //   },
-            // })
+            // 실패 로그 기록
+            await this.prisma.indexingLog.create({
+              data: {
+                siteId,
+                targetUrl: url,
+                provider: 'NAVER',
+                status: 'FAILED',
+                message: result.msg,
+                responseData: JSON.stringify(result),
+              },
+            })
           }
           await this.sleep(1000)
         } catch (e: any) {
@@ -441,16 +444,17 @@ export class NaverIndexerService implements OnModuleInit {
           }
           results.push(result)
 
-          // 에러 로그 기록 - 임시 비활성화
-          // await this.prisma.indexingLog.create({
-          //   data: {
-          //     siteUrl: 'global',
-          //     targetUrl: url,
-          //     provider: 'NAVER',
-          //     status: 'FAILED',
-          //     message: result.msg,
-          //   },
-          // })
+          // 에러 로그 기록
+          await this.prisma.indexingLog.create({
+            data: {
+              siteId,
+              targetUrl: url,
+              provider: 'NAVER',
+              status: 'FAILED',
+              message: result.msg,
+              responseData: JSON.stringify(result),
+            },
+          })
         }
       }
 
