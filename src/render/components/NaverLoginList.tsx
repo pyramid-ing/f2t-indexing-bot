@@ -7,7 +7,7 @@ import {
   ReloadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Button, Card, List, message, Space, Tag, Typography } from 'antd'
+import { Button, Card, Col, message, Row, Space, Tag, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
 import { checkNaverLoginComplete, checkNaverLoginStatus, getAllNaverAccounts, openNaverLoginBrowser } from '../api'
 
@@ -149,87 +149,113 @@ export default function NaverLoginList() {
       style={{ marginBottom: 16 }}
     >
       {accounts.length > 0 ? (
-        <List
-          size="small"
-          dataSource={accounts}
-          renderItem={account => {
+        <Row gutter={[12, 12]}>
+          {accounts.map(account => {
             const status = statusMap[account.naverId]
             const isLoadingThisStatus = loadingStatus[account.naverId]
             const isLoginAction = loginActions[account.naverId]
 
             return (
-              <List.Item
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #f0f0f0',
-                  borderRadius: 6,
-                  marginBottom: 8,
-                  backgroundColor: account.isLoggedIn ? '#f6ffed' : '#fafafa',
-                }}
+              <Col
+                key={account.id}
+                xs={24} // 모바일: 1열
               >
-                <List.Item.Meta
-                  avatar={
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      {isLoadingThisStatus ? <LoadingOutlined /> : getAccountStatusIcon(account, account.naverId)}
+                <Card
+                  size="small"
+                  style={{
+                    height: '160px',
+                    backgroundColor: account.isLoggedIn ? '#f6ffed' : '#fafafa',
+                    border: '1px solid #f0f0f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                  bodyStyle={{
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                  }}
+                >
+                  <div style={{ flex: 1, marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                      <div style={{ marginRight: 8, fontSize: '16px' }}>
+                        {isLoadingThisStatus ? <LoadingOutlined /> : getAccountStatusIcon(account, account.naverId)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: 'block', fontSize: '14px' }}>
+                          {account.name}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: '11px' }}>
+                          ({account.naverId})
+                        </Text>
+                      </div>
                     </div>
-                  }
-                  title={
-                    <Space>
-                      <Text strong>{account.name}</Text>
-                      <Text type="secondary">({account.naverId})</Text>
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                      <Space>
-                        <Tag color={getAccountStatusColor(account, account.naverId)}>
-                          {getAccountStatusText(account, account.naverId)}
-                        </Tag>
-                        {account.lastLogin && (
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            마지막 상태확인: {new Date(account.lastLogin).toLocaleString('ko-KR')}
-                          </Text>
-                        )}
-                      </Space>
-                      <Space>
-                        {!isAccountLoggedIn(account, account.naverId) && (
-                          <Button
-                            size="small"
-                            type="primary"
-                            icon={<LoginOutlined />}
-                            onClick={() => handleOpenLoginBrowser(account.naverId)}
-                            loading={isLoginAction}
-                            disabled={isLoadingThisStatus}
-                          >
-                            로그인하기
-                          </Button>
-                        )}
-                        {!isAccountLoggedIn(account, account.naverId) && (
+
+                    <div style={{ marginBottom: 6 }}>
+                      <Tag color={getAccountStatusColor(account, account.naverId)} style={{ fontSize: '10px' }}>
+                        {getAccountStatusText(account, account.naverId)}
+                      </Tag>
+                    </div>
+
+                    {account.lastLogin && (
+                      <Text type="secondary" style={{ fontSize: '9px', display: 'block', lineHeight: '1.2' }}>
+                        마지막: {new Date(account.lastLogin).toLocaleDateString('ko-KR')}
+                      </Text>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: 'auto' }}>
+                    {!isAccountLoggedIn(account, account.naverId) ? (
+                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<LoginOutlined />}
+                          onClick={() => handleOpenLoginBrowser(account.naverId)}
+                          loading={isLoginAction}
+                          disabled={isLoadingThisStatus}
+                          style={{ width: '100%' }}
+                        >
+                          로그인하기
+                        </Button>
+                        <Space size={4} style={{ width: '100%' }}>
                           <Button
                             size="small"
                             onClick={() => handleCheckLoginComplete(account.naverId)}
                             loading={isLoginAction}
                             disabled={isLoadingThisStatus}
+                            style={{ flex: 1 }}
                           >
                             완료 확인
                           </Button>
-                        )}
-                        <Button
-                          size="small"
-                          onClick={() => checkAccountLoginStatus(account.naverId)}
-                          loading={isLoadingThisStatus}
-                          disabled={isLoginAction}
-                        >
-                          상태 확인
-                        </Button>
+                          <Button
+                            size="small"
+                            onClick={() => checkAccountLoginStatus(account.naverId)}
+                            loading={isLoadingThisStatus}
+                            disabled={isLoginAction}
+                            style={{ flex: 1 }}
+                          >
+                            상태 확인
+                          </Button>
+                        </Space>
                       </Space>
-                    </Space>
-                  }
-                />
-              </List.Item>
+                    ) : (
+                      <Button
+                        size="small"
+                        onClick={() => checkAccountLoginStatus(account.naverId)}
+                        loading={isLoadingThisStatus}
+                        disabled={isLoginAction}
+                        style={{ width: '100%' }}
+                      >
+                        상태 확인
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              </Col>
             )
-          }}
-        />
+          })}
+        </Row>
       ) : (
         <div style={{ textAlign: 'center', padding: '24px', color: '#999' }}>
           <Text>등록된 네이버 계정이 없습니다.</Text>

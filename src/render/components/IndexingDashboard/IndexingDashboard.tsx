@@ -2,7 +2,7 @@ import type { NaverLoginStatus, SiteConfig } from '../../api'
 import type { DetailedResult } from './IndexingDetailModal'
 import type { IndexingTask } from './useIndexingTasks'
 import { GlobalOutlined, GoogleOutlined, PlayCircleOutlined, YahooOutlined } from '@ant-design/icons'
-import { Alert, Button, Card, Col, Form, Input, message, Row, Select, Space, Typography } from 'antd'
+import { Alert, Button, Card, Col, Form, Input, message, Row, Select, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   bingManualIndex,
@@ -587,9 +587,15 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   }
 
   return (
-    <div style={{ padding: '20px' }}>
-      <Row gutter={16}>
-        <Col span={16}>
+    <div style={{ padding: '16px' }}>
+      <Row gutter={[16, 16]}>
+        <Col
+          xs={24} // 모바일: 전체 폭
+          sm={24} // 작은 태블릿: 전체 폭
+          md={24} // 태블릿: 전체 폭
+          lg={16} // 데스크탑: 좌측 2/3
+          xl={16} // 큰 데스크탑: 좌측 2/3
+        >
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
             <div style={{ marginBottom: '16px' }}>
               {selectedSite ? (
@@ -654,19 +660,32 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                     사용할 검색엔진:
                   </Text>
                   <div style={{ marginTop: 8 }}>
-                    <Space wrap>
+                    <Row gutter={[8, 8]}>
                       {getAvailableServices(selectedSite).map(service => (
-                        <Space key={service}>
-                          {getServiceIcon(service)}
-                          <Text>{service.charAt(0).toUpperCase() + service.slice(1)}</Text>
-                          {service === 'naver' && !naverLoginStatus?.isLoggedIn && (
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                              (로그인 필요)
+                        <Col key={service} xs={12} sm={8} md={6} lg={6}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '4px 8px',
+                              backgroundColor: '#fff',
+                              borderRadius: '4px',
+                              border: '1px solid #e1e4e8',
+                            }}
+                          >
+                            {getServiceIcon(service)}
+                            <Text style={{ marginLeft: 4, fontSize: '12px' }}>
+                              {service.charAt(0).toUpperCase() + service.slice(1)}
                             </Text>
-                          )}
-                        </Space>
+                            {service === 'naver' && !naverLoginStatus?.isLoggedIn && (
+                              <Text type="secondary" style={{ fontSize: 10, marginLeft: 4 }}>
+                                (로그인 필요)
+                              </Text>
+                            )}
+                          </div>
+                        </Col>
                       ))}
-                    </Space>
+                    </Row>
                   </div>
                   <Text type="secondary" style={{ fontSize: 11, marginTop: 4, display: 'block' }}>
                     설정에서 활성화된 검색엔진들이 자동으로 사용됩니다.
@@ -681,6 +700,8 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   loading={loading}
                   icon={<PlayCircleOutlined />}
                   disabled={loading || getAvailableServices(selectedSite).length === 0 || !urlsInput.trim()}
+                  size="large"
+                  style={{ width: '100%' }}
                 >
                   인덱싱 시작
                 </Button>
@@ -704,7 +725,13 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
             </Form>
           </Card>
         </Col>
-        <Col span={8}>
+        <Col
+          xs={24} // 모바일: 전체 폭 (하단으로 이동)
+          sm={24} // 작은 태블릿: 전체 폭 (하단으로 이동)
+          md={24} // 태블릿: 전체 폭 (하단으로 이동)
+          lg={8} // 데스크탑: 우측 1/3
+          xl={8} // 큰 데스크탑: 우측 1/3
+        >
           <NaverLoginList />
         </Col>
       </Row>

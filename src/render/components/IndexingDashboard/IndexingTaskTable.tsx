@@ -61,6 +61,7 @@ const IndexingTaskTable: React.FC<Props> = ({ tasks, loading, onShowDetail }) =>
       loading={loading}
       size="small"
       pagination={{ pageSize: 10 }}
+      scroll={{ x: 800 }} // 가로 스크롤 활성화
     />
   )
 }
