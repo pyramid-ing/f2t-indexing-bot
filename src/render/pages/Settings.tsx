@@ -232,31 +232,50 @@ const Settings: React.FC = () => {
       </Card>
 
       <Card>
-        <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
-          <Tabs.TabPane tab="사이트 관리" key="sites">
-            <SiteSettings />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="네이버 계정 관리" key="naver-accounts">
-            <NaverAccountManagement />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="Google" key="google" disabled={!selectedSiteId}>
-            <GoogleSettings settings={engineSettings.google} onSave={saveGoogleSettings} loading={loading} />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="Bing" key="bing" disabled={!selectedSiteId}>
-            <BingSettings settings={engineSettings.bing} onSave={saveBingSettings} loading={loading} />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="네이버" key="naver" disabled={!selectedSiteId}>
-            <NaverSettings settings={engineSettings.naver} onSave={saveNaverSettings} loading={loading} />
-          </Tabs.TabPane>
-
-          <Tabs.TabPane tab="다음" key="daum" disabled={!selectedSiteId}>
-            <DaumSettings settings={engineSettings.daum} onSave={saveDaumSettings} loading={loading} />
-          </Tabs.TabPane>
-        </Tabs>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          type="card"
+          size="large"
+          items={[
+            {
+              key: 'sites',
+              label: '사이트 관리',
+              children: <SiteSettings />,
+            },
+            {
+              key: 'naver-accounts',
+              label: '네이버 계정 관리',
+              children: <NaverAccountManagement />,
+            },
+            {
+              key: 'google',
+              label: 'Google',
+              disabled: !selectedSiteId,
+              children: (
+                <GoogleSettings settings={engineSettings.google} onSave={saveGoogleSettings} loading={loading} />
+              ),
+            },
+            {
+              key: 'bing',
+              label: 'Bing',
+              disabled: !selectedSiteId,
+              children: <BingSettings settings={engineSettings.bing} onSave={saveBingSettings} loading={loading} />,
+            },
+            {
+              key: 'naver',
+              label: '네이버',
+              disabled: !selectedSiteId,
+              children: <NaverSettings settings={engineSettings.naver} onSave={saveNaverSettings} loading={loading} />,
+            },
+            {
+              key: 'daum',
+              label: '다음',
+              disabled: !selectedSiteId,
+              children: <DaumSettings settings={engineSettings.daum} onSave={saveDaumSettings} loading={loading} />,
+            },
+          ]}
+        />
       </Card>
 
       {/* 새 사이트 추가 모달 */}

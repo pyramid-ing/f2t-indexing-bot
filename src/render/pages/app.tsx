@@ -51,14 +51,23 @@ const App: React.FC = () => {
     <StyledLayout>
       <Sider width={200}>
         <Logo>F2T 인덱싱</Logo>
-        <Menu theme="dark" defaultSelectedKeys={['1']} mode="inline">
-          <Menu.Item key="1" icon={<HomeOutlined />}>
-            <NavLink to="/">인덱싱 대시보드</NavLink>
-          </Menu.Item>
-          <Menu.Item key="2" icon={<SettingOutlined />}>
-            <NavLink to="/settings">설정</NavLink>
-          </Menu.Item>
-        </Menu>
+        <Menu
+          theme="dark"
+          defaultSelectedKeys={['1']}
+          mode="inline"
+          items={[
+            {
+              key: '1',
+              icon: <HomeOutlined />,
+              label: <NavLink to="/">인덱싱 대시보드</NavLink>,
+            },
+            {
+              key: '2',
+              icon: <SettingOutlined />,
+              label: <NavLink to="/settings">설정</NavLink>,
+            },
+          ]}
+        />
       </Sider>
       <Layout>
         <StyledHeader>F2T 인덱싱 봇</StyledHeader>
