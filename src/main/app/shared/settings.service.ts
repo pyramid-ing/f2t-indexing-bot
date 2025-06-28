@@ -16,8 +16,7 @@ export class SettingsService {
         const defaultGlobalSettings = {
           google: {
             use: false,
-            serviceAccountEmail: '',
-            privateKey: '',
+            serviceAccountJson: '',
             oauth2ClientId: '',
             oauth2ClientSecret: '',
             oauth2AccessToken: '',

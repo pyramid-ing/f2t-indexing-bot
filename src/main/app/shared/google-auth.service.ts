@@ -11,28 +11,37 @@ export class GoogleAuthService {
       const globalSettings = await this.settingsService.getGlobalEngineSettings()
       const googleConfig = globalSettings.google
 
-      if (!googleConfig.serviceAccountEmail || !googleConfig.privateKey) {
-        throw new Error('Google Service Account 설정이 완료되지 않았습니다.')
+      if (!googleConfig.serviceAccountJson) {
+        throw new Error('Google Service Account JSON 설정이 완료되지 않았습니다.')
       }
 
-      // privateKey가 JSON 문자열인지 확인하고 파싱
-      let privateKey = googleConfig.privateKey
-      if (privateKey.startsWith('{')) {
-        try {
-          const keyData = JSON.parse(privateKey)
-          privateKey = keyData.private_key
-        }
-        catch (error) {
-          throw new Error('Private Key JSON 파싱 실패')
-        }
+      // Service Account JSON 파싱
+      let serviceAccountData
+      try {
+        serviceAccountData = JSON.parse(googleConfig.serviceAccountJson)
+      }
+      catch (error) {
+        throw new Error('Service Account JSON 파싱 실패: 유효하지 않은 JSON 형식입니다.')
+      }
+
+      // 필수 필드 검증
+      const requiredFields = ['client_email', 'private_key', 'type']
+      const missingFields = requiredFields.filter(field => !serviceAccountData[field])
+
+      if (missingFields.length > 0) {
+        throw new Error(`Service Account JSON에 필수 필드가 누락되었습니다: ${missingFields.join(', ')}`)
+      }
+
+      if (serviceAccountData.type !== 'service_account') {
+        throw new Error('Service Account JSON이 아닙니다. type이 "service_account"인지 확인해주세요.')
       }
 
       // 개행 문자 처리
-      privateKey = privateKey.replace(/\\n/g, '\n')
+      const privateKey = serviceAccountData.private_key.replace(/\\n/g, '\n')
 
       return new GoogleAuth({
         credentials: {
-          client_email: googleConfig.serviceAccountEmail,
+          client_email: serviceAccountData.client_email,
           private_key: privateKey,
         },
         scopes: ['https://www.googleapis.com/auth/indexing'],

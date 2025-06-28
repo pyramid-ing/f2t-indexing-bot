@@ -19,8 +19,7 @@ export interface IndexingSettings {
 // 검색엔진별 설정 타입
 export interface GoogleEngineSettings {
   use: boolean
-  serviceAccountEmail: string
-  privateKey: string
+  serviceAccountJson: string
   oauth2ClientId: string
   oauth2ClientSecret: string
   oauth2AccessToken: string

@@ -37,15 +37,53 @@ export class GoogleIndexerService {
 
       const config = globalSettings.google
 
-      if (!config.serviceAccountEmail || !config.privateKey) {
+      if (!config.serviceAccountJson) {
         throw new GoogleConfigError(
-          'Google 서비스 계정 설정이 올바르지 않습니다.',
+          'Google Service Account JSON 설정이 올바르지 않습니다.',
           'getGoogleConfig',
           'service_account',
           {
-            hasServiceAccountEmail: !!config.serviceAccountEmail,
-            hasPrivateKey: !!config.privateKey,
+            hasServiceAccountJson: !!config.serviceAccountJson,
           },
+        )
+      }
+
+      // Service Account JSON 유효성 검사
+      try {
+        const serviceAccountData = JSON.parse(config.serviceAccountJson)
+        const requiredFields = ['client_email', 'private_key', 'type']
+        const missingFields = requiredFields.filter(field => !serviceAccountData[field])
+
+        if (missingFields.length > 0) {
+          throw new GoogleConfigError(
+            `Service Account JSON에 필수 필드가 누락되었습니다: ${missingFields.join(', ')}`,
+            'getGoogleConfig',
+            'service_account_validation',
+            {
+              missingFields,
+            },
+          )
+        }
+
+        if (serviceAccountData.type !== 'service_account') {
+          throw new GoogleConfigError(
+            'Service Account JSON이 아닙니다. type이 "service_account"인지 확인해주세요.',
+            'getGoogleConfig',
+            'service_account_type',
+            {
+              actualType: serviceAccountData.type,
+            },
+          )
+        }
+      }
+      catch (parseError) {
+        if (parseError instanceof GoogleConfigError) {
+          throw parseError
+        }
+        throw new GoogleConfigError(
+          'Service Account JSON 파싱 실패: 유효하지 않은 JSON 형식입니다.',
+          'getGoogleConfig',
+          'json_parse',
         )
       }
 

@@ -130,8 +130,7 @@ export interface SiteConfig {
 export interface GlobalEngineSettings {
   google: {
     use: boolean
-    serviceAccountEmail: string
-    privateKey: string
+    serviceAccountJson: string
     oauth2ClientId: string
     oauth2ClientSecret: string
     oauth2AccessToken: string

@@ -25,8 +25,7 @@ const Settings: React.FC = () => {
   const [engineSettings, setEngineSettings] = useState<GlobalEngineSettings>({
     google: {
       use: false,
-      serviceAccountEmail: '',
-      privateKey: '',
+      serviceAccountJson: '',
       oauth2ClientId: '',
       oauth2ClientSecret: '',
       oauth2AccessToken: '',
