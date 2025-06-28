@@ -227,17 +227,30 @@ export class DaumIndexerService {
           })
           await page.type('#collectReqUrl', url, { delay: 2 })
           await page.click('.btn_result')
+
           let isSuccess = false
           let msg = ''
+          let errorFromDesc = ''
           const timeoutMs = 10000
           const pollInterval = 300
           const start = Date.now()
+
           while (Date.now() - start < timeoutMs) {
+            // 성공 레이어 확인
             isSuccess = await page.evaluate(() => {
               const layer = document.querySelector('.webmaster_layer.layer_collect')
               return layer && !layer.classList.contains('hide')
             })
-            if (isSuccess) break
+
+            // 에러 메시지 확인 (.desc 클래스에서 추출)
+            if (!isSuccess) {
+              errorFromDesc = await page.evaluate(() => {
+                const descElement = document.querySelector('p.desc')
+                return descElement ? descElement.textContent?.trim() || '' : ''
+              })
+            }
+
+            if (isSuccess || errorFromDesc) break
             await sleep(pollInterval)
           }
 
@@ -260,7 +273,8 @@ export class DaumIndexerService {
               },
             })
           } else {
-            msg = '수집요청 실패 또는 레이어 미노출'
+            // HTML에서 추출한 에러 메시지가 있으면 사용, 없으면 기본 메시지
+            msg = errorFromDesc || '수집요청 실패 또는 레이어 미노출'
             result = { url, status: 'fail', msg }
 
             // 실패 로그 기록
@@ -271,7 +285,11 @@ export class DaumIndexerService {
                 provider: 'DAUM',
                 status: 'FAILED',
                 message: msg,
-                responseData: JSON.stringify(result),
+                responseData: JSON.stringify({
+                  ...result,
+                  extractedFromDesc: !!errorFromDesc,
+                  originalErrorFromDesc: errorFromDesc,
+                }),
               },
             })
           }
