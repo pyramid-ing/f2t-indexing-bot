@@ -65,7 +65,7 @@ export default function NaverLoginList() {
       if (result.success) {
         message.success(result.message)
         // 상태 업데이트
-        setTimeout(() => checkAccountLoginStatus(naverId), 1000)
+        setTimeout(() => handleCheckLoginComplete(naverId), 1000)
       }
       else {
         message.error(result.message)
