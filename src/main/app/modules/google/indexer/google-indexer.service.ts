@@ -227,10 +227,10 @@ export class GoogleIndexerService {
     }
   }
 
-  async batchIndexUrls(siteId: number, urls: string[], type: string = 'URL_UPDATED'): Promise<any[]> {
+  async batchIndexUrls(siteId: number, urls: string[], type: string = 'URL_UPDATED'): Promise<any> {
     this.logger.log(`Google 배치 URL 인덱싱 시작: ${urls.length}개 URL (Site ID: ${siteId})`)
 
-    const results = []
+    const allResults = []
     const concurrencyLimit = 3
     const delayBetweenRequests = 1000
 
@@ -241,7 +241,7 @@ export class GoogleIndexerService {
 
       try {
         const chunkResults = await Promise.allSettled(chunkPromises)
-        results.push(...chunkResults)
+        allResults.push(...chunkResults)
 
         // 마지막 청크가 아니면 지연
         if (i + concurrencyLimit < urls.length) {
@@ -252,8 +252,69 @@ export class GoogleIndexerService {
       }
     }
 
-    this.logger.log(`Google 배치 URL 인덱싱 완료: ${results.length}개 결과`)
-    return results
+    // Promise.allSettled 결과를 성공/실패로 분리해서 처리
+    const successResults = []
+    const failedResults = []
+
+    allResults.forEach((result, index) => {
+      const targetUrl = urls[index]
+
+      if (result.status === 'fulfilled') {
+        // 성공한 경우
+        successResults.push({
+          url: targetUrl,
+          status: 'success',
+          data: result.value,
+        })
+      } else {
+        // 실패한 경우
+        failedResults.push({
+          url: targetUrl,
+          status: 'failed',
+          error: result.reason?.message || '알 수 없는 오류',
+          errorDetails: result.reason,
+        })
+      }
+    })
+
+    const summary = {
+      total: urls.length,
+      success: successResults.length,
+      failed: failedResults.length,
+      successUrls: successResults,
+      failedUrls: failedResults,
+    }
+
+    this.logger.log(
+      `Google 배치 URL 인덱싱 완료: 총 ${urls.length}개 중 성공 ${successResults.length}개, 실패 ${failedResults.length}개`,
+    )
+
+    // 모든 URL이 성공한 경우 성공 응답 반환
+    if (failedResults.length === 0) {
+      return {
+        success: true,
+        message: `모든 URL(${successResults.length}개)이 성공적으로 색인되었습니다.`,
+        data: summary,
+      }
+    }
+
+    // 일부 실패가 있는 경우
+    if (successResults.length > 0) {
+      return {
+        success: true, // 부분 성공으로 처리
+        message: `${successResults.length}개 URL 성공, ${failedResults.length}개 URL 실패`,
+        data: summary,
+      }
+    }
+
+    // 모든 URL이 실패한 경우 에러 반환
+    throw new GoogleIndexerError(
+      `모든 URL 색인이 실패했습니다.`,
+      'batchIndexUrls',
+      urls.join(', '),
+      siteId.toString(),
+      { summary },
+    )
   }
 
   async manualIndexing(options: GoogleIndexerOptions): Promise<any> {

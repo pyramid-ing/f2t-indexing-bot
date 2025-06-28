@@ -15,7 +15,6 @@ import {
   getAllSiteConfigs,
   getErrorDetails,
   getErrorMessage,
-  getGlobalSettings,
   googleManualIndex,
   naverManualIndex,
   openNaverLoginBrowser,
@@ -42,7 +41,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   const [loading, setLoading] = useState(false)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedTask, setSelectedTask] = useState<IndexingTask | null>(null)
-  const [globalSettings, setGlobalSettings] = useState<any>(null)
   const [naverLoginStatus, setNaverLoginStatus] = useState<NaverLoginStatus | null>(null)
   const [naverLoginChecking, setNaverLoginChecking] = useState(false)
   const [naverLoginBrowserOpen, setNaverLoginBrowserOpen] = useState(false)
@@ -54,15 +52,14 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
 
   useEffect(() => {
     loadSites()
-    loadGlobalSettings()
-    checkNaverLogin()
   }, [])
 
+  // 선택된 사이트가 변경될 때마다 네이버 로그인 상태 체크
   useEffect(() => {
-    if (globalSettings?.naver?.use) {
+    if (selectedSite?.naverConfig?.use) {
       checkNaverLogin()
     }
-  }, [globalSettings])
+  }, [selectedSite])
 
   // 네이버 로그인 상태가 변경되어도 폼은 자동으로 업데이트하지 않음
   // 대신 실행 시에 동적으로 처리
@@ -111,56 +108,22 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     }
   }
 
-  const loadGlobalSettings = async () => {
-    try {
-      const response = await getGlobalSettings()
-      if (response.success && response.data) {
-        setGlobalSettings(response.data)
-        // 검색엔진 선택을 빈 배열로 초기화 (모든 활성화된 엔진 사용)
-        form.setFieldsValue({ services: [] })
-      }
-    } catch (error) {
-      console.error('전역 설정 로드 실패:', error)
-      message.error('전역 설정을 불러오는데 실패했습니다.')
-    }
-  }
-
-  // loadNaverAccounts 함수 제거 - 이제 사이트별 설정으로 관리
-
-  const getAvailableServices = (settings = globalSettings, site = selectedSite) => {
-    // 선택된 사이트가 있으면 사이트별 설정 우선 사용
-    if (site) {
-      const services = []
-      if (site.googleConfig?.use) {
-        services.push('google')
-      }
-      if (site.bingConfig?.use) {
-        services.push('bing')
-      }
-      if (site.naverConfig?.use) {
-        services.push('naver')
-      }
-      if (site.daumConfig?.use) {
-        services.push('daum')
-      }
-      return services
-    }
-
-    // 전역 설정 사용
-    if (!settings) {
+  const getAvailableServices = (site = selectedSite) => {
+    // 선택된 사이트의 설정만 사용
+    if (!site) {
       return []
     }
     const services = []
-    if (settings.google?.use) {
+    if (site.googleConfig?.use) {
       services.push('google')
     }
-    if (settings.bing?.use) {
+    if (site.bingConfig?.use) {
       services.push('bing')
     }
-    if (settings.naver?.use) {
+    if (site.naverConfig?.use) {
       services.push('naver')
     }
-    if (settings.daum?.use) {
+    if (site.daumConfig?.use) {
       services.push('daum')
     }
     return services
@@ -218,7 +181,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         }
 
         // 활성화된 모든 검색엔진 사용
-        let services = getAvailableServices(globalSettings, currentSite)
+        let services = getAvailableServices(currentSite)
         if (services.length === 0) {
           message.error('활성화된 검색엔진이 없습니다. 설정에서 검색엔진을 먼저 활성화해주세요.')
           setLoading(false)
@@ -446,6 +409,47 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
             return
           }
         }
+        // 구글 인덱싱의 새로운 응답 구조 처리
+        if (service === 'google') {
+          console.log('Google indexing result structure:', result.data)
+
+          // 다양한 구조 확인 (result.data 직접 또는 result.data.data)
+          const googleData = result.data?.data || result.data
+
+          if (googleData?.successUrls || googleData?.failedUrls) {
+            // 성공한 URL들 처리
+            if (googleData.successUrls && Array.isArray(googleData.successUrls)) {
+              googleData.successUrls.forEach((successItem: any, index: number) => {
+                flatList.push({
+                  id: `${service}-${successItem.url}-${serviceIndex}-success-${index}`,
+                  service,
+                  url: successItem.url,
+                  status: 'success',
+                  message: '요청 성공',
+                  rawData: successItem.data || successItem,
+                })
+              })
+            }
+
+            // 실패한 URL들 처리
+            if (googleData.failedUrls && Array.isArray(googleData.failedUrls)) {
+              googleData.failedUrls.forEach((failedItem: any, index: number) => {
+                flatList.push({
+                  id: `${service}-${failedItem.url}-${serviceIndex}-failed-${index}`,
+                  service,
+                  url: failedItem.url,
+                  status: 'failed',
+                  message: failedItem.error || '요청 실패',
+                  rawData: failedItem.errorDetails || failedItem,
+                })
+              })
+            }
+
+            // 구글 결과 처리 완료, 다른 처리로 넘어가지 않도록 return
+            return
+          }
+        }
+
         if (Array.isArray(result.data.results)) {
           processIndividualResults(result.data.results)
         } else if (Array.isArray(result.data)) {
@@ -498,7 +502,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   }, [detailedResults, filters])
 
   const checkNaverLogin = async () => {
-    if (!globalSettings?.naver?.use) return
+    if (!selectedSite?.naverConfig?.use) return
     setNaverLoginChecking(true)
     try {
       const status = await checkNaverLoginStatus()
@@ -611,7 +615,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   }}
                 />
               </Form.Item>
-              {getAvailableServices(globalSettings, selectedSite).length > 0 && (
+              {getAvailableServices(selectedSite).length > 0 && (
                 <div
                   style={{
                     marginBottom: 16,
@@ -626,7 +630,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   </Text>
                   <div style={{ marginTop: 8 }}>
                     <Space wrap>
-                      {getAvailableServices(globalSettings, selectedSite).map(service => (
+                      {getAvailableServices(selectedSite).map(service => (
                         <Space key={service}>
                           {getServiceIcon(service)}
                           <Text>{service.charAt(0).toUpperCase() + service.slice(1)}</Text>
@@ -651,13 +655,11 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   htmlType="submit"
                   loading={loading}
                   icon={<PlayCircleOutlined />}
-                  disabled={
-                    loading || getAvailableServices(globalSettings, selectedSite).length === 0 || !urlsInput.trim()
-                  }
+                  disabled={loading || getAvailableServices(selectedSite).length === 0 || !urlsInput.trim()}
                 >
                   인덱싱 시작
                 </Button>
-                {getAvailableServices(globalSettings, selectedSite).length === 0 && (
+                {getAvailableServices(selectedSite).length === 0 && (
                   <div style={{ marginTop: 8 }}>
                     <Text type="secondary" style={{ fontSize: 12, color: '#ff4d4f' }}>
                       {selectedSite
