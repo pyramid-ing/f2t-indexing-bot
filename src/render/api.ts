@@ -133,8 +133,7 @@ export interface BingConfig {
 
 export interface NaverConfig {
   use: boolean
-  naverId: string
-  password: string
+  selectedNaverAccountId?: number // 선택된 네이버 계정 ID
   loginUrl: string
   headless?: boolean
 }
@@ -272,83 +271,9 @@ export async function daumManualIndex(options: { siteId: number, urlsToIndex: st
   return res.data
 }
 
-export async function getGoogleOAuthStatus() {
-  const res = await axios.get(`${API_BASE_URL}/google-oauth/status`)
-  return res.data
-}
-
-export async function googleOAuthLogout() {
-  const res = await axios.post(`${API_BASE_URL}/google-oauth/logout`)
-  return res.data
-}
-
-export async function refreshGoogleToken() {
-  const res = await axios.post(`${API_BASE_URL}/google-oauth/refresh`)
-  return res.data
-}
-
-export async function getBloggerPosts(options: {
-  blogId?: string
-  blogUrl?: string
-  accessToken: string
-  maxResults?: number
-  pageToken?: string
-  status?: 'live' | 'draft' | 'scheduled'
-}) {
-  const res = await axios.post(`${API_BASE_URL}/google-blogger/posts`, options)
-  return res.data
-}
-
-export async function getBloggerUserBlogs(accessToken: string) {
-  const res = await axios.post(`${API_BASE_URL}/google-blogger/blogs`, { accessToken })
-  return res.data
-}
-
-export async function getBloggerInfo(blogUrl: string, accessToken: string) {
-  const res = await axios.post(`${API_BASE_URL}/google-blogger/info`, {
-    blogUrl,
-    accessToken,
-  })
-  return res.data
-}
-
-export async function getBloggerPost(blogId: string, postId: string, accessToken: string) {
-  const res = await axios.post(`${API_BASE_URL}/google-blogger/post`, {
-    blogId,
-    postId,
-    accessToken,
-  })
-  return res.data
-}
-
 // 레거시 전역 설정 (호환성용)
 export async function getGlobalSettings(): Promise<{ success: boolean, data: GlobalEngineSettings }> {
   const res = await axios.get(`${API_BASE_URL}/settings/global`)
-  return res.data
-}
-
-export async function updateGlobalSettings(settings: Partial<GlobalEngineSettings>) {
-  const res = await axios.put(`${API_BASE_URL}/settings/global`, settings)
-  return res.data
-}
-
-export async function updateGlobalGoogleSettings(settings: Partial<GlobalEngineSettings['google']>) {
-  const res = await axios.put(`${API_BASE_URL}/settings/google`, settings)
-  return res.data
-}
-
-export async function updateGlobalBingSettings(settings: Partial<GlobalEngineSettings['bing']>) {
-  const res = await axios.put(`${API_BASE_URL}/settings/bing`, settings)
-  return res.data
-}
-
-export async function updateGlobalNaverSettings(settings: Partial<GlobalEngineSettings['naver']>) {
-  const res = await axios.put(`${API_BASE_URL}/settings/naver`, settings)
-  return res.data
-}
-
-export async function updateGlobalDaumSettings(settings: Partial<GlobalEngineSettings['daum']>) {
-  const res = await axios.put(`${API_BASE_URL}/settings/daum`, settings)
   return res.data
 }
 
@@ -358,18 +283,19 @@ export interface NaverLoginStatus {
   message: string
 }
 
-export async function checkNaverLoginStatus(): Promise<NaverLoginStatus> {
-  const res = await axios.get(`${API_BASE_URL}/naver-indexer/login-status`)
+export async function checkNaverLoginStatus(naverId?: string): Promise<NaverLoginStatus> {
+  const params = naverId ? { naverId } : {}
+  const res = await axios.get(`${API_BASE_URL}/naver-indexer/login-status`, { params })
   return res.data
 }
 
-export async function openNaverLoginBrowser(): Promise<{ success: boolean, message: string }> {
-  const res = await axios.post(`${API_BASE_URL}/naver-indexer/open-login`)
+export async function openNaverLoginBrowser(naverId?: string): Promise<{ success: boolean, message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/open-login`, { naverId })
   return res.data
 }
 
-export async function checkNaverLoginComplete(): Promise<{ success: boolean, message: string }> {
-  const res = await axios.get(`${API_BASE_URL}/naver-indexer/check-login`)
+export async function checkNaverLoginComplete(naverId?: string): Promise<{ success: boolean, message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/naver-indexer/check-login-complete`, { naverId })
   return res.data
 }
 
@@ -378,7 +304,7 @@ export async function closeNaverLoginBrowser(): Promise<{ success: boolean, mess
   return res.data
 }
 
-// 네이버 계정 관리 API
+// 네이버 계정 관리 API (중앙 관리)
 export interface NaverAccount {
   id: number
   name: string
@@ -393,22 +319,27 @@ export interface NaverAccount {
 
 export async function getAllNaverAccounts(): Promise<NaverAccount[]> {
   const res = await axios.get(`${API_BASE_URL}/naver-accounts`)
-  return res.data
+  return res.data.data || []
 }
 
 export async function getActiveNaverAccounts(): Promise<NaverAccount[]> {
   const res = await axios.get(`${API_BASE_URL}/naver-accounts/active`)
-  return res.data
+  return res.data.data || []
+}
+
+export async function getNaverAccountByNaverId(naverId: string): Promise<NaverAccount | null> {
+  const res = await axios.get(`${API_BASE_URL}/naver-accounts/naver-id/${naverId}`)
+  return res.data.data
 }
 
 export async function createNaverAccount(data: { name: string, naverId: string, password: string, isActive?: boolean }): Promise<NaverAccount> {
   const res = await axios.post(`${API_BASE_URL}/naver-accounts`, data)
-  return res.data
+  return res.data.data
 }
 
 export async function updateNaverAccount(id: number, data: Partial<NaverAccount>): Promise<NaverAccount> {
   const res = await axios.put(`${API_BASE_URL}/naver-accounts/${id}`, data)
-  return res.data
+  return res.data.data
 }
 
 export async function deleteNaverAccount(id: number): Promise<{ success: boolean, message: string }> {
@@ -416,9 +347,9 @@ export async function deleteNaverAccount(id: number): Promise<{ success: boolean
   return res.data
 }
 
-export async function updateNaverAccountLoginStatus(id: number, isLoggedIn: boolean): Promise<NaverAccount> {
-  const res = await axios.put(`${API_BASE_URL}/naver-accounts/${id}/login-status`, { isLoggedIn })
-  return res.data
+export async function updateNaverAccountLoginStatus(naverId: string, isLoggedIn: boolean, lastLogin?: string): Promise<NaverAccount> {
+  const res = await axios.put(`${API_BASE_URL}/naver-accounts/naver-id/${naverId}/login-status`, { isLoggedIn, lastLogin })
+  return res.data.data
 }
 
 // URL에서 사이트 설정 자동 매칭

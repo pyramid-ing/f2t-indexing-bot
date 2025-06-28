@@ -11,6 +11,7 @@ import {
 import BingSettings from '../components/settings/BingSettings'
 import DaumSettings from '../components/settings/DaumSettings'
 import GoogleSettings from '../components/settings/GoogleSettings'
+import NaverAccountManagement from '../components/settings/NaverAccountManagement'
 import NaverSettings from '../components/settings/NaverSettings'
 import SiteSettings from '../components/settings/SiteSettings'
 
@@ -43,8 +44,7 @@ const Settings: React.FC = () => {
     },
     naver: {
       use: false,
-      naverId: '',
-      password: '',
+      selectedNaverAccountId: undefined,
       loginUrl: '',
       headless: true,
     },
@@ -261,6 +261,10 @@ const Settings: React.FC = () => {
         <Tabs activeKey={activeTab} onChange={setActiveTab} type="card" size="large">
           <Tabs.TabPane tab="사이트 관리" key="sites">
             <SiteSettings />
+          </Tabs.TabPane>
+
+          <Tabs.TabPane tab="네이버 계정 관리" key="naver-accounts">
+            <NaverAccountManagement />
           </Tabs.TabPane>
 
           <Tabs.TabPane tab="Google" key="google" disabled={!selectedSiteId}>

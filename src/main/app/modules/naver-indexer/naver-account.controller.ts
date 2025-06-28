@@ -1,5 +1,5 @@
-import type { NaverAccountData } from './naver-account.service'
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put } from '@nestjs/common'
+import type { CreateNaverAccountDto, UpdateNaverAccountDto } from './naver-account.service'
+import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common'
 import { NaverAccountService } from './naver-account.service'
 
 @Controller('naver-accounts')
@@ -9,59 +9,56 @@ export class NaverAccountController {
   @Get()
   async getAllAccounts() {
     const accounts = await this.naverAccountService.getAllAccounts()
-    // 보안을 위해 비밀번호는 마스킹해서 반환
-    return accounts.map(account => ({
-      ...account,
-    }))
+    return { success: true, data: accounts }
   }
 
   @Get('active')
   async getActiveAccounts() {
     const accounts = await this.naverAccountService.getActiveAccounts()
-    // 보안을 위해 비밀번호는 마스킹해서 반환
-    return accounts.map(account => ({
-      ...account,
-    }))
+    return { success: true, data: accounts }
+  }
+
+  @Get('naver-id/:naverId')
+  async getAccountByNaverId(@Param('naverId') naverId: string) {
+    const account = await this.naverAccountService.getAccountByNaverId(naverId)
+    return { success: true, data: account }
   }
 
   @Get(':id')
-  async getAccount(@Param('id', ParseIntPipe) id: number) {
-    const account = await this.naverAccountService.getAccount(id)
-    if (!account) {
-      throw new Error('계정을 찾을 수 없습니다.')
-    }
-    return {
-      ...account,
-    }
+  async getAccountById(@Param('id') id: string) {
+    const account = await this.naverAccountService.getAccountById(Number.parseInt(id, 10))
+    return { success: true, data: account }
   }
 
   @Post()
-  async createAccount(@Body() data: NaverAccountData) {
-    const account = await this.naverAccountService.createAccount(data)
-    return {
-      ...account,
-    }
+  async createAccount(@Body() createDto: CreateNaverAccountDto) {
+    const account = await this.naverAccountService.createAccount(createDto)
+    return { success: true, data: account, message: '네이버 계정이 생성되었습니다.' }
   }
 
   @Put(':id')
-  async updateAccount(@Param('id', ParseIntPipe) id: number, @Body() data: Partial<NaverAccountData>) {
-    const account = await this.naverAccountService.updateAccount(id, data)
-    return {
-      ...account,
-    }
+  async updateAccount(@Param('id') id: string, @Body() updateDto: UpdateNaverAccountDto) {
+    const account = await this.naverAccountService.updateAccount(Number.parseInt(id, 10), updateDto)
+    return { success: true, data: account, message: '네이버 계정이 업데이트되었습니다.' }
   }
 
   @Delete(':id')
-  async deleteAccount(@Param('id', ParseIntPipe) id: number) {
-    await this.naverAccountService.deleteAccount(id)
-    return { success: true, message: '계정이 삭제되었습니다.' }
+  async deleteAccount(@Param('id') id: string) {
+    const result = await this.naverAccountService.deleteAccount(Number.parseInt(id, 10))
+    return result
   }
 
-  @Put(':id/login-status')
-  async updateLoginStatus(@Param('id', ParseIntPipe) id: number, @Body() body: { isLoggedIn: boolean }) {
-    const account = await this.naverAccountService.updateLoginStatus(id, body.isLoggedIn)
-    return {
-      ...account,
-    }
+  @Put('naver-id/:naverId/login-status')
+  async updateLoginStatus(
+    @Param('naverId') naverId: string,
+    @Body() body: { isLoggedIn: boolean, lastLogin?: string },
+  ) {
+    const lastLogin = body.lastLogin ? new Date(body.lastLogin) : undefined
+    const account = await this.naverAccountService.updateLoginStatus(
+      naverId,
+      body.isLoggedIn,
+      lastLogin,
+    )
+    return { success: true, data: account, message: '로그인 상태가 업데이트되었습니다.' }
   }
 }

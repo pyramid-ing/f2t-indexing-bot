@@ -10,15 +10,16 @@ import { ConfigService } from '@nestjs/config'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { firstValueFrom } from 'rxjs'
+import { SiteConfigService } from '../site-config/site-config.service'
 import { NaverAccountService } from './naver-account.service'
 
 puppeteer.use(StealthPlugin())
 
 export interface NaverIndexerOptions {
-  siteUrl: string
+  siteUrl?: string
   urlsToIndex: string[]
-  naverId?: string // 네이버 아이디(선택, 자동로그인용) - DB에서 가져올 수 있음
-  naverPw?: string // 네이버 비번(선택, 자동로그인용) - DB에서 가져올 수 있음
+  naverId?: string // 네이버 아이디 - NaverAccount에서 정보를 가져옴
+  naverPw?: string // 네이버 비번 - NaverAccount에서 정보를 가져옴 (선택)
 }
 
 export interface NaverLoginStatus {
@@ -48,6 +49,7 @@ export class NaverIndexerService implements OnModuleInit {
     private readonly httpService: HttpService,
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
+    private readonly siteConfigService: SiteConfigService,
     private readonly naverAccountService: NaverAccountService,
   ) {}
 
@@ -76,27 +78,34 @@ export class NaverIndexerService implements OnModuleInit {
     this.logger.log('쿠키를 저장했습니다.')
   }
 
-  private async getNaverConfig() {
+  private async getNaverConfig(naverId?: string) {
     try {
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
-
-      if (!globalSettings.naver || !globalSettings.naver.use) {
-        throw new NaverAuthError('Naver 색인이 비활성화되어 있습니다.', 'getNaverConfig', {
-          enabled: false,
+      if (!naverId) {
+        throw new NaverAuthError('네이버 아이디가 필요합니다.', 'getNaverConfig', {
+          hasNaverId: false,
         })
       }
 
-      if (!globalSettings.naver.naverId || !globalSettings.naver.password) {
-        throw new NaverAuthError('Naver 인증 정보가 설정되지 않았습니다.', 'getNaverConfig', {
-          hasNaverId: !!globalSettings.naver.naverId,
-          hasPassword: !!globalSettings.naver.password,
+      // NaverAccount에서 계정 정보 조회
+      const account = await this.naverAccountService.getAccountByNaverId(naverId)
+      if (!account) {
+        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ${naverId}`, 'getNaverConfig', {
+          naverId,
+          exists: false,
+        })
+      }
+
+      if (!account.isActive) {
+        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${naverId}`, 'getNaverConfig', {
+          naverId,
+          isActive: false,
         })
       }
 
       return {
-        naverId: globalSettings.naver.naverId,
-        password: globalSettings.naver.password,
-        headless: globalSettings.naver.headless ?? true, // 기본값은 true
+        naverId: account.naverId,
+        password: account.password,
+        headless: true, // 기본값은 true
       }
     }
     catch (error) {
@@ -114,8 +123,11 @@ export class NaverIndexerService implements OnModuleInit {
     const { siteUrl, urlsToIndex } = options
 
     try {
-      // DB에서 네이버 설정 가져오기 (옵션으로 전달된 값이 없을 경우)
-      const dbConfig = await this.getNaverConfig()
+      if (!siteUrl) {
+        throw new NaverAuthError('siteUrl이 필요합니다.', 'manualIndexing')
+      }
+      // DB에서 네이버 설정 가져오기 (NaverAccount에서 조회)
+      const dbConfig = await this.getNaverConfig(options.naverId)
       const naverId = options.naverId || dbConfig.naverId
       const naverPw = options.naverPw || dbConfig.password
       const useHeadless = headless !== undefined ? headless : dbConfig.headless // 설정에서 headless 값 사용
@@ -519,9 +531,9 @@ export class NaverIndexerService implements OnModuleInit {
   /**
    * 네이버 로그인 상태 확인 (headless)
    */
-  async checkLoginStatus(): Promise<NaverLoginStatus> {
+  async checkLoginStatus(naverId?: string): Promise<NaverLoginStatus> {
     try {
-      const naverConfig = await this.getNaverConfig()
+      const naverConfig = await this.getNaverConfig(naverId)
 
       const launchOptions: any = {
         headless: true,
@@ -591,7 +603,7 @@ export class NaverIndexerService implements OnModuleInit {
   /**
    * 수동 로그인을 위한 브라우저 창 열기
    */
-  async openLoginBrowser(): Promise<{ success: boolean, message: string }> {
+  async openLoginBrowser(naverId?: string): Promise<{ success: boolean, message: string }> {
     if (this.loginBrowser) {
       this.logger.warn('이미 네이버 로그인 브라우저가 열려 있습니다.')
       try {
@@ -605,7 +617,7 @@ export class NaverIndexerService implements OnModuleInit {
     }
 
     try {
-      const { naverId, password, headless } = await this.getNaverConfig()
+      const { naverId: configNaverId, password } = await this.getNaverConfig(naverId)
 
       const launchOptions: any = {
         headless: false, // 로그인 창은 항상 보여줘야 함
@@ -632,7 +644,7 @@ export class NaverIndexerService implements OnModuleInit {
 
       // ID와 비밀번호 자동 입력
       await this.loginPage.waitForSelector('#id', { timeout: 10000 })
-      await this.loginPage.type('#id', naverId, { delay: 50 })
+      await this.loginPage.type('#id', configNaverId, { delay: 50 })
 
       await this.loginPage.waitForSelector('#pw', { timeout: 10000 })
       await this.loginPage.type('#pw', password, { delay: 50 })
@@ -664,7 +676,7 @@ export class NaverIndexerService implements OnModuleInit {
   /**
    * 사용자가 브라우저에서 로그인을 완료했는지 확인하고, 성공 시 쿠키를 저장합니다.
    */
-  async checkLoginComplete(): Promise<{ success: boolean, message: string }> {
+  async checkLoginComplete(naverId?: string): Promise<{ success: boolean, message: string }> {
     try {
       if (!this.loginBrowser || !this.loginPage) {
         return {
@@ -673,7 +685,7 @@ export class NaverIndexerService implements OnModuleInit {
         }
       }
 
-      const naverConfig = await this.getNaverConfig()
+      const naverConfig = await this.getNaverConfig(naverId)
 
       // 현재 페이지 URL 확인
       const currentUrl = this.loginPage.url()

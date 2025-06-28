@@ -23,7 +23,7 @@ model Auth {
   updatedAt DateTime @updatedAt
 }
 
-// 네이버 계정 관리 모델 (새로 추가)
+// 네이버 계정 관리 모델 (재추가 - 중앙 관리)
 model NaverAccount {
   id          Int      @id @default(autoincrement())
   name        String              // 계정 표시명 (예: "블로그 계정", "메인 계정")

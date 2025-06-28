@@ -1,26 +1,16 @@
 import type {
-  NaverAccount,
   NaverLoginStatus,
   SiteConfig,
 } from '../../api'
 import type { DetailedResult } from './IndexingDetailModal'
 import type { IndexingTask } from './useIndexingTasks'
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  DeleteOutlined,
-  EditOutlined,
   GlobalOutlined,
   GoogleOutlined,
-  LoadingOutlined,
-  LoginOutlined,
   PlayCircleOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  UserOutlined,
   YahooOutlined,
 } from '@ant-design/icons'
-import { Alert, Button, Card, Col, Form, Input, message, Modal, Row, Select, Space, Table, Tag, Typography } from 'antd'
+import { Alert, Button, Card, Col, Form, Input, message, Row, Select, Space, Typography } from 'antd'
 import React, { useEffect, useMemo, useState } from 'react'
 import {
   bingManualIndex,
@@ -28,11 +18,8 @@ import {
   checkNaverLoginComplete,
   checkNaverLoginStatus,
   closeNaverLoginBrowser,
-  createNaverAccount,
   daumManualIndex,
-  deleteNaverAccount,
   findSiteConfigByUrl,
-  getAllNaverAccounts,
   getAllSiteConfigs,
   getErrorDetails,
   getErrorMessage,
@@ -40,8 +27,8 @@ import {
   googleManualIndex,
   naverManualIndex,
   openNaverLoginBrowser,
-  updateNaverAccount,
 } from '../../api'
+import NaverLoginList from '../NaverLoginList'
 import IndexingDetailModal from './IndexingDetailModal'
 import IndexingTaskTable from './IndexingTaskTable'
 
@@ -67,11 +54,8 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   const [naverLoginStatus, setNaverLoginStatus] = useState<NaverLoginStatus | null>(null)
   const [naverLoginChecking, setNaverLoginChecking] = useState(false)
   const [naverLoginBrowserOpen, setNaverLoginBrowserOpen] = useState(false)
-  const [naverAccounts, setNaverAccounts] = useState<NaverAccount[]>([])
-  const [isNaverAccountModalVisible, setIsNaverAccountModalVisible] = useState(false)
-  const [isAddingNaverAccount, setIsAddingNaverAccount] = useState(false)
+  // NaverAccount 관련 상태 제거 - 이제 사이트별 설정으로 관리
   const [form] = Form.useForm()
-  const [naverAccountForm] = Form.useForm()
   const [detailedResults, setDetailedResults] = useState<DetailedResult[]>([])
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [filters, setFilters] = useState<{ status: string, services: string[] }>({ status: 'all', services: [] })
@@ -79,7 +63,6 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   useEffect(() => {
     loadSites()
     loadGlobalSettings()
-    loadNaverAccounts()
     checkNaverLogin()
   }, [])
 
@@ -154,15 +137,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
     }
   }
 
-  const loadNaverAccounts = async () => {
-    try {
-      const accounts = await getAllNaverAccounts()
-      setNaverAccounts(accounts)
-    }
-    catch (error) {
-      console.error('네이버 계정 목록 로드 실패:', error)
-    }
-  }
+  // loadNaverAccounts 함수 제거 - 이제 사이트별 설정으로 관리
 
   const getAvailableServices = (settings = globalSettings, site = selectedSite) => {
     // 선택된 사이트가 있으면 사이트별 설정 우선 사용
@@ -622,7 +597,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
   return (
     <div style={{ padding: '20px' }}>
       <Row gutter={16}>
-        <Col span={24}>
+        <Col span={16}>
           <Card title={<Title level={4}>새 인덱싱 작업</Title>}>
             <div style={{ marginBottom: '16px' }}>
               {selectedSite
@@ -700,101 +675,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
                   </Text>
                 </div>
               )}
-              {globalSettings?.naver?.use && (
-                <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 16, marginBottom: 16 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                    <Text strong>
-                      <UserOutlined style={{ marginRight: 8 }} />
-                      네이버 계정 관리
-                    </Text>
-                    <Button
-                      size="small"
-                      icon={<PlusOutlined />}
-                      onClick={() => setIsNaverAccountModalVisible(true)}
-                    >
-                      계정 관리
-                    </Button>
-                  </div>
 
-                  {naverAccounts.length > 0 && (
-                    <div style={{ marginBottom: 16 }}>
-                      <Text type="secondary" style={{ fontSize: 12, marginBottom: 8, display: 'block' }}>
-                        등록된 네이버 계정들:
-                      </Text>
-                      <Space wrap>
-                        {naverAccounts.map(account => (
-                          <Tag
-                            key={account.id}
-                            color={account.isLoggedIn ? 'green' : 'default'}
-                            icon={account.isLoggedIn ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-                          >
-                            {account.name}
-                            {' '}
-                            (
-                            {account.naverId}
-                            )
-                          </Tag>
-                        ))}
-                      </Space>
-                    </div>
-                  )}
-
-                  <Space align="center" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <Space>
-                      <Text strong>네이버 로그인 상태:</Text>
-                      {naverLoginChecking
-                        ? (
-                            <Tag icon={<LoadingOutlined />} color="blue">
-                              확인 중...
-                            </Tag>
-                          )
-                        : naverLoginStatus?.isLoggedIn
-                          ? (
-                              <Tag icon={<CheckCircleOutlined />} color="success">
-                                로그인됨
-                              </Tag>
-                            )
-                          : (
-                              <Tag icon={<CloseCircleOutlined />} color="error">
-                                로그인 필요
-                              </Tag>
-                            )}
-                    </Space>
-                    <Space>
-                      {naverLoginBrowserOpen
-                        ? (
-                            <>
-                              <Button size="small" icon={<LoadingOutlined />} onClick={checkNaverLogin}>
-                                완료 확인
-                              </Button>
-                              <Button size="small" danger onClick={handleCloseNaverBrowser}>
-                                창 닫기
-                              </Button>
-                            </>
-                          )
-                        : naverLoginStatus && !naverLoginStatus.isLoggedIn
-                          ? (
-                              <Button size="small" icon={<LoginOutlined />} onClick={handleNaverLogin}>
-                                로그인하기
-                              </Button>
-                            )
-                          : (
-                              <Button size="small" icon={<ReloadOutlined />} onClick={checkNaverLogin}>
-                                새로고침
-                              </Button>
-                            )}
-                    </Space>
-                  </Space>
-                  {naverLoginStatus && !naverLoginStatus.isLoggedIn && (
-                    <Alert
-                      message={naverLoginStatus.message || '네이버 서비스 이용을 위해 로그인이 필요합니다.'}
-                      type="warning"
-                      showIcon
-                      style={{ marginTop: 12 }}
-                    />
-                  )}
-                </div>
-              )}
               <Form.Item>
                 <Button
                   type="primary"
@@ -823,6 +704,9 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
             </Form>
           </Card>
         </Col>
+        <Col span={8}>
+          <NaverLoginList />
+        </Col>
       </Row>
       <Card title={<Title level={4}>인덱싱 작업 내역</Title>} style={{ marginTop: 16 }}>
         <IndexingTaskTable tasks={indexingTasks} loading={loading} onShowDetail={showTaskDetail} />
@@ -841,185 +725,7 @@ const IndexingDashboard: React.FC<Props> = ({ indexingTasks, setIndexingTasks, a
         getExecutionTime={getExecutionTime}
       />
 
-      {/* 네이버 계정 관리 모달 */}
-      <Modal
-        title="네이버 계정 관리"
-        open={isNaverAccountModalVisible}
-        onCancel={() => {
-          setIsNaverAccountModalVisible(false)
-          setIsAddingNaverAccount(false)
-          naverAccountForm.resetFields()
-        }}
-        footer={null}
-        width={800}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsAddingNaverAccount(true)}
-            disabled={isAddingNaverAccount}
-          >
-            새 계정 추가
-          </Button>
-        </div>
-
-        {isAddingNaverAccount && (
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Form
-              form={naverAccountForm}
-              layout="vertical"
-              onFinish={async (values) => {
-                try {
-                  await createNaverAccount(values)
-                  message.success('네이버 계정이 추가되었습니다.')
-                  await loadNaverAccounts()
-                  setIsAddingNaverAccount(false)
-                  naverAccountForm.resetFields()
-                }
-                catch (error) {
-                  message.error(`계정 추가 실패: ${getErrorMessage(error)}`)
-                }
-              }}
-            >
-              <Row gutter={16}>
-                <Col span={8}>
-                  <Form.Item
-                    name="name"
-                    label="계정 이름"
-                    rules={[{ required: true, message: '계정 이름을 입력해주세요' }]}
-                  >
-                    <Input placeholder="예: 메인 블로그 계정" />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item
-                    name="naverId"
-                    label="네이버 아이디"
-                    rules={[{ required: true, message: '네이버 아이디를 입력해주세요' }]}
-                  >
-                    <Input placeholder="naver_id" />
-                  </Form.Item>
-                </Col>
-                <Col span={8}>
-                  <Form.Item
-                    name="password"
-                    label="비밀번호"
-                    rules={[{ required: true, message: '비밀번호를 입력해주세요' }]}
-                  >
-                    <Input.Password placeholder="password" />
-                  </Form.Item>
-                </Col>
-              </Row>
-              <Space>
-                <Button type="primary" htmlType="submit">
-                  추가
-                </Button>
-                <Button onClick={() => {
-                  setIsAddingNaverAccount(false)
-                  naverAccountForm.resetFields()
-                }}
-                >
-                  취소
-                </Button>
-              </Space>
-            </Form>
-          </Card>
-        )}
-
-        <Table
-          dataSource={naverAccounts}
-          rowKey="id"
-          size="small"
-          pagination={false}
-          columns={[
-            {
-              title: '계정 이름',
-              dataIndex: 'name',
-              key: 'name',
-            },
-            {
-              title: '네이버 아이디',
-              dataIndex: 'naverId',
-              key: 'naverId',
-            },
-            {
-              title: '로그인 상태',
-              dataIndex: 'isLoggedIn',
-              key: 'isLoggedIn',
-              render: (isLoggedIn: boolean) => (
-                <Tag color={isLoggedIn ? 'green' : 'default'}>
-                  {isLoggedIn ? '로그인됨' : '로그인 필요'}
-                </Tag>
-              ),
-            },
-            {
-              title: '마지막 로그인',
-              dataIndex: 'lastLogin',
-              key: 'lastLogin',
-              render: (lastLogin: string) =>
-                lastLogin ? new Date(lastLogin).toLocaleDateString() : '-',
-            },
-            {
-              title: '활성 상태',
-              dataIndex: 'isActive',
-              key: 'isActive',
-              render: (isActive: boolean) => (
-                <Tag color={isActive ? 'blue' : 'default'}>
-                  {isActive ? '활성' : '비활성'}
-                </Tag>
-              ),
-            },
-            {
-              title: '작업',
-              key: 'actions',
-              render: (_, record) => (
-                <Space>
-                  <Button
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={async () => {
-                      try {
-                        await updateNaverAccount(record.id, { isActive: !record.isActive })
-                        message.success('계정 상태가 변경되었습니다.')
-                        await loadNaverAccounts()
-                      }
-                      catch (error) {
-                        message.error(`상태 변경 실패: ${getErrorMessage(error)}`)
-                      }
-                    }}
-                  >
-                    {record.isActive ? '비활성화' : '활성화'}
-                  </Button>
-                  <Button
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => {
-                      Modal.confirm({
-                        title: '계정 삭제',
-                        content: `정말로 "${record.name}" 계정을 삭제하시겠습니까?`,
-                        onOk: async () => {
-                          try {
-                            await deleteNaverAccount(record.id)
-                            message.success('계정이 삭제되었습니다.')
-                            await loadNaverAccounts()
-                          }
-                          catch (error) {
-                            message.error(`계정 삭제 실패: ${getErrorMessage(error)}`)
-                          }
-                        },
-                      })
-                    }}
-                  >
-                    삭제
-                  </Button>
-                </Space>
-              ),
-            },
-          ]}
-        />
-      </Modal>
+      {/* 네이버 계정 관리 모달 제거 - 이제 사이트별 설정으로 관리 */}
     </div>
   )
 }
