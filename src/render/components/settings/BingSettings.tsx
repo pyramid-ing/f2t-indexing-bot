@@ -18,7 +18,8 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, loading }
   // 설정이 변경되면 로컬 상태 업데이트
   React.useEffect(() => {
     setLocalUse(settings.use)
-  }, [settings.use])
+    form.setFieldsValue(settings)
+  }, [settings, form])
 
   const handleSubmit = async (values: Partial<BingConfig>) => {
     try {
@@ -73,7 +74,13 @@ const BingSettings: React.FC<BingSettingsProps> = ({ settings, onSave, loading }
         </div>
       </Card>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={settings}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={settings}
+        key={JSON.stringify(settings)}
+      >
         <Card title="API 설정" className="mb-4">
           <Form.Item
             name="apiKey"

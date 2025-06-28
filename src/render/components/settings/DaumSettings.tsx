@@ -15,10 +15,11 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
   const [form] = Form.useForm()
   const [localUse, setLocalUse] = React.useState(settings.use)
 
-  // 설정이 변경되면 로컬 상태 업데이트
+  // 설정이 변경되면 로컬 상태와 폼 값 업데이트
   React.useEffect(() => {
     setLocalUse(settings.use)
-  }, [settings.use])
+    form.setFieldsValue(settings)
+  }, [settings, form])
 
   const handleSubmit = async (values: Partial<DaumConfig>) => {
     try {
@@ -82,7 +83,13 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ settings, onSave, loading }
         </div>
       </Card>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={settings}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={settings}
+        key={JSON.stringify(settings)}
+      >
         <Card title="사이트 설정" className="mb-4">
           <Row gutter={16}>
             <Col span={12}>

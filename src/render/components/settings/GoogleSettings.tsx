@@ -90,7 +90,14 @@ const GoogleSettings: React.FC<GoogleSettingsProps> = ({ settings, onSave, loadi
         </div>
       </Card>
 
-      <Form form={form} layout="vertical" onFinish={handleSubmit} initialValues={settings} preserve={false}>
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        initialValues={settings}
+        preserve={false}
+        key={JSON.stringify(settings)}
+      >
         {/* Service Account 설정 */}
         <Card title="Service Account 설정" className="mb-4">
           {/* 현재 설정 값 표시 */}

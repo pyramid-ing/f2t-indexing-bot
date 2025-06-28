@@ -21,7 +21,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
   React.useEffect(() => {
     setLocalUse(settings.use)
     setSelectedAccountId(settings.selectedNaverAccountId)
-  }, [settings.use, settings.selectedNaverAccountId])
+  }, [settings])
 
   useEffect(() => {
     fetchAccounts()
