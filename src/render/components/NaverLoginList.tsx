@@ -110,16 +110,36 @@ export default function NaverLoginList() {
     fetchAccounts()
   }, [])
 
-  const getAccountStatusColor = (account: NaverAccount) => {
+  const getAccountStatusColor = (account: NaverAccount, naverId: string) => {
+    const realTimeStatus = statusMap[naverId]
+    if (realTimeStatus) {
+      return realTimeStatus.isLoggedIn ? 'green' : 'orange'
+    }
     return account.isLoggedIn ? 'green' : 'orange'
   }
 
-  const getAccountStatusIcon = (account: NaverAccount) => {
+  const getAccountStatusIcon = (account: NaverAccount, naverId: string) => {
+    const realTimeStatus = statusMap[naverId]
+    if (realTimeStatus) {
+      return realTimeStatus.isLoggedIn ? <CheckCircleOutlined /> : <CloseCircleOutlined />
+    }
     return account.isLoggedIn ? <CheckCircleOutlined /> : <CloseCircleOutlined />
   }
 
-  const getAccountStatusText = (account: NaverAccount) => {
+  const getAccountStatusText = (account: NaverAccount, naverId: string) => {
+    const realTimeStatus = statusMap[naverId]
+    if (realTimeStatus) {
+      return realTimeStatus.isLoggedIn ? '로그인됨' : '로그인 필요'
+    }
     return account.isLoggedIn ? '로그인됨' : '로그인 필요'
+  }
+
+  const isAccountLoggedIn = (account: NaverAccount, naverId: string) => {
+    const realTimeStatus = statusMap[naverId]
+    if (realTimeStatus) {
+      return realTimeStatus.isLoggedIn
+    }
+    return account.isLoggedIn
   }
 
   return (
@@ -163,11 +183,11 @@ export default function NaverLoginList() {
                     }}
                   >
                     <List.Item.Meta
-                      avatar={(
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          {isLoadingThisStatus ? <LoadingOutlined /> : getAccountStatusIcon(account)}
-                        </div>
-                      )}
+                                        avatar={(
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      {isLoadingThisStatus ? <LoadingOutlined /> : getAccountStatusIcon(account, account.naverId)}
+                    </div>
+                  )}
                       title={(
                         <Space>
                           <Text strong>{account.name}</Text>
@@ -181,36 +201,40 @@ export default function NaverLoginList() {
                       description={(
                         <Space direction="vertical" size={4} style={{ width: '100%' }}>
                           <Space>
-                            <Tag color={getAccountStatusColor(account)}>
-                              {getAccountStatusText(account)}
+                            <Tag color={getAccountStatusColor(account, account.naverId)}>
+                              {getAccountStatusText(account, account.naverId)}
                             </Tag>
                             {account.lastLogin && (
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                마지막 로그인:
+                                마지막 상태확인:
                                 {' '}
                                 {new Date(account.lastLogin).toLocaleString('ko-KR')}
                               </Text>
                             )}
                           </Space>
                           <Space>
-                            <Button
-                              size="small"
-                              type="primary"
-                              icon={<LoginOutlined />}
-                              onClick={() => handleOpenLoginBrowser(account.naverId)}
-                              loading={isLoginAction}
-                              disabled={isLoadingThisStatus}
-                            >
-                              로그인하기
-                            </Button>
-                            <Button
-                              size="small"
-                              onClick={() => handleCheckLoginComplete(account.naverId)}
-                              loading={isLoginAction}
-                              disabled={isLoadingThisStatus}
-                            >
-                              완료 확인
-                            </Button>
+                            {!isAccountLoggedIn(account, account.naverId) && (
+                              <Button
+                                size="small"
+                                type="primary"
+                                icon={<LoginOutlined />}
+                                onClick={() => handleOpenLoginBrowser(account.naverId)}
+                                loading={isLoginAction}
+                                disabled={isLoadingThisStatus}
+                              >
+                                로그인하기
+                              </Button>
+                            )}
+                            {!isAccountLoggedIn(account, account.naverId) && (
+                              <Button
+                                size="small"
+                                onClick={() => handleCheckLoginComplete(account.naverId)}
+                                loading={isLoginAction}
+                                disabled={isLoadingThisStatus}
+                              >
+                                완료 확인
+                              </Button>
+                            )}
                             <Button
                               size="small"
                               onClick={() => checkAccountLoginStatus(account.naverId)}

@@ -566,6 +566,14 @@ export class NaverIndexerService implements OnModuleInit {
 
         await browser.close()
 
+        // 데이터베이스 로그인 상태 업데이트 (상태 확인 시점도 업데이트)
+        try {
+          await this.naverAccountService.updateLoginStatus(naverConfig.naverId, isLoggedIn, new Date())
+        }
+        catch (updateError) {
+          this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
+        }
+
         if (!isLoggedIn) {
           return {
             isLoggedIn: false,
@@ -583,6 +591,15 @@ export class NaverIndexerService implements OnModuleInit {
       }
       catch (error) {
         await browser.close()
+
+        // 오류 발생 시에도 로그인 상태를 false로 업데이트
+        try {
+          await this.naverAccountService.updateLoginStatus(naverConfig.naverId, false)
+        }
+        catch (updateError) {
+          this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
+        }
+
         return {
           isLoggedIn: false,
           needsLogin: true,
@@ -703,6 +720,14 @@ export class NaverIndexerService implements OnModuleInit {
         if (!this.loginPage.url().includes('nid.naver.com')) {
           // 쿠키 저장
           await this.saveCookies(this.loginPage, naverConfig.naverId)
+
+          // 데이터베이스 로그인 상태 업데이트
+          try {
+            await this.naverAccountService.updateLoginStatus(naverConfig.naverId, true, new Date())
+          }
+          catch (updateError) {
+            this.logger.warn(`네이버 계정 로그인 상태 업데이트 실패: ${updateError.message}`)
+          }
 
           // 브라우저 닫기
           await this.closeBrowser()

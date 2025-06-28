@@ -152,7 +152,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ settings, onSave, loading
                 로그인 상태:
                 {' '}
                 {selectedAccount.isLoggedIn ? '로그인됨' : '로그인 필요'}
-                {selectedAccount.lastLogin && ` | 마지막 로그인: ${new Date(selectedAccount.lastLogin).toLocaleString('ko-KR')}`}
+                                 {selectedAccount.lastLogin && ` | 마지막 상태확인: ${new Date(selectedAccount.lastLogin).toLocaleString('ko-KR')}`}
               </Text>
             </div>
           )}
