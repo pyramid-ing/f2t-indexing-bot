@@ -9,9 +9,9 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
-import { firstValueFrom } from 'rxjs'
 import { SiteConfigService } from '../site-config/site-config.service'
 import { NaverAccountService } from './naver-account.service'
+import { sleep } from '@main/app/utils/sleep'
 
 puppeteer.use(StealthPlugin())
 
@@ -53,10 +53,6 @@ export class NaverIndexerService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {}
-
-  private sleep(ms: number) {
-    return new Promise(res => setTimeout(res, ms))
-  }
 
   private async loadCookies(page: Page, naverId?: string) {
     const cookiePath = getNaverCookiePath(naverId)
@@ -180,144 +176,34 @@ export class NaverIndexerService implements OnModuleInit {
         })
       }
 
-      let needLogin = false
+      // 쿠키 로드 및 로그인 상태 확인
       try {
         await this.loadCookies(page, naverId)
         await page.goto(`https://searchadvisor.naver.com/console/site/request/crawl?site=${siteConfig.siteUrl}`, {
           waitUntil: 'networkidle2',
         })
-        await this.sleep(2001)
-        // 1차: authorize로 이동되면 로그인 필요
-        if (page.url().startsWith('https://nid.naver.com/oauth2.0/authorize')) {
-          needLogin = true
-          // authorize 페이지에서 바로 로그인 시도
-          if (!naverId || !naverPw) {
-            await browser.close()
-            throw new NaverLoginError(
-              '쿠키 만료 또는 쿠키 없음. 네이버 아이디/비밀번호를 options.naverId, options.naverPw로 전달해야 자동로그인 가능합니다.',
-              'manualIndexing',
-              true,
-              { hasNaverId: !!naverId, hasNaverPw: !!naverPw },
-            )
-          }
-          this.logger.log('네이버 authorize 페이지에서 로그인 시도')
-          await page.waitForSelector('input#id', { timeout: 10000 })
-          await page.type('input#id', naverId, { delay: 30 })
-          await page.waitForSelector('input#pw', { timeout: 10000 })
-          await page.type('input#pw', naverPw, { delay: 30 })
-          await page.waitForSelector('button[type=submit]', { timeout: 10000 })
-          await page.click('button[type=submit]')
-          await this.sleep(2000)
+        await sleep(2000)
+
+        // 네이버 로그인 페이지로 리다이렉트되면 로그인 필요
+        if (page.url().includes('nid.naver.com')) {
+          throw new NaverLoginError(
+            '네이버 로그인이 필요합니다. 쿠키가 만료되었거나 존재하지 않습니다.',
+            'manualIndexing',
+            true,
+            { currentUrl: page.url() },
+          )
         }
       } catch (error) {
+        await browser.close()
         if (error instanceof NaverLoginError) {
           throw error
         }
-        needLogin = true
-      }
-
-      // 네이버 로그인 자동화
-      if (needLogin) {
-        if (!naverId || !naverPw) {
-          await browser.close()
-          throw new NaverLoginError(
-            '쿠키 만료 또는 쿠키 없음. 네이버 아이디/비밀번호를 options.naverId, options.naverPw로 전달해야 자동로그인 가능합니다.',
-            'manualIndexing',
-            true,
-            { hasNaverId: !!naverId, hasNaverPw: !!naverPw },
-          )
-        }
-        this.logger.log('네이버 로그인 자동화 시작')
-        // nidlogin.login으로 자동 이동될 경우(로그인 실패, 캡챠 등)만 캡챠/에러 처리 루프 진입
-        let captchaTries = 0
-        while (page.url().startsWith('https://nid.naver.com/nidlogin.login') && captchaTries < 2) {
-          // 새 페이지이므로 아이디/비밀번호 재입력
-          await page.waitForSelector('input#id', { timeout: 10000 })
-          await page.evaluate(() => {
-            const idInput = document.querySelector('input#id') as HTMLInputElement
-            if (idInput) idInput.value = ''
-          })
-          await page.type('input#id', naverId, { delay: 30 })
-          await page.waitForSelector('input#pw', { timeout: 10000 })
-          await page.evaluate(() => {
-            const pwInput = document.querySelector('input#pw') as HTMLInputElement
-            if (pwInput) pwInput.value = ''
-          })
-          await page.type('input#pw', naverPw, { delay: 30 })
-          // 로그인 실패(아이디/비번 오류) 감지
-          const loginError = await page.$eval('.error_message', el => el.textContent || '').catch(() => '')
-          if (loginError && loginError.includes('아이디') && loginError.includes('비밀번호')) {
-            await browser.close()
-            throw new NaverAuthError('네이버 로그인 실패: 아이디 또는 비밀번호 오류', 'manualIndexing', {
-              naverId: `${naverId.substring(0, 3)}***`,
-              loginError,
-            })
-          }
-          const captchaDiv = await page.$('#rcapt')
-          if (captchaDiv) {
-            this.logger.warn('캡챠 감지, 외부 서비스로 캡챠 풀이 요청')
-            // 질문 추출
-            const question = await page.$eval('#captcha_info', el => el.textContent || '')
-            // 이미지 추출 (base64)
-            const imgSrc = await page.$eval('#captchaimg', el => el.getAttribute('src') || '')
-            // base64 -> buffer 변환 및 form-data 파일 전송
-            const FormData = (await import('form-data')).default
-            const form = new FormData()
-            form.append('question', question)
-            // data:image/png;base64,... 에서 base64 부분만 추출
-            const base64 = imgSrc.split(',')[1]
-            const imgBuffer = Buffer.from(base64, 'base64')
-            form.append('receipt_image', imgBuffer, { filename: 'captcha.png', contentType: 'image/png' })
-
-            const response = await firstValueFrom(
-              this.httpService.post(`${this.configService.get('n8n.endpoint')}/naver-receipt-capcha`, form, {
-                headers: form.getHeaders(),
-              }),
-            )
-            const answer = response.data?.output?.trim() || ''
-
-            if (!answer) {
-              throw new NaverAuthError('캡챠 풀이 실패: 외부 서비스에서 답변을 받지 못함', 'manualIndexing', {
-                captchaTries,
-                question,
-                hasImageSrc: !!imgSrc,
-              })
-            }
-            // 캡챠 정답 입력
-            await page.waitForSelector('input#captcha', { timeout: 3000 })
-            await page.type('input#captcha', answer, { delay: 30 })
-            await page.waitForSelector('button[type=submit]', { timeout: 3000 })
-            await page.click('button[type=submit]')
-            await this.sleep(2000)
-            captchaTries++
-          } else {
-            break
-          }
-        }
-
-        if (captchaTries >= 2) {
-          await browser.close()
-          throw new NaverAuthError('네이버 로그인 실패: 영수증(캡챠) 3회 이상 실패', 'manualIndexing', {
-            captchaTries,
-            naverId: `${naverId.substring(0, 3)}***`,
-          })
-        }
-        // 로그인 성공 후 쿠키 저장
-        if (!page.url().includes('nid.naver.com')) {
-          this.logger.log('네이버 로그인 성공, 쿠키 저장')
-          await this.saveCookies(page, naverId)
-          // 색인 요청 페이지로 이동
-          await page.goto('https://searchadvisor.naver.com/console/site/request/crawl', {
-            waitUntil: 'networkidle2',
-          })
-          await this.sleep(2000)
-        } else {
-          await browser.close()
-          throw new NaverAuthError('네이버 로그인 실패(캡챠 포함)', 'manualIndexing', {
-            captchaTries,
-            naverId: `${naverId.substring(0, 3)}***`,
-          })
-        }
+        throw new NaverLoginError(
+          '네이버 로그인이 필요합니다. 쿠키가 만료되었거나 존재하지 않습니다.',
+          'manualIndexing',
+          true,
+          { errorMessage: error.message },
+        )
       }
 
       let dialogAppeared = false
@@ -352,7 +238,7 @@ export class NaverIndexerService implements OnModuleInit {
             }
           })
 
-          await this.sleep(1000)
+          await sleep(1000)
           const timeoutMs = 20000
           const pollInterval = 500
           let isSuccess = false
@@ -369,7 +255,7 @@ export class NaverIndexerService implements OnModuleInit {
               return firstRowLink.textContent?.trim() === inputUrl.pathname || firstRowLink.getAttribute('href') === url
             }, url)
             if (isSuccess) break
-            await this.sleep(pollInterval)
+            await sleep(pollInterval)
           }
 
           if (dialogAppeared) {
@@ -435,7 +321,7 @@ export class NaverIndexerService implements OnModuleInit {
               },
             })
           }
-          await this.sleep(1000)
+          await sleep(1000)
         } catch (e: any) {
           const result = {
             url,
@@ -516,7 +402,7 @@ export class NaverIndexerService implements OnModuleInit {
           waitUntil: 'networkidle2',
           timeout: 10000,
         })
-        await this.sleep(500)
+        await sleep(500)
       }
 
       // #account 영역에서 로그인 상태 확인
@@ -787,7 +673,7 @@ export class NaverIndexerService implements OnModuleInit {
           waitUntil: 'networkidle2',
         })
 
-        await this.sleep(2000)
+        await sleep(2000)
 
         // 다시 로그인 페이지로 리다이렉트되지 않았다면 로그인 성공
         if (!this.loginPage.url().includes('nid.naver.com')) {
