@@ -1,24 +1,20 @@
 import { Injectable } from '@nestjs/common'
 import { GoogleAuth } from 'google-auth-library'
-import { SettingsService } from 'src/main/app/shared/settings.service'
 
 @Injectable()
 export class GoogleAuthService {
-  constructor(private readonly settingsService: SettingsService) {}
+  constructor() {}
 
-  private async createGoogleAuth(): Promise<GoogleAuth> {
+  private async createGoogleAuth(serviceAccountJson: string): Promise<GoogleAuth> {
     try {
-      const globalSettings = await this.settingsService.getGlobalEngineSettings()
-      const googleConfig = globalSettings.google
-
-      if (!googleConfig.serviceAccountJson) {
+      if (!serviceAccountJson) {
         throw new Error('Google Service Account JSON 설정이 완료되지 않았습니다.')
       }
 
       // Service Account JSON 파싱
       let serviceAccountData
       try {
-        serviceAccountData = JSON.parse(googleConfig.serviceAccountJson)
+        serviceAccountData = JSON.parse(serviceAccountJson)
       }
       catch (error) {
         throw new Error('Service Account JSON 파싱 실패: 유효하지 않은 JSON 형식입니다.')
@@ -52,9 +48,9 @@ export class GoogleAuthService {
     }
   }
 
-  async getAccessToken(): Promise<string> {
+  async getAccessToken(serviceAccountJson: string): Promise<string> {
     try {
-      const auth = await this.createGoogleAuth()
+      const auth = await this.createGoogleAuth(serviceAccountJson)
       const client = await auth.getClient()
       const accessTokenResponse = await client.getAccessToken()
 
@@ -69,8 +65,8 @@ export class GoogleAuthService {
     }
   }
 
-  async getAuthHeaders(): Promise<Record<string, string>> {
-    const accessToken = await this.getAccessToken()
+  async getAuthHeaders(serviceAccountJson: string): Promise<Record<string, string>> {
+    const accessToken = await this.getAccessToken(serviceAccountJson)
     return {
       'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',

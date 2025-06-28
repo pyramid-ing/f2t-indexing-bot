@@ -4,6 +4,7 @@ import { PrismaService } from '@main/app/shared/prisma.service'
 import { GoogleAuthError, GoogleConfigError, GoogleIndexerError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
+import { IndexProvider, IndexStatus } from '@prisma/client'
 import { firstValueFrom } from 'rxjs'
 
 export interface GoogleIndexerOptions {
@@ -38,14 +39,29 @@ export class GoogleIndexerService {
 
       const config = siteConfig.googleConfig
 
-      if (!config.serviceAccountEmail || !config.privateKey) {
+      if (!config.serviceAccountJson) {
         throw new GoogleConfigError(
-          'Google Service Account 설정이 올바르지 않습니다.',
+          'Google Service Account JSON 설정이 필요합니다.',
           'getGoogleConfigForSite',
           'service_account',
           {
-            hasServiceAccountEmail: !!config.serviceAccountEmail,
-            hasPrivateKey: !!config.privateKey,
+            hasServiceAccountJson: !!config.serviceAccountJson,
+            siteId,
+          },
+        )
+      }
+
+      // Service Account JSON 유효성 검사
+      try {
+        JSON.parse(config.serviceAccountJson)
+      }
+      catch (error) {
+        throw new GoogleConfigError(
+          'Google Service Account JSON 형식이 올바르지 않습니다.',
+          'getGoogleConfigForSite',
+          'service_account',
+          {
+            parseError: error.message,
             siteId,
           },
         )
@@ -73,7 +89,7 @@ export class GoogleIndexerService {
 
       let headers
       try {
-        headers = await this.googleAuthService.getAuthHeaders()
+        headers = await this.googleAuthService.getAuthHeaders(config.serviceAccountJson)
       }
       catch (error) {
         throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {
@@ -90,8 +106,8 @@ export class GoogleIndexerService {
         data: {
           siteId,
           targetUrl: url,
-          provider: 'GOOGLE',
-          status: 'SUCCESS',
+          provider: IndexProvider.GOOGLE,
+          status: IndexStatus.SUCCESS,
           message: `Type: ${type}`,
           responseData: JSON.stringify(response.data),
         },
@@ -108,8 +124,8 @@ export class GoogleIndexerService {
         data: {
           siteId,
           targetUrl: url,
-          provider: 'GOOGLE',
-          status: 'FAILED',
+          provider: IndexProvider.GOOGLE,
+          status: IndexStatus.FAILED,
           message: error.message,
           responseData: JSON.stringify(error.response?.data || {}),
         },
@@ -164,7 +180,7 @@ export class GoogleIndexerService {
 
       let headers
       try {
-        headers = await this.googleAuthService.getAuthHeaders()
+        headers = await this.googleAuthService.getAuthHeaders(config.serviceAccountJson)
       }
       catch (error) {
         throw new GoogleAuthError(`Google 인증 헤더 생성 실패: ${error.message}`, 'getAuthHeaders', {

@@ -35,13 +35,7 @@ const Settings: React.FC = () => {
   }>({
     google: {
       use: false,
-      serviceAccountEmail: '',
-      privateKey: '',
-      oauth2ClientId: '',
-      oauth2ClientSecret: '',
-      oauth2AccessToken: '',
-      oauth2RefreshToken: '',
-      oauth2TokenExpiry: '',
+      serviceAccountJson: '',
     },
     bing: {
       use: false,
