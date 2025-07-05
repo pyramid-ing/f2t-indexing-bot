@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common'
-import { JobProcessor, JobResult } from '../job/job.processor.interface'
+import { JobProcessor, JobResult, Job } from '../job/job.processor.interface'
 import { BingIndexerService } from '../bing-indexer/bing-indexer.service'
 import { GoogleIndexerService } from '../google/indexer/google-indexer.service'
 import { NaverIndexerService } from '../naver-indexer/naver-indexer.service'
 import { DaumIndexerService } from '../daum-indexer/daum-indexer.service'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
-import { JobService } from '../job/job.service'
 import { JobType } from '../job/job.types'
-import { CreateIndexJobDto } from './index-job.controller'
+import { CreateIndexJobDto } from './index-job.types'
+import { JobService } from '../job/job.service'
 
 interface SubmitUrlResult {
   success: boolean
@@ -15,31 +15,15 @@ interface SubmitUrlResult {
   resultUrl?: string
 }
 
-interface Job {
-  id: string
-  type: string
-  subject: string
-  desc: string
-  status: string
-  priority: number
-  scheduledAt: Date
-  startedAt?: Date | null
-  completedAt?: Date | null
-  resultMsg?: string | null
-  errorMessage?: string | null
-  createdAt: Date
-  updatedAt: Date
-}
-
 @Injectable()
 export class IndexJobService implements JobProcessor {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly jobService: JobService,
     private readonly bingIndexer: BingIndexerService,
     private readonly googleIndexer: GoogleIndexerService,
     private readonly naverIndexer: NaverIndexerService,
     private readonly daumIndexer: DaumIndexerService,
+    private readonly jobService: JobService,
   ) {}
 
   canProcess(job: Job): boolean {
@@ -124,10 +108,11 @@ export class IndexJobService implements JobProcessor {
     // Job 생성
     const job = await this.jobService.create({
       type: JobType.INDEX,
-      subject: `${provider} 인덱싱: ${url}`,
-      desc: `사이트 ${site.name}(${site.domain})의 URL을 ${provider}에 인덱싱 요청`,
-      scheduledAt,
-      priority,
+      data: {
+        url,
+        provider,
+        siteId,
+      },
     })
 
     // IndexJob 생성

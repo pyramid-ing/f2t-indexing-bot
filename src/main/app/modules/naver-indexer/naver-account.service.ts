@@ -6,6 +6,7 @@ export interface CreateNaverAccountDto {
   naverId: string
   password: string
   isActive?: boolean
+  siteId: number // number 타입의 사이트 ID
 }
 
 export interface UpdateNaverAccountDto {
@@ -15,6 +16,7 @@ export interface UpdateNaverAccountDto {
   isActive?: boolean
   isLoggedIn?: boolean
   lastLogin?: Date
+  siteId?: number // number 타입의 사이트 ID
 }
 
 @Injectable()
@@ -22,21 +24,30 @@ export class NaverAccountService {
   constructor(private readonly prisma: PrismaService) {}
 
   async getAllAccounts() {
-    return await this.prisma.naverAccount.findMany({
+    return this.prisma.naverAccount.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        site: true, // 사이트 정보 포함
+      },
     })
   }
 
   async getActiveAccounts() {
-    return await this.prisma.naverAccount.findMany({
+    return this.prisma.naverAccount.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' },
+      include: {
+        site: true, // 사이트 정보 포함
+      },
     })
   }
 
   async getAccountById(id: number) {
     const account = await this.prisma.naverAccount.findUnique({
       where: { id },
+      include: {
+        site: true, // 사이트 정보 포함
+      },
     })
 
     if (!account) {
@@ -47,8 +58,11 @@ export class NaverAccountService {
   }
 
   async getAccountByNaverId(naverId: string) {
-    return await this.prisma.naverAccount.findUnique({
+    return this.prisma.naverAccount.findUnique({
       where: { naverId },
+      include: {
+        site: true, // 사이트 정보 포함
+      },
     })
   }
 
@@ -59,12 +73,26 @@ export class NaverAccountService {
       throw new Error(`이미 등록된 네이버 아이디입니다: ${data.naverId}`)
     }
 
-    return await this.prisma.naverAccount.create({
+    // 사이트 존재 여부 확인
+    const site = await this.prisma.site.findUnique({
+      where: { id: data.siteId },
+    })
+    if (!site) {
+      throw new NotFoundException(`사이트를 찾을 수 없습니다. (ID: ${data.siteId})`)
+    }
+
+    return this.prisma.naverAccount.create({
       data: {
         name: data.name,
         naverId: data.naverId,
         password: data.password,
         isActive: data.isActive ?? true,
+        site: {
+          connect: { id: data.siteId },
+        },
+      },
+      include: {
+        site: true, // 생성된 계정의 사이트 정보 포함
       },
     })
   }
@@ -81,9 +109,31 @@ export class NaverAccountService {
       }
     }
 
-    return await this.prisma.naverAccount.update({
+    // 사이트 ID가 변경되는 경우 존재 여부 확인
+    if (data.siteId) {
+      const site = await this.prisma.site.findUnique({
+        where: { id: data.siteId },
+      })
+      if (!site) {
+        throw new NotFoundException(`사이트를 찾을 수 없습니다. (ID: ${data.siteId})`)
+      }
+    }
+
+    const { siteId, ...updateData } = data
+
+    return this.prisma.naverAccount.update({
       where: { id },
-      data,
+      data: {
+        ...updateData,
+        site: siteId
+          ? {
+              connect: { id: siteId },
+            }
+          : undefined,
+      },
+      include: {
+        site: true, // 업데이트된 계정의 사이트 정보 포함
+      },
     })
   }
 
@@ -104,7 +154,7 @@ export class NaverAccountService {
       throw new NotFoundException(`네이버 계정을 찾을 수 없습니다. (naverId: ${naverId})`)
     }
 
-    return await this.prisma.naverAccount.update({
+    return this.prisma.naverAccount.update({
       where: { naverId },
       data: {
         isLoggedIn,

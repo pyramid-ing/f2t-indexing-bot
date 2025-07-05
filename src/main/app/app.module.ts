@@ -4,7 +4,6 @@ import customConfig from '@main/app/config/custom-config'
 import { BingIndexerModule } from '@main/app/modules/bing-indexer/bing-indexer.module'
 import { DaumIndexerModule } from '@main/app/modules/daum-indexer/daum-indexer.module'
 import { GoogleModule } from '@main/app/modules/google/google.module'
-import { IndexingModule } from '@main/app/modules/indexing/indexing.module'
 import { NaverIndexerModule } from '@main/app/modules/naver-indexer/naver-indexer.module'
 import { SettingsModule } from '@main/app/modules/settings/settings.module'
 import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
@@ -14,6 +13,8 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { APP_FILTER, HttpAdapterHost } from '@nestjs/core'
 import { app, BrowserWindow } from 'electron'
+import { JobModule } from '@main/app/modules/job/job.module'
+import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
 
 @Module({
   imports: [
@@ -51,7 +52,8 @@ import { app, BrowserWindow } from 'electron'
     GoogleModule,
     SiteConfigModule,
     SettingsModule,
-    IndexingModule,
+    JobModule,
+    IndexJobModule,
   ],
   providers: [
     {

@@ -37,8 +37,8 @@ export interface SiteConfigData {
   naverConfig?: NaverSiteConfig
   daumConfig?: DaumSiteConfig
   bingConfig?: BingSiteConfig
-  createdAt?: string
-  updatedAt?: string
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 export interface EngineConfig {

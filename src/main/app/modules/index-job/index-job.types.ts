@@ -1,15 +1,30 @@
-export type IndexProvider = 'GOOGLE' | 'NAVER' | 'DAUM' | 'BING'
+import { Transform } from 'class-transformer'
+import { IsEnum, IsString, IsNumber, IsOptional, IsDate } from 'class-validator'
 
-export interface CreateIndexJobDto {
-  siteId: string
-  provider: IndexProvider
-  url: string
-  scheduledAt?: Date
-  priority?: number
+export enum IndexProvider {
+  GOOGLE = 'GOOGLE',
+  NAVER = 'NAVER',
+  DAUM = 'DAUM',
+  BING = 'BING',
 }
 
-export interface IndexJobResult {
-  success: boolean
-  message: string
-  resultUrl?: string
+export class CreateIndexJobDto {
+  @IsString()
+  url: string
+
+  @IsNumber()
+  siteId: number
+
+  @Transform(({ value }) => value.toUpperCase())
+  @IsEnum(IndexProvider)
+  provider: IndexProvider
+
+  @IsOptional()
+  @IsDate()
+  @Transform(({ value }) => new Date(value))
+  scheduledAt?: Date
+
+  @IsOptional()
+  @IsNumber()
+  priority?: number
 }

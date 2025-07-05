@@ -1,31 +1,11 @@
 import { Controller, Get, Post, Delete, Param, Query, Body, Put } from '@nestjs/common'
-import { PrismaService } from '../common/prisma/prisma.service'
-import { JobQueueProcessor } from './job-queue.processor'
 import { JobService } from './job.service'
 import { JobLogsService } from '../job-logs/job-logs.service'
-import { CreateJobDto, JobStatus, UpdateJobStatusDto } from './job.types'
-
-// 작업 타입 상수
-export const JOB_TYPE = {
-  POST: 'post',
-  GENERATE_TOPIC: 'generate_topic',
-} as const
-
-// 작업 상태 상수
-export const JOB_STATUS = {
-  PENDING: 'pending',
-  PROCESSING: 'processing',
-  COMPLETED: 'completed',
-  FAILED: 'failed',
-} as const
-
-export type JobType = (typeof JOB_TYPE)[keyof typeof JOB_TYPE]
+import { CreateJobDto, JobStatus, UpdateJobDto } from './job.types'
 
 @Controller('jobs')
 export class JobController {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly jobProcessor: JobQueueProcessor,
     private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
   ) {}
@@ -80,7 +60,7 @@ export class JobController {
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() data: UpdateJobStatusDto) {
+  async update(@Param('id') id: string, @Body() data: UpdateJobDto) {
     return this.jobService.update(id, data)
   }
 

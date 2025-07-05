@@ -7,7 +7,6 @@ import { BingIndexerOptions, BingSubmitPayload } from 'src/main/app/modules/bing
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import axios from 'axios'
 import { SettingsService } from '@main/app/modules/settings/settings.service'
-import { JobService } from '@main/app/modules/job/job.service'
 import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 
 @Injectable()
@@ -20,7 +19,6 @@ export class BingIndexerService {
     private readonly prisma: PrismaService,
     private readonly siteConfigService: SiteConfigService,
     private readonly settingsService: SettingsService,
-    private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
   ) {}
 
@@ -31,14 +29,14 @@ export class BingIndexerService {
       if (!siteConfig.bingConfig || !siteConfig.bingConfig.use) {
         throw new BingConfigError('Bing 색인이 비활성화되어 있습니다.', 'getBingConfigForSite', 'indexing_service', {
           enabled: false,
-          siteId,
+          siteId: siteId.toString(),
         })
       }
 
       if (!siteConfig.bingConfig.apiKey) {
         throw new BingConfigError('Bing API 키가 설정되지 않았습니다.', 'getBingConfigForSite', 'api_key', {
           hasApiKey: false,
-          siteId,
+          siteId: siteId.toString(),
         })
       }
 
@@ -51,7 +49,7 @@ export class BingIndexerService {
         throw error
       }
       throw new BingConfigError(`Bing 설정 조회 실패: ${error.message}`, 'getBingConfigForSite', 'settings_fetch', {
-        siteId,
+        siteId: siteId.toString(),
       })
     }
   }
@@ -81,14 +79,22 @@ export class BingIndexerService {
       )
 
       // 로그 기록
-      await this.prisma.indexingLog.create({
-        data: {
-          siteId,
-          targetUrl: url,
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
           provider: 'BING',
-          status: 'SUCCESS',
-          responseData: JSON.stringify(response.data),
         },
+      })
+
+      if (!job) {
+        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+        return response.data
+      }
+
+      await this.jobLogsService.create({
+        jobId: job.jobId.toString(),
+        message: `Bing 인덱싱 요청 성공: ${url}`,
+        level: 'info',
       })
 
       if (response.data && response.data.d && response.data.d.ErrorCode) {
@@ -106,6 +112,15 @@ export class BingIndexerService {
       }
 
       // 성공 로그 기록
+      await this.jobLogsService.create({
+        jobId: job.jobId.toString(),
+        message: `Bing 인덱싱 성공: ${url}`,
+        level: 'info',
+      })
+
+      return response.data
+    } catch (error) {
+      // 실패 로그 기록
       const job = await this.prisma.indexJob.findFirst({
         where: {
           url,
@@ -115,27 +130,22 @@ export class BingIndexerService {
 
       if (!job) {
         this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
-        return response.data
+        throw error
       }
+
+      // 작업 상태 및 결과 메시지 업데이트
+      await this.prisma.job.update({
+        where: { id: job.jobId },
+        data: {
+          status: 'failed',
+          resultMsg: error.message,
+        },
+      })
 
       await this.jobLogsService.create({
         jobId: job.jobId,
-        message: `Bing 인덱싱 성공: ${url}`,
-        level: 'info',
-      })
-
-      return response.data
-    } catch (error) {
-      // 실패 로그 기록
-      await this.prisma.indexingLog.create({
-        data: {
-          siteId,
-          targetUrl: url,
-          provider: 'BING',
-          status: 'FAILED',
-          message: error.message,
-          responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
-        },
+        message: `Bing 인덱싱 실패: ${error.message}`,
+        level: 'error',
       })
 
       if (error instanceof BingConfigError) {
@@ -146,7 +156,7 @@ export class BingIndexerService {
       if (error.response?.status === 401) {
         throw new BingAuthError('Bing API 인증이 실패했습니다. API 키를 확인해주세요.', 'submitUrlToBing', {
           url,
-          siteId,
+          siteId: siteId.toString(),
           responseStatus: 401,
         })
       } else if (error.response?.status === 403) {
@@ -167,24 +177,6 @@ export class BingIndexerService {
         )
       }
 
-      // 실패 로그 기록
-      const job = await this.prisma.indexJob.findFirst({
-        where: {
-          url,
-          provider: 'BING',
-        },
-      })
-
-      if (job) {
-        await this.jobLogsService.create({
-          jobId: job.jobId,
-          message: `Bing 인덱싱 실패: ${error.message}`,
-          level: 'error',
-        })
-      } else {
-        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
-      }
-
       throw new BingSubmissionError(
         `Bing 색인 요청 실패: ${error.message}`,
         'submitUrlToBing',
@@ -201,10 +193,8 @@ export class BingIndexerService {
 
   async submitMultipleUrlsToBing(siteId: number, urls: string[]): Promise<any> {
     try {
-      // 사이트 존재 여부 검증
+      // 사이트 존재 여부 및 도메인 일치 검증
       await this.siteConfigService.validateSiteExists(siteId)
-
-      // 각 URL에 대해 도메인 일치 검증
       for (const url of urls) {
         await this.siteConfigService.validateUrlDomain(siteId, url)
       }
@@ -237,14 +227,31 @@ export class BingIndexerService {
 
       // 각 URL마다 성공 로그 기록
       for (const url of urls) {
-        await this.prisma.indexingLog.create({
-          data: {
-            siteId,
-            targetUrl: url,
+        const job = await this.prisma.indexJob.findFirst({
+          where: {
+            url,
             provider: 'BING',
-            status: 'SUCCESS',
-            responseData: JSON.stringify(response.data),
           },
+        })
+
+        if (!job) {
+          this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+          continue
+        }
+
+        // 작업 상태 및 결과 메시지 업데이트
+        await this.prisma.job.update({
+          where: { id: job.jobId },
+          data: {
+            status: 'completed',
+            resultMsg: '인덱싱 요청이 성공적으로 처리되었습니다.',
+          },
+        })
+
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Bing 인덱싱 성공: ${url}`,
+          level: 'info',
         })
       }
 
@@ -252,15 +259,31 @@ export class BingIndexerService {
     } catch (error) {
       // 각 URL마다 실패 로그 기록
       for (const url of urls) {
-        await this.prisma.indexingLog.create({
-          data: {
-            siteId,
-            targetUrl: url,
+        const job = await this.prisma.indexJob.findFirst({
+          where: {
+            url,
             provider: 'BING',
-            status: 'FAILED',
-            message: error.message,
-            responseData: error.response?.data ? JSON.stringify(error.response.data) : null,
           },
+        })
+
+        if (!job) {
+          this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+          continue
+        }
+
+        // 작업 상태 및 결과 메시지 업데이트
+        await this.prisma.job.update({
+          where: { id: job.jobId },
+          data: {
+            status: 'failed',
+            resultMsg: error.message,
+          },
+        })
+
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Bing 인덱싱 실패: ${error.message}`,
+          level: 'error',
         })
       }
 
@@ -272,7 +295,7 @@ export class BingIndexerService {
       if (error.response?.status === 401) {
         throw new BingAuthError('Bing API 인증이 실패했습니다. API 키를 확인해주세요.', 'submitMultipleUrlsToBing', {
           urls,
-          siteId,
+          siteId: siteId.toString(),
           responseStatus: 401,
         })
       } else if (error.response?.status === 403) {
@@ -382,8 +405,17 @@ export class BingIndexerService {
       })
 
       if (job?.job) {
+        // 작업 상태 및 결과 메시지 업데이트
+        await this.prisma.job.update({
+          where: { id: job.job.id },
+          data: {
+            status: 'completed',
+            resultMsg: '인덱싱 요청이 성공적으로 처리되었습니다.',
+          },
+        })
+
         await this.jobLogsService.create({
-          jobId: job.job.id,
+          jobId: job.job.id.toString(),
           message: `Bing 인덱싱 요청 성공: ${url}`,
           level: 'info',
         })
@@ -406,8 +438,17 @@ export class BingIndexerService {
       })
 
       if (job?.job) {
+        // 작업 상태 및 결과 메시지 업데이트
+        await this.prisma.job.update({
+          where: { id: job.job.id },
+          data: {
+            status: 'failed',
+            resultMsg: error.message,
+          },
+        })
+
         await this.jobLogsService.create({
-          jobId: job.job.id,
+          jobId: job.job.id.toString(),
           message: `Bing 인덱싱 요청 실패: ${error.message}`,
           level: 'error',
         })

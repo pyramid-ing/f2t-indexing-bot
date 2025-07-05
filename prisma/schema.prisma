@@ -38,8 +38,16 @@ model Site {
   id          Int      @id @default(autoincrement())
   name          String        // 사이트 표시명 (예: "내 블로그", "회사 홈페이지")
   domain        String        @unique // 사이트 도메인 (예: "example.com")
+  siteUrl       String              // 전체 URL (예: https://example.com)
   description   String?
   isActive      Boolean       @default(true) // 활성화 여부
+  
+  // 검색엔진별 설정 (JSON 형태로 저장)
+  googleConfig  String        @default("{}")   // Google 설정
+  naverConfig   String        @default("{}")   // Naver 설정  
+  daumConfig    String        @default("{}")   // Daum 설정
+  bingConfig    String        @default("{}")   // Bing 설정
+  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   indexJobs     IndexJob[]
@@ -54,6 +62,8 @@ model Job {
   status    String    @default("pending") // pending, in_progress, completed, failed, cancelled
   type      String    // index, blog_post
   data      String    // JSON string
+  resultMsg String?
+  errorMsg String?
   logs      JobLog[]
   indexJob  IndexJob?
 }

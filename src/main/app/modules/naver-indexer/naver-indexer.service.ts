@@ -3,9 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { NaverAuthError, NaverBrowserError, NaverLoginError, NaverSubmissionError } from '@main/filters/error.types'
-import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
@@ -13,7 +11,6 @@ import { NaverAccountService } from './naver-account.service'
 import { sleep } from '@main/app/utils/sleep'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import axios from 'axios'
-import { JobService } from '@main/app/modules/job/job.service'
 import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 
 puppeteer.use(StealthPlugin())
@@ -47,13 +44,10 @@ export class NaverIndexerService implements OnModuleInit {
   private loginPage: Page | null = null
 
   constructor(
-    private readonly configService: ConfigService,
-    private readonly httpService: HttpService,
     private readonly prisma: PrismaService,
     private readonly settingsService: SettingsService,
     private readonly siteConfigService: SiteConfigService,
     private readonly naverAccountService: NaverAccountService,
-    private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
   ) {}
 
@@ -280,15 +274,22 @@ export class NaverIndexerService implements OnModuleInit {
             results.push(result)
 
             // 로그 기록 (RETRY 상태로 기록)
-            await this.prisma.indexingLog.create({
-              data: {
-                siteId,
-                targetUrl: url,
+            const job = await this.prisma.indexJob.findFirst({
+              where: {
+                url,
                 provider: 'NAVER',
-                status: 'RETRY',
-                message: result.msg,
-                responseData: JSON.stringify(result),
               },
+            })
+
+            if (!job) {
+              this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+              continue
+            }
+
+            await this.jobLogsService.create({
+              jobId: job.jobId.toString(),
+              message: `Naver 인덱싱 건너뜀: ${result.msg}`,
+              level: 'info',
             })
 
             continue
@@ -317,7 +318,7 @@ export class NaverIndexerService implements OnModuleInit {
             }
 
             await this.jobLogsService.create({
-              jobId: job.jobId,
+              jobId: job.jobId.toString(),
               message: `Naver 인덱싱 성공: ${url}`,
               level: 'info',
             })
@@ -352,7 +353,7 @@ export class NaverIndexerService implements OnModuleInit {
             }
 
             await this.jobLogsService.create({
-              jobId: job.jobId,
+              jobId: job.jobId.toString(),
               message: `Naver 인덱싱 실패: ${result.msg}`,
               level: 'error',
             })
@@ -372,15 +373,22 @@ export class NaverIndexerService implements OnModuleInit {
           results.push(result)
 
           // 에러 로그 기록
-          await this.prisma.indexingLog.create({
-            data: {
-              siteId,
-              targetUrl: url,
+          const job = await this.prisma.indexJob.findFirst({
+            where: {
+              url,
               provider: 'NAVER',
-              status: 'FAILED',
-              message: result.msg,
-              responseData: JSON.stringify(result),
             },
+          })
+
+          if (!job) {
+            this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+            continue
+          }
+
+          await this.jobLogsService.create({
+            jobId: job.jobId.toString(),
+            message: `Naver 인덱싱 에러: ${result.msg}`,
+            level: 'error',
           })
         }
       }
@@ -817,7 +825,7 @@ export class NaverIndexerService implements OnModuleInit {
 
       // 성공 로그 기록
       await this.jobLogsService.create({
-        jobId: job.jobId,
+        jobId: job.jobId.toString(),
         message: `Naver 인덱싱 성공: ${url}`,
         level: 'info',
       })
@@ -839,7 +847,7 @@ export class NaverIndexerService implements OnModuleInit {
       if (job) {
         // 실패 로그 기록
         await this.jobLogsService.create({
-          jobId: job.jobId,
+          jobId: job.jobId.toString(),
           message: `Naver 인덱싱 실패: ${error.message}`,
           level: 'error',
         })

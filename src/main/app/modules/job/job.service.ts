@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
-import { CreateJobDto, GetJobsOptions, UpdateJobDto } from './job.types'
+import { CreateJobDto, UpdateJobDto, JobStatus, JobType } from './job.types'
+import { IndexProvider } from '../index-job/index-job.types'
+import { Prisma } from '@prisma/client'
 
 @Injectable()
 export class JobService {
@@ -8,16 +10,36 @@ export class JobService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async createJob(dto: CreateJobDto) {
+  async create(dto: CreateJobDto) {
     try {
-      return await this.prisma.job.create({
+      const job = await this.prisma.job.create({
         data: {
           type: dto.type,
-          status: 'pending',
+          status: JobStatus.PENDING,
           data: JSON.stringify(dto.data),
         },
         include: {
           logs: true,
+          indexJob: true,
+        },
+      })
+
+      if (dto.type === JobType.INDEX) {
+        await this.prisma.indexJob.create({
+          data: {
+            jobId: job.id,
+            url: dto.data.url,
+            provider: dto.data.provider as IndexProvider,
+            siteId: dto.data.siteId,
+          },
+        })
+      }
+
+      return await this.prisma.job.findUnique({
+        where: { id: job.id },
+        include: {
+          logs: true,
+          indexJob: true,
         },
       })
     } catch (error) {
@@ -26,9 +48,9 @@ export class JobService {
     }
   }
 
-  async updateJob(id: number, dto: UpdateJobDto) {
+  async update(id: string, dto: UpdateJobDto) {
     try {
-      const updateData: any = {}
+      const updateData: Prisma.JobUpdateInput = {}
 
       if (dto.status) {
         updateData.status = dto.status
@@ -38,11 +60,20 @@ export class JobService {
         updateData.data = JSON.stringify(dto.data)
       }
 
+      if (dto.resultMsg) {
+        updateData.resultMsg = dto.resultMsg
+      }
+
+      if (dto.errorMsg) {
+        updateData.errorMsg = dto.errorMsg
+      }
+
       return await this.prisma.job.update({
         where: { id },
         data: updateData,
         include: {
           logs: true,
+          indexJob: true,
         },
       })
     } catch (error) {
@@ -51,12 +82,13 @@ export class JobService {
     }
   }
 
-  async getJob(id: number) {
+  async findOne(id: string) {
     try {
       return await this.prisma.job.findUnique({
         where: { id },
         include: {
           logs: true,
+          indexJob: true,
         },
       })
     } catch (error) {
@@ -65,28 +97,23 @@ export class JobService {
     }
   }
 
-  async getJobs(options: GetJobsOptions = {}) {
+  async findAll(options: {
+    where?: Prisma.JobWhereInput
+    orderBy?: Prisma.JobOrderByWithRelationInput
+    skip?: number
+    take?: number
+  }) {
     try {
-      const { status, type, skip = 0, take = 10 } = options
-      const where: any = {}
-
-      if (status) {
-        where.status = status
-      }
-
-      if (type) {
-        where.type = type
-      }
+      const { where, orderBy, skip, take } = options
 
       return await this.prisma.job.findMany({
         where,
+        orderBy,
         skip,
         take,
-        orderBy: {
-          createdAt: 'desc',
-        },
         include: {
           logs: true,
+          indexJob: true,
         },
       })
     } catch (error) {
@@ -95,13 +122,48 @@ export class JobService {
     }
   }
 
-  async deleteJob(id: number) {
+  async delete(id: string) {
     try {
       return await this.prisma.job.delete({
         where: { id },
       })
     } catch (error) {
       this.logger.error(`작업 삭제 실패 (ID: ${id}):`, error)
+      throw error
+    }
+  }
+
+  async deleteMany(ids: string[]) {
+    try {
+      return await this.prisma.job.deleteMany({
+        where: {
+          id: {
+            in: ids,
+          },
+        },
+      })
+    } catch (error) {
+      this.logger.error(`다중 작업 삭제 실패:`, error)
+      throw error
+    }
+  }
+
+  async findNextPendingJob() {
+    try {
+      return await this.prisma.job.findFirst({
+        where: {
+          status: JobStatus.PENDING,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+        include: {
+          logs: true,
+          indexJob: true,
+        },
+      })
+    } catch (error) {
+      this.logger.error('대기 중인 작업 조회 실패:', error)
       throw error
     }
   }

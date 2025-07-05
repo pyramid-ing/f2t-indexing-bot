@@ -1,15 +1,35 @@
-export type JobStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled'
-export type JobType = 'index'
+import { IndexProvider } from '../index-job/index-job.types'
+
+export enum JobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing`',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+  CANCELLED = 'cancelled',
+}
+
+export enum JobType {
+  INDEX = 'index',
+}
+
 export type JobLogLevel = 'info' | 'error'
+
+interface IndexJobData {
+  url: string
+  provider: IndexProvider
+  siteId: number
+}
 
 export interface CreateJobDto {
   type: JobType
-  data: Record<string, any>
+  data: IndexJobData
 }
 
 export interface UpdateJobDto {
   status?: JobStatus
   data?: Record<string, any>
+  resultMsg?: string
+  errorMsg?: string
 }
 
 export interface CreateJobLogDto {
@@ -26,14 +46,14 @@ export interface GetJobsOptions {
 }
 
 export interface JobWithLogs {
-  id: number
+  id: string
   createdAt: Date
   updatedAt: Date
   status: JobStatus
   type: JobType
   data: string
   logs: {
-    id: number
+    id: string
     createdAt: Date
     message: string
     level: JobLogLevel

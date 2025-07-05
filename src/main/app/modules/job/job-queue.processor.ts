@@ -4,7 +4,6 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { JobStatus, JobType } from './job.types'
 import { JobService } from './job.service'
 import { JobLogsService } from '../job-logs/job-logs.service'
-import { JobLogLevel } from './job.types'
 import { IndexJobService } from '../index-job/index-job.service'
 
 @Injectable()
@@ -31,7 +30,7 @@ export class JobQueueProcessor implements OnModuleInit {
       },
       data: {
         status: JobStatus.FAILED,
-        errorMessage: '시스템 재시작으로 인해 작업이 중단되었습니다.',
+        errorMsg: '시스템 재시작으로 인해 작업이 중단되었습니다.',
       },
     })
   }
@@ -68,7 +67,7 @@ export class JobQueueProcessor implements OnModuleInit {
       await this.jobLogsService.create({
         jobId: job.id,
         message: '작업 처리를 시작합니다.',
-        level: JobLogLevel.INFO,
+        level: 'info',
       })
 
       const processor = this.processors[job.type]
@@ -88,19 +87,19 @@ export class JobQueueProcessor implements OnModuleInit {
       await this.jobLogsService.create({
         jobId: job.id,
         message: `작업이 완료되었습니다: ${result.message}`,
-        level: JobLogLevel.INFO,
+        level: 'info',
       })
     } catch (error) {
       // 오류 발생 시 처리
       await this.jobService.update(job.id, {
         status: JobStatus.FAILED,
-        errorMessage: error.message,
+        errorMsg: error.message,
       })
 
       await this.jobLogsService.create({
         jobId: job.id,
         message: `작업 처리 중 오류 발생: ${error.message}`,
-        level: JobLogLevel.ERROR,
+        level: 'error',
       })
 
       this.logger.error(`작업 ${job.id} 처리 중 오류 발생: ${error.message}`)
