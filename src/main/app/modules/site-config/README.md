@@ -11,7 +11,8 @@
 - `GoogleConfig`: Google 색인 및 OAuth 설정
 - `DaumConfig`: Daum 색인 설정
 - `NaverConfig`: Naver 색인 설정
-- `IndexingLog`: 색인 작업 로그
+- `Job`: 작업 정보
+- `JobLog`: 작업 로그
 
 ## API 엔드포인트
 
@@ -198,18 +199,14 @@ curl -X PUT http://localhost:3030/site-config/https%3A%2F%2Fmyblog.com/google \
 2. **URL 인코딩**: 사이트 URL은 URL 인코딩하여 요청해야 합니다.
 3. **트랜잭션**: 관련 설정들은 트랜잭션으로 처리되어 데이터 일관성을 보장합니다.
 
-## 색인 로그
+## 작업 로그
 
-색인 작업의 결과는 `IndexingLog` 테이블에 자동으로 기록됩니다:
+작업의 결과는 `JobLog` 테이블에 자동으로 기록됩니다:
 
 ```typescript
-// 색인 로그 생성 예시
-await prisma.createIndexingLog({
-  siteUrl: 'https://myblog.com',
-  targetUrl: 'https://myblog.com/post1',
-  provider: 'GOOGLE',
-  status: 'SUCCESS',
-  message: '색인 요청 완료',
-  responseData: { /* API 응답 데이터 */ }
+await jobLogsService.create({
+  jobId: job.id,
+  message: '작업 성공',
+  level: 'info',
 })
 ```

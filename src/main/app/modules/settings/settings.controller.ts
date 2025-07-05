@@ -1,6 +1,6 @@
-import { PrismaService } from '@main/app/shared/prisma.service'
-import { SettingsService } from '@main/app/shared/settings.service'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { Body, Controller, Get, Logger, Put } from '@nestjs/common'
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 
 @Controller('settings')
 export class SettingsController {

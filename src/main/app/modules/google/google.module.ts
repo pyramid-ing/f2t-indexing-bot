@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common'
-import { GoogleBloggerModule } from 'src/main/app/modules/google/blogger/google-blogger.module'
-import { GoogleIndexerModule } from 'src/main/app/modules/google/indexer/google-indexer.module'
-import { GoogleOauthModule } from 'src/main/app/modules/google/oauth/google-oauth.module'
+import { GoogleOauthModule } from './oauth/google-oauth.module'
+import { GoogleIndexerModule } from './indexer/google-indexer.module'
+import { GoogleAuthService } from './oauth/google-auth.service'
+import { SettingsModule } from '../settings/settings.module'
 
 @Module({
-  imports: [GoogleIndexerModule, GoogleBloggerModule, GoogleOauthModule],
-  exports: [GoogleIndexerModule, GoogleBloggerModule, GoogleOauthModule],
+  imports: [SettingsModule, GoogleOauthModule, GoogleIndexerModule],
+  providers: [GoogleAuthService],
+  exports: [GoogleAuthService, GoogleOauthModule, GoogleIndexerModule],
 })
 export class GoogleModule {}

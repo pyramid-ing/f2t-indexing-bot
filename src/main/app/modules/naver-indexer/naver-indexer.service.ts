@@ -1,17 +1,20 @@
 import type { Browser, Page } from 'puppeteer-core'
 import fs from 'node:fs'
 import path from 'node:path'
-import { PrismaService } from '@main/app/shared/prisma.service'
-import { SettingsService } from '@main/app/shared/settings.service'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { NaverAuthError, NaverBrowserError, NaverLoginError, NaverSubmissionError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
-import { SiteConfigService } from '../site-config/site-config.service'
+import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
 import { NaverAccountService } from './naver-account.service'
 import { sleep } from '@main/app/utils/sleep'
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import axios from 'axios'
+import { JobService } from '@main/app/modules/job/job.service'
+import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 
 puppeteer.use(StealthPlugin())
 
@@ -50,6 +53,8 @@ export class NaverIndexerService implements OnModuleInit {
     private readonly settingsService: SettingsService,
     private readonly siteConfigService: SiteConfigService,
     private readonly naverAccountService: NaverAccountService,
+    private readonly jobService: JobService,
+    private readonly jobLogsService: JobLogsService,
   ) {}
 
   async onModuleInit() {}
@@ -299,15 +304,22 @@ export class NaverIndexerService implements OnModuleInit {
             results.push(result)
 
             // 성공 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteId,
-                targetUrl: url,
+            const job = await this.prisma.indexJob.findFirst({
+              where: {
+                url,
                 provider: 'NAVER',
-                status: 'SUCCESS',
-                message: result.msg,
-                responseData: JSON.stringify(result),
               },
+            })
+
+            if (!job) {
+              this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+              return result
+            }
+
+            await this.jobLogsService.create({
+              jobId: job.jobId,
+              message: `Naver 인덱싱 성공: ${url}`,
+              level: 'info',
             })
           } else {
             result = {
@@ -318,15 +330,36 @@ export class NaverIndexerService implements OnModuleInit {
             results.push(result)
 
             // 실패 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteId,
-                targetUrl: url,
+            const job = await this.prisma.indexJob.findFirst({
+              where: {
+                url,
                 provider: 'NAVER',
-                status: 'FAILED',
-                message: result.msg,
-                responseData: JSON.stringify(result),
               },
+            })
+
+            if (!job) {
+              this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+              throw new NaverSubmissionError(
+                `Naver 인덱싱 실패: ${result.msg}`,
+                'manualIndexing',
+                undefined,
+                undefined,
+                {
+                  urlsToIndex,
+                  headless,
+                },
+              )
+            }
+
+            await this.jobLogsService.create({
+              jobId: job.jobId,
+              message: `Naver 인덱싱 실패: ${result.msg}`,
+              level: 'error',
+            })
+
+            throw new NaverSubmissionError(`Naver 인덱싱 실패: ${result.msg}`, 'manualIndexing', undefined, undefined, {
+              urlsToIndex,
+              headless,
             })
           }
           await sleep(1000)
@@ -733,6 +766,91 @@ export class NaverIndexerService implements OnModuleInit {
       }
     } catch (error) {
       this.logger.error('브라우저 닫기 실패:', error)
+    }
+  }
+
+  async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const site = await this.prisma.site.findUnique({
+        where: { id: siteId },
+      })
+
+      if (!site) {
+        throw new Error('사이트를 찾을 수 없습니다.')
+      }
+
+      const settings = await this.settingsService.getAppStatus()
+      const naverSettings = settings.naver
+
+      if (!naverSettings?.clientId || !naverSettings?.clientSecret) {
+        throw new Error('Naver API 설정이 완료되지 않았습니다.')
+      }
+
+      const response = await axios.post(
+        'https://searchadapi.naver.com/api/v1/site/ping',
+        {
+          url,
+        },
+        {
+          headers: {
+            'X-Naver-Client-Id': naverSettings.clientId,
+            'X-Naver-Client-Secret': naverSettings.clientSecret,
+          },
+        },
+      )
+
+      // 성공 로그
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'NAVER',
+        },
+      })
+
+      if (!job) {
+        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+        return {
+          success: true,
+          message: '인덱싱 요청이 성공적으로 처리되었습니다.',
+        }
+      }
+
+      // 성공 로그 기록
+      await this.jobLogsService.create({
+        jobId: job.jobId,
+        message: `Naver 인덱싱 성공: ${url}`,
+        level: 'info',
+      })
+
+      return {
+        success: true,
+        message: '인덱싱 요청이 성공적으로 처리되었습니다.',
+      }
+    } catch (error) {
+      this.logger.error(`Naver 색인 요청 실패: ${error.message}`, error.stack)
+
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'NAVER',
+        },
+      })
+
+      if (job) {
+        // 실패 로그 기록
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Naver 인덱싱 실패: ${error.message}`,
+          level: 'error',
+        })
+      } else {
+        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+      }
+
+      return {
+        success: false,
+        message: `인덱싱 요청 실패: ${error.message}`,
+      }
     }
   }
 

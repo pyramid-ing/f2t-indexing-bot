@@ -1,18 +1,18 @@
-import { HttpModule } from '@nestjs/axios'
 import { Module } from '@nestjs/common'
+import { HttpModule } from '@nestjs/axios'
 import { ConfigModule } from '@nestjs/config'
-import { NaverAccountController } from 'src/main/app/modules/naver-indexer/naver-account.controller'
-import { NaverAccountService } from 'src/main/app/modules/naver-indexer/naver-account.service'
-import { NaverIndexerController } from 'src/main/app/modules/naver-indexer/naver-indexer.controller'
-import { NaverIndexerService } from 'src/main/app/modules/naver-indexer/naver-indexer.service'
-import { SiteConfigModule } from 'src/main/app/modules/site-config/site-config.module'
-import { PrismaService } from 'src/main/app/shared/prisma.service'
-import { SettingsService } from 'src/main/app/shared/settings.service'
+import { NaverAccountController } from './naver-account.controller'
+import { NaverAccountService } from './naver-account.service'
+import { NaverIndexerController } from './naver-indexer.controller'
+import { NaverIndexerService } from './naver-indexer.service'
+import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
+import { CommonModule } from '@main/app/modules/common/common.module'
+import { JobModule } from '@main/app/modules/job/job.module'
 
 @Module({
-  imports: [HttpModule, ConfigModule, SiteConfigModule],
-  providers: [NaverIndexerService, NaverAccountService, PrismaService, SettingsService],
+  imports: [HttpModule, ConfigModule, SiteConfigModule, CommonModule, JobModule],
   controllers: [NaverIndexerController, NaverAccountController],
+  providers: [NaverIndexerService, NaverAccountService],
   exports: [NaverIndexerService, NaverAccountService],
 })
 export class NaverIndexerModule {}

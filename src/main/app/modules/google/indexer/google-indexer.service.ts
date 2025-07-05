@@ -1,10 +1,13 @@
 import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
-import { GoogleAuthService } from '@main/app/shared/google-auth.service'
-import { PrismaService } from '@main/app/shared/prisma.service'
 import { GoogleAuthError, GoogleConfigError, GoogleIndexerError } from '@main/filters/error.types'
 import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
-// import { IndexProvider, IndexStatus } from '@prisma/client' // 문자열로 대체
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import { GoogleAuthService } from '@main/app/modules/google/oauth/google-auth.service'
+import { JobService } from '@main/app/modules/job/job.service'
+import axios from 'axios'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
+import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 import { firstValueFrom } from 'rxjs'
 
 export interface GoogleIndexerOptions {
@@ -24,6 +27,9 @@ export class GoogleIndexerService {
     private readonly googleAuthService: GoogleAuthService,
     private readonly prisma: PrismaService,
     private readonly siteConfigService: SiteConfigService,
+    private readonly jobService: JobService,
+    private readonly jobLogsService: JobLogsService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   private async getGoogleConfigForSite(siteId: number) {
@@ -112,16 +118,23 @@ export class GoogleIndexerService {
 
       const response = await firstValueFrom(this.httpService.post(this.googleIndexingUrl, payload, { headers }))
 
-      // 성공 로그 기록
-      await this.prisma.indexingLog.create({
-        data: {
-          siteId,
-          targetUrl: url,
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
           provider: 'GOOGLE',
-          status: 'SUCCESS',
-          message: `Type: ${type}`,
-          responseData: JSON.stringify(response.data),
         },
+      })
+
+      if (!job) {
+        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+        return response.data
+      }
+
+      // 성공 로그 기록
+      await this.jobLogsService.create({
+        jobId: job.jobId,
+        message: `Google 인덱싱 성공: ${url}`,
+        level: 'info',
       })
 
       this.logger.log(`Google URL 인덱싱 성공: ${url}`)
@@ -129,17 +142,23 @@ export class GoogleIndexerService {
     } catch (error) {
       this.logger.error(`Google 색인 요청 실패: ${error.message}`, error.stack)
 
-      // 실패 로그 기록
-      await this.prisma.indexingLog.create({
-        data: {
-          siteId,
-          targetUrl: url,
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
           provider: 'GOOGLE',
-          status: 'FAILED',
-          message: error.message,
-          responseData: JSON.stringify(error.response?.data || {}),
         },
       })
+
+      if (job) {
+        // 실패 로그 기록
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Google 인덱싱 실패: ${error.message}`,
+          level: 'error',
+        })
+      } else {
+        this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+      }
 
       if (error instanceof GoogleAuthError || error instanceof GoogleConfigError) {
         throw error
@@ -358,5 +377,82 @@ export class GoogleIndexerService {
     }
 
     return await this.batchIndexUrls(siteId, urls)
+  }
+
+  async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const site = await this.prisma.site.findUnique({
+        where: { id: siteId },
+      })
+
+      if (!site) {
+        throw new Error('사이트를 찾을 수 없습니다.')
+      }
+
+      const settings = await this.settingsService.getAppStatus()
+      const googleSettings = settings.google
+
+      if (!googleSettings?.serviceAccountJson) {
+        throw new Error('Google Service Account JSON이 설정되지 않았습니다.')
+      }
+
+      const headers = await this.googleAuthService.getAuthHeaders(googleSettings.serviceAccountJson)
+      const response = await axios.post(
+        'https://indexing.googleapis.com/v3/urlNotifications:publish',
+        {
+          url,
+          type: 'URL_UPDATED',
+        },
+        { headers },
+      )
+
+      // 성공 로그
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'google',
+        },
+        include: {
+          job: true,
+        },
+      })
+
+      if (job?.job) {
+        await this.jobLogsService.create({
+          jobId: job.job.id,
+          message: `Google 인덱싱 요청 성공: ${response.data.urlNotificationMetadata.url}`,
+          level: 'info',
+        })
+      }
+
+      return {
+        success: true,
+        message: '인덱싱 요청이 성공적으로 처리되었습니다.',
+      }
+    } catch (error) {
+      // 실패 로그
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'google',
+        },
+        include: {
+          job: true,
+        },
+      })
+
+      if (job?.job) {
+        await this.jobLogsService.create({
+          jobId: job.job.id,
+          message: `Google 인덱싱 요청 실패: ${error.message}`,
+          level: 'error',
+        })
+      }
+
+      return {
+        success: false,
+        message: `인덱싱 요청 실패: ${error.message}`,
+      }
+    }
   }
 }

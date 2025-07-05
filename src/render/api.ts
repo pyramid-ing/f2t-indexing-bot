@@ -401,3 +401,102 @@ export async function getIndexingLogCount(siteId: number) {
   const res = await axios.get(`${API_BASE_URL}/indexing/logs/${siteId}/count`)
   return res.data
 }
+
+// Job 관련 타입
+export enum JobType {
+  INDEX = 'index',
+  GENERATE_TOPIC = 'generate_topic',
+}
+
+export enum JobStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  FAILED = 'failed',
+}
+
+export interface Job {
+  id: string
+  type: JobType
+  subject: string
+  desc: string
+  status: JobStatus
+  priority: number
+  scheduledAt: string
+  startedAt?: string
+  completedAt?: string
+  resultMsg?: string
+  errorMessage?: string
+  createdAt: string
+  updatedAt: string
+  logs?: JobLog[]
+  indexJob?: IndexJob
+}
+
+export interface JobLog {
+  id: string
+  jobId: string
+  message: string
+  level: 'info' | 'warn' | 'error'
+  createdAt: string
+}
+
+export interface IndexJob {
+  id: string
+  jobId: string
+  siteId: number
+  provider: IndexProvider
+  url: string
+  status: string
+  publishedAt?: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Job API
+export async function getJobs(params: {
+  status?: JobStatus
+  search?: string
+  orderBy?: string
+  order?: 'asc' | 'desc'
+  skip?: number
+  take?: number
+}): Promise<Job[]> {
+  const res = await axios.get(`${API_BASE_URL}/jobs`, { params })
+  return res.data
+}
+
+export async function getJob(id: string): Promise<Job> {
+  const res = await axios.get(`${API_BASE_URL}/jobs/${id}`)
+  return res.data
+}
+
+export async function getJobLogs(jobId: string): Promise<JobLog[]> {
+  const res = await axios.get(`${API_BASE_URL}/jobs/${jobId}/logs`)
+  return res.data
+}
+
+export async function getLatestJobLog(jobId: string): Promise<JobLog | null> {
+  const res = await axios.get(`${API_BASE_URL}/jobs/${jobId}/logs/latest`)
+  return res.data
+}
+
+export async function retryJob(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/jobs/${id}/retry`)
+  return res.data
+}
+
+export async function retryJobs(ids: string[]): Promise<{ success: boolean; message: string }> {
+  const res = await axios.post(`${API_BASE_URL}/jobs/retry`, { ids })
+  return res.data
+}
+
+export async function deleteJob(id: string): Promise<{ success: boolean; message: string }> {
+  const res = await axios.delete(`${API_BASE_URL}/jobs/${id}`)
+  return res.data
+}
+
+export async function deleteJobs(ids: string[]): Promise<{ success: boolean; message: string }> {
+  const res = await axios.delete(`${API_BASE_URL}/jobs`, { data: { ids } })
+  return res.data
+}

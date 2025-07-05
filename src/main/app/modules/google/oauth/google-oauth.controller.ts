@@ -1,4 +1,4 @@
-import { SettingsService } from '@main/app/shared/settings.service'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { GoogleAuthError, GoogleConfigError, GoogleTokenError } from '@main/filters/error.types'
 import { Body, Controller, Get, Logger, Post, Query, Res } from '@nestjs/common'
 import { Response } from 'express'

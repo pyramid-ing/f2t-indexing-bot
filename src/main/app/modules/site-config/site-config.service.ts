@@ -1,5 +1,5 @@
-import { PrismaService } from '@main/app/shared/prisma.service'
 import { Injectable } from '@nestjs/common'
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 
 // 검색엔진별 설정 인터페이스
 export interface GoogleSiteConfig {

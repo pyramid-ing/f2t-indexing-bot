@@ -1,16 +1,16 @@
-import { GoogleAuthService } from '@main/app/shared/google-auth.service'
-import { PrismaService } from '@main/app/shared/prisma.service'
 import { HttpModule } from '@nestjs/axios'
 import { Module } from '@nestjs/common'
-import { GoogleIndexerController } from 'src/main/app/modules/google/indexer/google-indexer.controller'
-import { GoogleIndexerService } from 'src/main/app/modules/google/indexer/google-indexer.service'
-import { SiteConfigModule } from 'src/main/app/modules/site-config/site-config.module'
-import { SettingsService } from 'src/main/app/shared/settings.service'
+import { GoogleIndexerController } from './google-indexer.controller'
+import { GoogleIndexerService } from './google-indexer.service'
+import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
+import { CommonModule } from '@main/app/modules/common/common.module'
+import { GoogleAuthService } from '@main/app/modules/google/oauth/google-auth.service'
+import { JobModule } from '@main/app/modules/job/job.module'
 
 @Module({
-  imports: [HttpModule, SiteConfigModule],
-  providers: [GoogleIndexerService, GoogleAuthService, PrismaService, SettingsService],
+  imports: [HttpModule, SiteConfigModule, CommonModule, JobModule],
   controllers: [GoogleIndexerController],
+  providers: [GoogleIndexerService, GoogleAuthService],
   exports: [GoogleIndexerService],
 })
 export class GoogleIndexerModule {}

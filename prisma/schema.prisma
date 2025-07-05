@@ -9,86 +9,75 @@ datasource db {
 
 // 전역 앱 설정 (기존 유지)
 model Settings {
-  id        Int      @id @default(autoincrement())
-  data      String   // JSON: { appVersion, initialized, setupCompleted, theme, language }
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Auth {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  data      String    // JSON: { appVersion, initialized, setupCompleted, theme, language }
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 // 네이버 계정 관리 모델 (재추가 - 중앙 관리)
 model NaverAccount {
   id          Int      @id @default(autoincrement())
-  name        String              // 계정 표시명 (예: "블로그 계정", "메인 계정")
-  naverId     String   @unique    // 네이버 아이디
-  password    String              // 네이버 비밀번호 (암호화 권장)
-  isActive    Boolean  @default(true)  // 활성화 여부
-  isLoggedIn  Boolean  @default(false) // 로그인 상태
-  lastLogin   DateTime?           // 마지막 로그인 시간
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  naverId     String
+  password    String
+  name        String
+  isActive    Boolean   @default(true)
+  isLoggedIn  Boolean   @default(false)
+  lastLogin   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  siteId      Int
+  accessToken String?
+  site        Site      @relation(fields: [siteId], references: [id])
+
+  @@unique([naverId])
 }
 
 // 사이트별 설정 모델 (확장됨)
 model Site {
   id          Int      @id @default(autoincrement())
-  domain      String   @unique  // 도메인명 (예: example.com)
-  name        String              // 사이트 표시명
-  siteUrl     String              // 전체 URL (예: https://example.com)
-  isActive    Boolean  @default(true)  // 활성화 여부
-  
-  // 검색엔진별 설정 (JSON 형태로 저장)
-  googleConfig String  @default("{}")   // Google 설정
-  naverConfig  String  @default("{}")   // Naver 설정  
-  daumConfig   String  @default("{}")   // Daum 설정
-  bingConfig   String  @default("{}")   // Bing 설정
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // 관계: 이 사이트의 색인 로그들
-  indexingLogs IndexingLog[]
+  name          String        // 사이트 표시명 (예: "내 블로그", "회사 홈페이지")
+  domain        String        @unique // 사이트 도메인 (예: "example.com")
+  description   String?
+  isActive      Boolean       @default(true) // 활성화 여부
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  indexJobs     IndexJob[]
+  naverAccounts NaverAccount[]
 }
 
-// 색인 작업 로그 (수정됨)
-model IndexingLog {
-  id          Int           @id @default(autoincrement())
-  siteId      Int           // Site 테이블과 연결
-  site        Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
-  targetUrl   String        // 색인할 URL
-  provider    IndexProvider // 색인 제공자
-  status      IndexStatus   // 색인 상태
-  message     String?       // 결과 메시지
-  responseData String?      // 응답 데이터 (JSON)
-  
-  createdAt   DateTime      @default(now())
-  completedAt DateTime?
-  
+// 기본 Job 모델
+model Job {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  status    String    @default("pending") // pending, in_progress, completed, failed, cancelled
+  type      String    // index, blog_post
+  data      String    // JSON string
+  logs      JobLog[]
+  indexJob  IndexJob?
+}
+
+model JobLog {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  jobId     String
+  message   String
+  level     String    @default("info") // info, error
+  job       Job       @relation(fields: [jobId], references: [id])
+}
+
+// 블로그 작업 모델
+model IndexJob {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  url       String
+  provider  String    // 'GOOGLE' | 'NAVER' | 'DAUM' | 'BING'
+  jobId     String    @unique
+  siteId    Int
+  site      Site      @relation(fields: [siteId], references: [id])
+  job       Job       @relation(fields: [jobId], references: [id])
+
   @@index([siteId])
-  @@index([provider])
-  @@index([status])
 }
-
-// 색인 제공자 enum
-enum IndexProvider {
-  BING
-  GOOGLE
-  DAUM
-  NAVER
-}
-
-// 색인 상태 enum
-enum IndexStatus {
-  PENDING
-  SUCCESS
-  FAILED
-  RETRY
-} 

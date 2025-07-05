@@ -1,14 +1,17 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
-import { PrismaService } from '@main/app/shared/prisma.service'
-import { SettingsService } from '@main/app/shared/settings.service'
 import { sleep } from '@main/app/utils/sleep'
 import { DaumAuthError, DaumConfigError, DaumSubmissionError } from '@main/filters/error.types'
 import { Injectable, Logger } from '@nestjs/common'
 import { Page } from 'puppeteer-core'
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import axios from 'axios'
+import { JobService } from '@main/app/modules/job/job.service'
+import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 
 puppeteer.use(StealthPlugin())
 
@@ -25,8 +28,10 @@ export class DaumIndexerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly settingsService: SettingsService,
     private readonly siteConfigService: SiteConfigService,
+    private readonly settingsService: SettingsService,
+    private readonly jobService: JobService,
+    private readonly jobLogsService: JobLogsService,
   ) {}
 
   private async getDaumConfig(siteId?: number, siteUrl?: string) {
@@ -262,15 +267,22 @@ export class DaumIndexerService {
             await sleep(500)
 
             // 성공 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteId: siteId || 1, // siteId가 없으면 기본값 사용
-                targetUrl: url,
+            const job = await this.prisma.indexJob.findFirst({
+              where: {
+                url,
                 provider: 'DAUM',
-                status: 'SUCCESS',
-                message: msg,
-                responseData: JSON.stringify(result),
               },
+            })
+
+            if (!job) {
+              this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+              return result
+            }
+
+            await this.jobLogsService.create({
+              jobId: job.jobId,
+              message: `Daum 인덱싱 성공: ${url}`,
+              level: 'info',
             })
           } else {
             // HTML에서 추출한 에러 메시지가 있으면 사용, 없으면 기본 메시지
@@ -278,19 +290,32 @@ export class DaumIndexerService {
             result = { url, status: 'fail', msg }
 
             // 실패 로그 기록
-            await this.prisma.indexingLog.create({
-              data: {
-                siteId: siteId || 1, // siteId가 없으면 기본값 사용
-                targetUrl: url,
+            const job = await this.prisma.indexJob.findFirst({
+              where: {
+                url,
                 provider: 'DAUM',
-                status: 'FAILED',
-                message: msg,
-                responseData: JSON.stringify({
-                  ...result,
-                  extractedFromDesc: !!errorFromDesc,
-                  originalErrorFromDesc: errorFromDesc,
-                }),
               },
+            })
+
+            if (!job) {
+              this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+              throw new DaumSubmissionError(`Daum 인덱싱 실패: ${msg}`, 'manualIndexing', undefined, siteUrl, {
+                url,
+                status: 'fail',
+                msg,
+              })
+            }
+
+            await this.jobLogsService.create({
+              jobId: job.jobId,
+              message: `Daum 인덱싱 실패: ${msg}`,
+              level: 'error',
+            })
+
+            throw new DaumSubmissionError(`Daum 인덱싱 실패: ${msg}`, 'manualIndexing', undefined, siteUrl, {
+              url,
+              status: 'fail',
+              msg,
             })
           }
           results.push(result)
@@ -300,15 +325,22 @@ export class DaumIndexerService {
           results.push(result)
 
           // 에러 로그 기록
-          await this.prisma.indexingLog.create({
-            data: {
-              siteId: siteId || 1, // siteId가 없으면 기본값 사용
-              targetUrl: url,
+          const job = await this.prisma.indexJob.findFirst({
+            where: {
+              url,
               provider: 'DAUM',
-              status: 'FAILED',
-              message: result.msg,
-              responseData: JSON.stringify(result),
             },
+          })
+
+          if (!job) {
+            this.logger.warn(`작업 로그를 생성할 수 없습니다. 작업을 찾을 수 없습니다: ${url}`)
+            continue
+          }
+
+          await this.jobLogsService.create({
+            jobId: job.jobId,
+            message: `Daum 인덱싱 실패: ${result.msg}`,
+            level: 'error',
           })
         }
       }
@@ -414,6 +446,72 @@ export class DaumIndexerService {
       throw new DaumSubmissionError(`Daum 인덱싱 실패: ${error.message}`, 'indexUrls', undefined, 'global', {
         urlCount: urls.length,
       })
+    }
+  }
+
+  async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const site = await this.prisma.site.findUnique({
+        where: { id: siteId },
+      })
+
+      if (!site) {
+        throw new Error('사이트를 찾을 수 없습니다.')
+      }
+
+      const settings = await this.settingsService.getAppStatus()
+      const daumSettings = settings.daum
+
+      if (!daumSettings?.apiKey) {
+        throw new Error('Daum API Key가 설정되지 않았습니다.')
+      }
+
+      const response = await axios.post('https://register.search.daum.net/api/site/ping', {
+        apikey: daumSettings.apiKey,
+        url,
+      })
+
+      // 성공 로그
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'daum',
+        },
+      })
+
+      if (job) {
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Daum 인덱싱 요청 성공: ${url}`,
+          level: 'info',
+        })
+      }
+
+      return {
+        success: true,
+        message: '인덱싱 요청이 성공적으로 처리되었습니다.',
+      }
+    } catch (error) {
+      // 실패 로그
+      const job = await this.prisma.indexJob.findFirst({
+        where: {
+          url,
+          provider: 'daum',
+        },
+      })
+
+      if (job) {
+        await this.jobLogsService.create({
+          jobId: job.jobId,
+          message: `Daum 인덱싱 요청 실패: ${error.message}`,
+          level: 'error',
+        })
+      }
+
+      return {
+        success: false,
+        message: `인덱싱 요청 실패: ${error.message}`,
+      }
     }
   }
 }

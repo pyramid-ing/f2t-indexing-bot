@@ -1,9 +1,15 @@
 import { Injectable } from '@nestjs/common'
 import { GoogleAuth } from 'google-auth-library'
+import { google } from 'googleapis'
+import { OAuth2Client } from 'google-auth-library'
+import { SettingsService } from '@main/app/modules/settings/settings.service'
 
 @Injectable()
 export class GoogleAuthService {
-  constructor() {}
+  private authClient: OAuth2Client | null = null
+  private indexingAPI: any = null
+
+  constructor(private readonly settingsService: SettingsService) {}
 
   private async createGoogleAuth(serviceAccountJson: string): Promise<GoogleAuth> {
     try {
@@ -68,5 +74,41 @@ export class GoogleAuthService {
       Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     }
+  }
+
+  async getAuthClient(): Promise<OAuth2Client> {
+    if (this.authClient) {
+      return this.authClient
+    }
+
+    const settings = await this.settingsService.getAppStatus()
+    const googleSettings = settings.google
+    if (!googleSettings?.credentials) {
+      throw new Error('Google API 인증 정보가 설정되지 않았습니다.')
+    }
+
+    const credentials = JSON.parse(googleSettings.credentials)
+    this.authClient = new google.auth.OAuth2(
+      credentials.client_id,
+      credentials.client_secret,
+      credentials.redirect_uris[0],
+    )
+
+    this.authClient.setCredentials({
+      access_token: googleSettings.accessToken,
+      refresh_token: googleSettings.refreshToken,
+    })
+
+    return this.authClient
+  }
+
+  async getIndexingAPI() {
+    if (this.indexingAPI) {
+      return this.indexingAPI
+    }
+
+    const auth = await this.getAuthClient()
+    this.indexingAPI = google.indexing({ version: 'v3', auth })
+    return this.indexingAPI
   }
 }
