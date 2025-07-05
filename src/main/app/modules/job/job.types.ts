@@ -1,4 +1,6 @@
 import { IndexProvider } from '../index-job/index-job.types'
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, ValidateNested } from 'class-validator'
+import { Type } from 'class-transformer'
 
 export enum JobStatus {
   PENDING = 'pending',
@@ -14,21 +16,46 @@ export enum JobType {
 
 export type JobLogLevel = 'info' | 'error'
 
-interface IndexJobData {
+export class IndexJobData {
+  @IsNotEmpty()
+  @IsString()
   url: string
+
+  @IsNotEmpty()
+  @IsEnum(IndexProvider)
   provider: IndexProvider
+
+  @IsNotEmpty()
+  @IsNumber()
   siteId: number
 }
 
-export interface CreateJobDto {
+export class CreateJobDto {
+  @IsNotEmpty()
+  @IsEnum(JobType)
   type: JobType
+
+  @ValidateNested()
+  @Type(() => IndexJobData)
   data: IndexJobData
 }
 
-export interface UpdateJobDto {
+export class UpdateJobDto {
+  @IsOptional()
+  @IsEnum(JobStatus)
   status?: JobStatus
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => Object)
   data?: Record<string, any>
+
+  @IsOptional()
+  @IsString()
   resultMsg?: string
+
+  @IsOptional()
+  @IsString()
   errorMsg?: string
 }
 
@@ -36,26 +63,4 @@ export interface CreateJobLogDto {
   jobId: string
   message: string
   level?: JobLogLevel
-}
-
-export interface GetJobsOptions {
-  status?: JobStatus
-  type?: JobType
-  skip?: number
-  take?: number
-}
-
-export interface JobWithLogs {
-  id: string
-  createdAt: Date
-  updatedAt: Date
-  status: JobStatus
-  type: JobType
-  data: string
-  logs: {
-    id: string
-    createdAt: Date
-    message: string
-    level: JobLogLevel
-  }[]
 }

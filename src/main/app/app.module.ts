@@ -9,9 +9,9 @@ import { SettingsModule } from '@main/app/modules/settings/settings.module'
 import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { GlobalExceptionFilter } from '@main/filters/global-exception.filter'
-import { Module } from '@nestjs/common'
+import { Module, ValidationPipe } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { APP_FILTER, HttpAdapterHost } from '@nestjs/core'
+import { APP_FILTER, APP_PIPE, HttpAdapterHost } from '@nestjs/core'
 import { app, BrowserWindow } from 'electron'
 import { JobModule } from '@main/app/modules/job/job.module'
 import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
@@ -63,6 +63,14 @@ import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
         return new GlobalExceptionFilter(httpAdapter)
       },
       inject: [HttpAdapterHost],
+    },
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
     },
     PrismaService,
   ],
