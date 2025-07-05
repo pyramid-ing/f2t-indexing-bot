@@ -1,12 +1,9 @@
 import { join } from 'node:path'
 import { ElectronModule } from '@doubleshot/nest-electron'
 import customConfig from '@main/app/config/custom-config'
-import { BingIndexerModule } from '@main/app/modules/bing-indexer/bing-indexer.module'
-import { DaumIndexerModule } from '@main/app/modules/daum-indexer/daum-indexer.module'
-import { GoogleModule } from '@main/app/modules/google/google.module'
-import { NaverIndexerModule } from '@main/app/modules/naver-indexer/naver-indexer.module'
 import { SettingsModule } from '@main/app/modules/settings/settings.module'
 import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
+import { CommonModule } from '@main/app/modules/common/common.module'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { GlobalExceptionFilter } from '@main/filters/global-exception.filter'
 import { Module, ValidationPipe } from '@nestjs/common'
@@ -15,6 +12,7 @@ import { APP_FILTER, APP_PIPE, HttpAdapterHost } from '@nestjs/core'
 import { app, BrowserWindow } from 'electron'
 import { JobModule } from '@main/app/modules/job/job.module'
 import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
+import { ScheduleModule } from '@nestjs/schedule'
 
 @Module({
   imports: [
@@ -46,10 +44,8 @@ import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
       load: [customConfig],
       isGlobal: true,
     }),
-    DaumIndexerModule,
-    NaverIndexerModule,
-    BingIndexerModule,
-    GoogleModule,
+    ScheduleModule.forRoot(),
+    CommonModule,
     SiteConfigModule,
     SettingsModule,
     JobModule,
