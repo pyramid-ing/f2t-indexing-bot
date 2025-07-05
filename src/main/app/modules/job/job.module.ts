@@ -3,12 +3,12 @@ import { JobController } from './job.controller'
 import { JobLogsService } from '../job-logs/job-logs.service'
 import { JobQueueProcessor } from './job-queue.processor'
 import { CommonModule } from '@main/app/modules/common/common.module'
-import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import { JobService } from '@main/app/modules/job/job.service'
 
 @Module({
   imports: [CommonModule],
   controllers: [JobController],
-  providers: [JobLogsService, JobQueueProcessor, PrismaService],
-  exports: [JobLogsService],
+  providers: [JobLogsService, JobQueueProcessor, JobService],
+  exports: [JobLogsService, JobService],
 })
 export class JobModule {}

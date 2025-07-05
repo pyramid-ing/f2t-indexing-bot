@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common'
 import { SiteConfigController } from 'src/main/app/modules/site-config/site-config.controller'
 import { SiteConfigService } from 'src/main/app/modules/site-config/site-config.service'
-import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import { CommonModule } from '@main/app/modules/common/common.module'
 
 @Module({
-  providers: [SiteConfigService, PrismaService],
+  imports: [CommonModule],
+  providers: [SiteConfigService],
   controllers: [SiteConfigController],
   exports: [SiteConfigService],
 })
