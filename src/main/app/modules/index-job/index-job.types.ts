@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer'
-import { IsEnum, IsString, IsNumber, IsOptional, IsDate } from 'class-validator'
+import { IsDate, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator'
 
 export enum IndexProvider {
   GOOGLE = 'GOOGLE',
@@ -27,4 +27,17 @@ export class CreateIndexJobDto {
   @IsOptional()
   @IsNumber()
   priority?: number
+}
+
+export interface SubmitUrlResult {
+  id: string
+  siteId: string
+  url: string
+  status: string
+  scheduledAt: Date
+  createdAt: Date
+  startedAt?: Date
+  completedAt?: Date
+  errorMsg?: string
+  resultMsg?: string
 }

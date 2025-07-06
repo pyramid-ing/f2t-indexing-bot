@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Job" ADD COLUMN "completedAt" DATETIME;
+ALTER TABLE "Job" ADD COLUMN "startedAt" DATETIME;

@@ -1,7 +1,6 @@
 import { Button, Input, InputNumber, Select, Switch } from 'antd'
 import React from 'react'
 import styled from 'styled-components'
-import { SectionTitle } from '../styles/layout'
 
 const FormContainer = styled.div`
   display: flex;
@@ -52,8 +51,7 @@ const SettingsForm: React.FC<SettingsFormProps> = ({
 }) => {
   return (
     <FormContainer>
-      <SectionTitle>AI 설정</SectionTitle>
-
+      AI 설정
       <FormItem>
         <Label>답변 모드:</Label>
         <Select
@@ -66,7 +64,6 @@ const SettingsForm: React.FC<SettingsFormProps> = ({
           ]}
         />
       </FormItem>
-
       <FormItem>
         <Label>AI 공급자:</Label>
         <Select
@@ -79,7 +76,6 @@ const SettingsForm: React.FC<SettingsFormProps> = ({
           ]}
         />
       </FormItem>
-
       <FormItem>
         <Label>API Key:</Label>
         <Input
@@ -89,7 +85,6 @@ const SettingsForm: React.FC<SettingsFormProps> = ({
           style={{ flex: 1 }}
         />
       </FormItem>
-
       <FormItem>
         <Label>모니터링 주기:</Label>
         <InputNumber
@@ -100,17 +95,14 @@ const SettingsForm: React.FC<SettingsFormProps> = ({
           addonAfter="초"
         />
       </FormItem>
-
       <FormItem>
         <Label>AI 답변 사용:</Label>
         <Switch checked={useAi} onChange={onUseAiChange} />
       </FormItem>
-
       <FormItem>
         <Label>브라우저 숨김:</Label>
         <Switch checked={hideBrowser} onChange={onHideBrowserChange} />
       </FormItem>
-
       <Button type="primary" onClick={onSave}>
         저장
       </Button>

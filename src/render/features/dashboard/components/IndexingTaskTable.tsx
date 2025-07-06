@@ -1,45 +1,22 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { Table, Button, Space, Tag } from 'antd'
-import { Job, JobStatus, jobApi } from '../../api/job/jobApi'
+import { Job, JobStatus } from '@render/api/job/jobApi'
 
-export const ScheduledPostsTable: React.FC = () => {
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [loading, setLoading] = useState(false)
+interface IndexingTaskTableProps {
+  tasks: Job[]
+  loading: boolean
+  onTaskSelect: (task: Job) => void
+  onTaskRetry: (taskId: string) => void
+  onTaskDelete: (taskId: string) => void
+}
 
-  const loadJobs = async () => {
-    try {
-      setLoading(true)
-      const data = await jobApi.getAll()
-      setJobs(data)
-    } catch (error) {
-      console.error('Failed to load jobs:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadJobs()
-  }, [])
-
-  const handleRetry = async (jobId: string) => {
-    try {
-      await jobApi.retry(jobId)
-      await loadJobs()
-    } catch (error) {
-      console.error('Failed to retry job:', error)
-    }
-  }
-
-  const handleDelete = async (jobId: string) => {
-    try {
-      await jobApi.delete(jobId)
-      await loadJobs()
-    } catch (error) {
-      console.error('Failed to delete job:', error)
-    }
-  }
-
+export const IndexingTaskTable: React.FC<IndexingTaskTableProps> = ({
+  tasks,
+  loading,
+  onTaskSelect,
+  onTaskRetry,
+  onTaskDelete,
+}) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case JobStatus.COMPLETED:
@@ -96,12 +73,15 @@ export const ScheduledPostsTable: React.FC = () => {
       key: 'action',
       render: (_: any, record: Job) => (
         <Space size="middle">
+          <Button type="link" onClick={() => onTaskSelect(record)}>
+            상세
+          </Button>
           {record.status === JobStatus.FAILED && (
-            <Button type="link" onClick={() => handleRetry(record.id)}>
+            <Button type="link" onClick={() => onTaskRetry(record.id)}>
               재시도
             </Button>
           )}
-          <Button type="link" danger onClick={() => handleDelete(record.id)}>
+          <Button type="link" danger onClick={() => onTaskDelete(record.id)}>
             삭제
           </Button>
         </Space>
@@ -109,5 +89,5 @@ export const ScheduledPostsTable: React.FC = () => {
     },
   ]
 
-  return <Table columns={columns} dataSource={jobs} loading={loading} rowKey="id" />
+  return <Table columns={columns} dataSource={tasks} loading={loading} rowKey="id" />
 }

@@ -93,7 +93,7 @@ export class IndexJobService implements JobProcessor {
   }
 
   async create(data: CreateIndexJobDto): Promise<SubmitUrlResult> {
-    const { siteId, provider, url, scheduledAt = new Date(), priority = 1 } = data
+    const { siteId, url, scheduledAt = new Date(), priority = 1 } = data
 
     // 사이트 확인
     const site = await this.prisma.site.findUnique({
@@ -104,42 +104,64 @@ export class IndexJobService implements JobProcessor {
       throw new Error('사이트를 찾을 수 없습니다.')
     }
 
-    // Job과 IndexJob 동시 생성
-    const job = await this.prisma.job.create({
-      data: {
-        type: JobType.INDEX,
-        status: JobStatus.PENDING,
-        data: JSON.stringify({
-          url,
-          provider,
-          siteId,
-        }),
-        indexJob: {
-          create: {
-            siteId,
-            provider,
-            url,
-          },
-        },
-      },
-      include: {
-        logs: true,
-        indexJob: true,
-      },
-    })
+    // 활성화된 검색엔진 확인
+    const activeEngines = []
+    const googleConfig = JSON.parse(site.googleConfig)
+    const bingConfig = JSON.parse(site.bingConfig)
+    const naverConfig = JSON.parse(site.naverConfig)
+    const daumConfig = JSON.parse(site.daumConfig)
 
-    // 작업 생성 로그
-    await this.prisma.jobLog.create({
-      data: {
-        jobId: job.id,
-        message: `인덱싱 작업 생성됨: ${provider} - ${url}`,
-        level: 'info',
-      },
-    })
+    if (googleConfig?.use) activeEngines.push('GOOGLE')
+    if (bingConfig?.use) activeEngines.push('BING')
+    if (naverConfig?.use) activeEngines.push('NAVER')
+    if (daumConfig?.use) activeEngines.push('DAUM')
+
+    if (activeEngines.length === 0) {
+      throw new Error('활성화된 검색엔진이 없습니다.')
+    }
+
+    // 각 검색엔진에 대해 작업 생성
+    const jobs = await Promise.all(
+      activeEngines.map(async provider => {
+        const job = await this.prisma.job.create({
+          data: {
+            type: JobType.INDEX,
+            status: JobStatus.PENDING,
+            data: JSON.stringify({
+              url,
+              provider,
+              siteId,
+            }),
+            indexJob: {
+              create: {
+                siteId,
+                provider,
+                url,
+              },
+            },
+          },
+          include: {
+            logs: true,
+            indexJob: true,
+          },
+        })
+
+        // 작업 생성 로그
+        await this.prisma.jobLog.create({
+          data: {
+            jobId: job.id,
+            message: `인덱싱 작업 생성됨: ${provider} - ${url}`,
+            level: 'info',
+          },
+        })
+
+        return job
+      }),
+    )
 
     return {
       success: true,
-      message: '인덱싱 작업이 생성되었습니다.',
+      message: `${activeEngines.length}개의 검색엔진에 대한 인덱싱 작업이 생성되었습니다.`,
       resultUrl: url,
     }
   }
@@ -169,6 +191,39 @@ export class IndexJobService implements JobProcessor {
         job: true,
         site: true,
       },
+    })
+  }
+
+  async getAll() {
+    return this.prisma.job.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    })
+  }
+
+  async getById(id: string) {
+    return this.prisma.job.findUnique({
+      where: { id },
+    })
+  }
+
+  async retry(id: string) {
+    return this.prisma.job.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+        startedAt: null,
+        completedAt: null,
+        errorMsg: null,
+        resultMsg: null,
+      },
+    })
+  }
+
+  async delete(id: string) {
+    return this.prisma.job.delete({
+      where: { id },
     })
   }
 }
