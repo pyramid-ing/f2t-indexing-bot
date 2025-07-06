@@ -59,6 +59,7 @@ model Job {
   id        String    @id @default(cuid())
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  scheduledAt DateTime?
   status    String    @default("pending") // pending, in_progress, completed, failed, cancelled
   type      String    // index, blog_post
   data      String    // JSON string
