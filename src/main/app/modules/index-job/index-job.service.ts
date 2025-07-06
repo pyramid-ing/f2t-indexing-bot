@@ -7,7 +7,7 @@ import { DaumIndexerService } from '../daum-indexer/daum-indexer.service'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { JobType } from '../job/job.types'
 import { CreateIndexJobDto } from './index-job.types'
-import { JobService } from '../job/job.service'
+import { JobStatus } from '../job/job.types'
 
 interface SubmitUrlResult {
   success: boolean
@@ -23,7 +23,6 @@ export class IndexJobService implements JobProcessor {
     private readonly googleIndexer: GoogleIndexerService,
     private readonly naverIndexer: NaverIndexerService,
     private readonly daumIndexer: DaumIndexerService,
-    private readonly jobService: JobService,
   ) {}
 
   canProcess(job: Job): boolean {
@@ -105,23 +104,27 @@ export class IndexJobService implements JobProcessor {
       throw new Error('사이트를 찾을 수 없습니다.')
     }
 
-    // Job 생성
-    const job = await this.jobService.create({
-      type: JobType.INDEX,
+    // Job과 IndexJob 동시 생성
+    const job = await this.prisma.job.create({
       data: {
-        url,
-        provider,
-        siteId,
+        type: JobType.INDEX,
+        status: JobStatus.PENDING,
+        data: JSON.stringify({
+          url,
+          provider,
+          siteId,
+        }),
+        indexJob: {
+          create: {
+            siteId,
+            provider,
+            url,
+          },
+        },
       },
-    })
-
-    // IndexJob 생성
-    await this.prisma.indexJob.create({
-      data: {
-        jobId: job.id,
-        siteId,
-        provider,
-        url,
+      include: {
+        logs: true,
+        indexJob: true,
       },
     })
 

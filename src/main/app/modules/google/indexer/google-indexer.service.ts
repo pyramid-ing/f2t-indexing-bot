@@ -4,7 +4,6 @@ import { HttpService } from '@nestjs/axios'
 import { Injectable, Logger } from '@nestjs/common'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { GoogleAuthService } from '@main/app/modules/google/oauth/google-auth.service'
-import { JobService } from '@main/app/modules/job/job.service'
 import axios from 'axios'
 import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
@@ -27,7 +26,6 @@ export class GoogleIndexerService {
     private readonly googleAuthService: GoogleAuthService,
     private readonly prisma: PrismaService,
     private readonly siteConfigService: SiteConfigService,
-    private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
     private readonly settingsService: SettingsService,
   ) {}

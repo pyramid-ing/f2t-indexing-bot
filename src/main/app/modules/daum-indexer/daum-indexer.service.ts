@@ -10,7 +10,6 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import { SettingsService } from '@main/app/modules/settings/settings.service'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import axios from 'axios'
-import { JobService } from '@main/app/modules/job/job.service'
 import { JobLogsService } from '@main/app/modules/job-logs/job-logs.service'
 
 puppeteer.use(StealthPlugin())
@@ -30,7 +29,6 @@ export class DaumIndexerService {
     private readonly prisma: PrismaService,
     private readonly siteConfigService: SiteConfigService,
     private readonly settingsService: SettingsService,
-    private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
   ) {}
 

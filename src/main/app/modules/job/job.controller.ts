@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Delete, Param, Query, Body, Put } from '@nestjs/common'
 import { JobService } from './job.service'
 import { JobLogsService } from '../job-logs/job-logs.service'
-import { CreateJobDto, JobStatus, UpdateJobDto } from './job.types'
+import { JobStatus, UpdateJobDto } from './job.types'
 
 @Controller('jobs')
 export class JobController {
@@ -9,11 +9,6 @@ export class JobController {
     private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
   ) {}
-
-  @Post()
-  async create(@Body() data: CreateJobDto) {
-    return this.jobService.create(data)
-  }
 
   @Get()
   async findAll(

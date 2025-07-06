@@ -3,10 +3,11 @@ import { Module } from '@nestjs/common'
 import { BingIndexerService } from './bing-indexer.service'
 import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
 import { CommonModule } from '@main/app/modules/common/common.module'
-import { JobModule } from '@main/app/modules/job/job.module'
+import { JobLogsModule } from '../job-logs/job-logs.module'
+import { SettingsModule } from '@main/app/modules/settings/settings.module'
 
 @Module({
-  imports: [HttpModule, SiteConfigModule, CommonModule, JobModule],
+  imports: [HttpModule, SiteConfigModule, CommonModule, JobLogsModule, SettingsModule],
   controllers: [],
   providers: [BingIndexerService],
   exports: [BingIndexerService],
