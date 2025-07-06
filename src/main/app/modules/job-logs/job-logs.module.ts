@@ -4,7 +4,8 @@ import { JobLogsService } from './job-logs.service'
 import { CommonModule } from '@main/app/modules/common/common.module'
 
 @Module({
-  controllers: [JobLogsController, CommonModule],
+  imports: [CommonModule],
+  controllers: [JobLogsController],
   providers: [JobLogsService],
   exports: [JobLogsService],
 })
