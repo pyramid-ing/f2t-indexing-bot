@@ -1,15 +1,13 @@
-import type { NaverAccount, NaverLoginStatus } from '../api'
+import type { NaverLoginStatus } from '../api'
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   LoadingOutlined,
   LoginOutlined,
-  ReloadOutlined,
   UserOutlined,
 } from '@ant-design/icons'
-import { Button, Card, Col, message, Row, Space, Tag, Typography } from 'antd'
-import React, { useEffect, useState } from 'react'
-import { checkNaverLoginComplete, checkNaverLoginStatus, getAllNaverAccounts, openNaverLoginBrowser } from '../api'
+import { Button, Card, Col, Row, Space, Tag, Typography } from 'antd'
+import React from 'react'
 
 const { Title, Text } = Typography
 

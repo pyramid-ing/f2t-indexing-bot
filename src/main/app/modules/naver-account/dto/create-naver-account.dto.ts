@@ -1,4 +1,4 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator'
 
 export class CreateNaverAccountDto {
   @IsString()
@@ -16,8 +16,4 @@ export class CreateNaverAccountDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean
-
-  @IsNumber()
-  @IsNotEmpty({ message: '사이트 ID는 필수입니다.' })
-  siteId: number
 }

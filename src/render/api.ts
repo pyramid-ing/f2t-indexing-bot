@@ -318,17 +318,17 @@ export interface NaverAccount {
 
 export async function getAllNaverAccounts(): Promise<NaverAccount[]> {
   const res = await axios.get(`${API_BASE_URL}/naver-accounts`)
-  return res.data.data || []
+  return res.data || []
 }
 
 export async function getActiveNaverAccounts(): Promise<NaverAccount[]> {
   const res = await axios.get(`${API_BASE_URL}/naver-accounts/active`)
-  return res.data.data || []
+  return res.data || []
 }
 
 export async function getNaverAccountByNaverId(naverId: string): Promise<NaverAccount | null> {
   const res = await axios.get(`${API_BASE_URL}/naver-accounts/naver-id/${naverId}`)
-  return res.data.data
+  return res.data
 }
 
 export async function createNaverAccount(data: {
@@ -338,12 +338,12 @@ export async function createNaverAccount(data: {
   isActive?: boolean
 }): Promise<NaverAccount> {
   const res = await axios.post(`${API_BASE_URL}/naver-accounts`, data)
-  return res.data.data
+  return res.data
 }
 
 export async function updateNaverAccount(id: number, data: Partial<NaverAccount>): Promise<NaverAccount> {
   const res = await axios.put(`${API_BASE_URL}/naver-accounts/${id}`, data)
-  return res.data.data
+  return res.data
 }
 
 export async function deleteNaverAccount(id: number): Promise<{ success: boolean; message: string }> {
@@ -360,7 +360,7 @@ export async function updateNaverAccountLoginStatus(
     isLoggedIn,
     lastLogin,
   })
-  return res.data.data
+  return res.data
 }
 
 // URL에서 사이트 설정 자동 매칭

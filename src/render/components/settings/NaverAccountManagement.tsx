@@ -151,8 +151,7 @@ const NaverAccountManagement: React.FC = () => {
       >
         <div style={{ marginBottom: 16 }}>
           <Text type="secondary">
-            네이버 서치어드바이저에 사용할 계정들을 관리합니다. 각 사이트별 설정에서 이 계정들 중 하나를 선택하여 사용할
-            수 있습니다.
+            네이버 서치어드바이저에 사용할 계정들을 관리합니다. 네이버 설정에서 이 계정들 중 하나를 선택하여 사용할 수 있습니다.
           </Text>
         </div>
 

@@ -26,9 +26,6 @@ model NaverAccount {
   lastLogin   DateTime  @default(now())
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  siteId      Int
-  accessToken String?
-  site        Site      @relation(fields: [siteId], references: [id])
 
   @@unique([naverId])
 }
@@ -51,7 +48,6 @@ model Site {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   indexJobs     IndexJob[]
-  naverAccounts NaverAccount[]
 }
 
 // 기본 Job 모델

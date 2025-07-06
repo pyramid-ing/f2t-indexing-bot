@@ -1,4 +1,4 @@
-import { IsBoolean, IsDate, IsNumber, IsOptional, IsString } from 'class-validator'
+import { IsBoolean, IsDate, IsOptional, IsString } from 'class-validator'
 
 export class UpdateNaverAccountDto {
   @IsString()
@@ -24,8 +24,4 @@ export class UpdateNaverAccountDto {
   @IsDate()
   @IsOptional()
   lastLogin?: Date
-
-  @IsNumber()
-  @IsOptional()
-  siteId?: number
 }
