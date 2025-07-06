@@ -1,23 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
-
-export interface CreateNaverAccountDto {
-  name: string
-  naverId: string
-  password: string
-  isActive?: boolean
-  siteId: number // number 타입의 사이트 ID
-}
-
-export interface UpdateNaverAccountDto {
-  name?: string
-  naverId?: string
-  password?: string
-  isActive?: boolean
-  isLoggedIn?: boolean
-  lastLogin?: Date
-  siteId?: number // number 타입의 사이트 ID
-}
+import { CreateNaverAccountDto } from './dto/create-naver-account.dto'
+import { UpdateNaverAccountDto } from './dto/update-naver-account.dto'
 
 @Injectable()
 export class NaverAccountService {

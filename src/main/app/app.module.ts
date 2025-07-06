@@ -13,6 +13,7 @@ import { app, BrowserWindow } from 'electron'
 import { JobModule } from '@main/app/modules/job/job.module'
 import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
 import { ScheduleModule } from '@nestjs/schedule'
+import { NaverAccountModule } from '@main/app/modules/naver-account/naver-account.module'
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { ScheduleModule } from '@nestjs/schedule'
     SettingsModule,
     JobModule,
     IndexJobModule,
+    NaverAccountModule,
   ],
   providers: [
     {
