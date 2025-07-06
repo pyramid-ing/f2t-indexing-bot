@@ -1,90 +1,51 @@
-import { DashboardOutlined, MenuFoldOutlined, MenuUnfoldOutlined, SettingOutlined } from '@ant-design/icons'
+import React, { useState } from 'react'
 import { Layout, Menu } from 'antd'
-import React from 'react'
-import styled from 'styled-components'
+import { HomeOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 const { Sider } = Layout
 
-const StyledSider = styled(Sider)`
-  .ant-layout-sider-trigger {
-    background: #001529;
-  }
-`
+const Sidebar: React.FC = () => {
+  const [collapsed, setCollapsed] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
 
-const Logo = styled.div`
-  height: 64px;
-  margin: 16px;
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: bold;
-  font-size: 14px;
-  text-align: center;
-`
-
-const VersionInfo = styled.div`
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
-  text-align: center;
-`
-
-interface SidebarProps {
-  collapsed: boolean
-  onCollapse: (collapsed: boolean) => void
-  selectedKey: string
-  onMenuClick: (key: string) => void
-  appVersion: string
-}
-
-const Sidebar: React.FC<SidebarProps> = ({ collapsed, onCollapse, selectedKey, onMenuClick, appVersion }) => {
   const menuItems = [
     {
-      key: '/dashboard',
-      icon: <DashboardOutlined />,
-      label: '대시보드',
+      key: '/',
+      icon: <HomeOutlined />,
+      label: '인덱싱 대시보드',
     },
     {
       key: '/settings',
       icon: <SettingOutlined />,
       label: '설정',
     },
+    {
+      key: '/naver-accounts',
+      icon: <UserOutlined />,
+      label: '네이버 계정',
+    },
   ]
 
   return (
-    <StyledSider trigger={null} collapsible collapsed={collapsed} onCollapse={onCollapse} theme="dark" width={200}>
-      <Logo>{collapsed ? 'F2T' : 'F2T 인덱싱 봇'}</Logo>
-
-      <Menu
-        theme="dark"
-        mode="inline"
-        selectedKeys={[selectedKey]}
-        items={menuItems}
-        onClick={({ key }) => onMenuClick(key)}
-      />
-
-      <div
-        style={{
-          position: 'absolute',
-          top: 16,
-          right: 16,
-          color: 'white',
-          cursor: 'pointer',
-          fontSize: 16,
-        }}
-        onClick={() => onCollapse(!collapsed)}
-      >
-        {collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+    <Sider
+      collapsible
+      collapsed={collapsed}
+      onCollapse={setCollapsed}
+      theme="light"
+      style={{
+        height: '100vh',
+        position: 'sticky',
+        top: 0,
+        left: 0,
+      }}
+    >
+      <div className="h-16 flex items-center justify-center">
+        <h1 className="text-lg font-bold">F2T 인덱싱</h1>
       </div>
-
-      {!collapsed && <VersionInfo>v{appVersion}</VersionInfo>}
-    </StyledSider>
+      <Menu mode="inline" selectedKeys={[location.pathname]} items={menuItems} onClick={({ key }) => navigate(key)} />
+    </Sider>
   )
 }
 

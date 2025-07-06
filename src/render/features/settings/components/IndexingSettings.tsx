@@ -1,24 +1,26 @@
 import React from 'react'
-import { Form, Switch, Input } from 'antd'
+import { Form, Input, Switch } from 'antd'
 import { Site } from '@render/api/settings/siteConfigApi'
 
 interface IndexingSettingsProps {
   site: Site
-  onValuesChange: (values: any) => void
 }
 
-const IndexingSettings: React.FC<IndexingSettingsProps> = ({ site, onValuesChange }) => {
-  const [form] = Form.useForm()
-
+const IndexingSettings: React.FC<IndexingSettingsProps> = ({ site }) => {
   return (
-    <Form form={form} layout="vertical" initialValues={site.indexingConfig} onValuesChange={onValuesChange}>
-      <Form.Item name="use" valuePropName="checked" label="인덱싱 사용">
+    <div>
+      <Form.Item name={['indexing', 'use']} valuePropName="checked" label="자동 인덱싱 사용">
         <Switch />
       </Form.Item>
-      <Form.Item name="schedule" label="스케줄">
-        <Input placeholder="* * * * *" />
+
+      <Form.Item
+        name={['indexing', 'schedule']}
+        label="인덱싱 스케줄 (Cron 표현식)"
+        rules={[{ required: true, message: 'Cron 표현식을 입력해주세요' }]}
+      >
+        <Input placeholder="0 0 * * *" />
       </Form.Item>
-    </Form>
+    </div>
   )
 }
 

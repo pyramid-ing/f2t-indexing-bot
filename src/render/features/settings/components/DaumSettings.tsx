@@ -4,34 +4,31 @@ import { Site } from '@render/api/settings/siteConfigApi'
 
 interface DaumSettingsProps {
   site: Site
-  onValuesChange: (values: any) => void
 }
 
-const DaumSettings: React.FC<DaumSettingsProps> = ({ site, onValuesChange }) => {
-  const [form] = Form.useForm()
-
+const DaumSettings: React.FC<DaumSettingsProps> = ({ site }) => {
   return (
-    <Form form={form} layout="vertical" initialValues={site.daumConfig} onValuesChange={onValuesChange}>
-      <Form.Item name="use" valuePropName="checked" label="Daum 인덱싱 사용">
+    <div>
+      <Form.Item name={['daum', 'use']} valuePropName="checked" label="다음 인덱싱 사용">
         <Switch />
       </Form.Item>
 
-      <Form.Item name="siteUrl" label="사이트 URL">
+      <Form.Item name={['daum', 'siteUrl']} label="사이트 URL">
         <Input placeholder="https://example.com" />
       </Form.Item>
 
-      <Form.Item name="loginUrl" label="로그인 URL">
-        <Input placeholder="https://example.com/login" />
+      <Form.Item name={['daum', 'loginUrl']} label="로그인 URL">
+        <Input placeholder="https://accounts.kakao.com/login" />
       </Form.Item>
 
-      <Form.Item name="password" label="비밀번호">
-        <Input.Password placeholder="비밀번호를 입력하세요" />
+      <Form.Item name={['daum', 'password']} label="비밀번호">
+        <Input.Password />
       </Form.Item>
 
-      <Form.Item name="headless" valuePropName="checked" label="헤드리스 모드">
+      <Form.Item name={['daum', 'headless']} valuePropName="checked" label="헤드리스 모드">
         <Switch />
       </Form.Item>
-    </Form>
+    </div>
   )
 }
 

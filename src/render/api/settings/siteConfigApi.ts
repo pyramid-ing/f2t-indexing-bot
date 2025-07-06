@@ -5,26 +5,26 @@ const BASE_PATH = '/sites'
 // 검색엔진별 설정 인터페이스
 export interface GoogleConfig {
   use: boolean
-  serviceAccountJson: string
+  serviceAccountJson?: string
 }
 
 export interface BingConfig {
   use: boolean
-  apiKey: string
+  apiKey?: string
 }
 
 export interface NaverConfig {
   use: boolean
   selectedNaverAccountId?: number
-  loginUrl: string
+  loginUrl?: string
   headless?: boolean
 }
 
 export interface DaumConfig {
   use: boolean
-  siteUrl: string
-  password: string
-  loginUrl: string
+  siteUrl?: string
+  password?: string
+  loginUrl?: string
   headless?: boolean
 }
 
@@ -49,22 +49,26 @@ export interface Site {
   domain: string
   siteUrl: string
   isActive: boolean
-  bingConfig: {
-    use: boolean
-  }
-  daumConfig: {
-    use: boolean
-  }
-  googleConfig: {
-    use: boolean
-  }
   naverConfig: {
     use: boolean
     selectedNaverAccountId?: string
+    loginUrl: string
+    headless: boolean
   }
-  indexingConfig: {
+  daumConfig: {
     use: boolean
-    schedule: string
+    siteUrl: string
+    loginUrl: string
+    password: string
+    headless: boolean
+  }
+  googleConfig: {
+    use: boolean
+    serviceAccountJson: string
+  }
+  bingConfig: {
+    use: boolean
+    apiKey: string
   }
 }
 
