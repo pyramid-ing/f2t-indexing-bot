@@ -1,10 +1,9 @@
 import { HomeOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons'
 import { Layout, Menu, Typography } from 'antd'
 import React, { useEffect, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import styled from 'styled-components'
 import UpdateManager from '@render/components/UpdateManager'
-import { NavLink } from 'react-router-dom'
 
 const { Text } = Typography
 
@@ -113,7 +112,29 @@ const UpdateButtonWrapper = styled.div`
 
 const AppSidebar: React.FC = () => {
   const location = useLocation()
+  const navigate = useNavigate()
   const [appVersion, setAppVersion] = useState<string>('...')
+
+  const menuMap = [
+    {
+      key: '1',
+      path: '/',
+      label: '대시보드',
+      icon: <HomeOutlined />,
+    },
+    {
+      key: '2',
+      path: '/settings',
+      label: '설정',
+      icon: <SettingOutlined />,
+    },
+    {
+      key: '3',
+      path: '/naver-accounts',
+      label: '네이버 계정',
+      icon: <UserOutlined />,
+    },
+  ]
 
   useEffect(() => {
     const getVersion = async () => {
@@ -130,10 +151,10 @@ const AppSidebar: React.FC = () => {
   }, [])
 
   const getSelectedKey = () => {
-    if (location.pathname === '/') return '1'
-    if (location.pathname === '/scheduled-posts') return '2'
-    if (location.pathname === '/settings') return '3'
-    return '1'
+    const found = menuMap.find(item =>
+      item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path),
+    )
+    return found ? found.key : '1'
   }
 
   return (
@@ -143,23 +164,11 @@ const AppSidebar: React.FC = () => {
         theme="dark"
         selectedKeys={[getSelectedKey()]}
         mode="inline"
-        items={[
-          {
-            key: '1',
-            icon: <HomeOutlined />,
-            label: <NavLink to="/">대시보드</NavLink>,
-          },
-          {
-            key: '2',
-            icon: <SettingOutlined />,
-            label: <NavLink to="/settings">설정</NavLink>,
-          },
-          {
-            key: '3',
-            icon: <UserOutlined />,
-            label: <NavLink to="/naver-accounts">네이버 계정</NavLink>,
-          },
-        ]}
+        items={menuMap.map(item => ({
+          key: item.key,
+          icon: item.icon,
+          label: <NavLink to={item.path}>{item.label}</NavLink>,
+        }))}
       />
       <UpdateSection>
         <VersionInfo>
