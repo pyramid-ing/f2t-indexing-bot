@@ -52,41 +52,53 @@ model Site {
 
 // 기본 Job 모델
 model Job {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  scheduledAt DateTime?
+  id           String    @id @default(cuid())
+  type         String // JobType: 'index'
+  subject      String // 작업 제목
+  desc         String // 작업 설명
+  status       String    @default("pending") // JobStatus: 'request' | 'pending' | 'processing' | 'completed' | 'failed'
+  priority     Int       @default(1)
+  scheduledAt  DateTime
   startedAt    DateTime?
   completedAt  DateTime?
-  status    String    @default("pending") // pending, in_progress, completed, failed, cancelled
-  type      String    // index, blog_post
-  data      String    // JSON string
-  resultMsg String?
-  errorMsg String?
-  logs      JobLog[]
-  indexJob  IndexJob?
+  resultMsg    String? // 결과 메시지
+  resultUrl    String? // 결과 URL
+  errorMessage String? // 에러 메시지
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // 로그
+  logs JobLog[]
+
+  // 블로그 작업 관련 데이터
+  IndexJob  IndexJob?
 }
 
 model JobLog {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
+  id        String   @id @default(cuid())
   jobId     String
   message   String
-  level     String    @default("info") // info, error
-  job       Job       @relation(fields: [jobId], references: [id])
+  level     String   @default("info") // 'info' | 'warn' | 'error'
+  createdAt DateTime @default(now())
+
+  // 관계
+  job Job @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
 }
 
 // 블로그 작업 모델
 model IndexJob {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id          String    @id @default(cuid())
+
   url       String
   provider  String    // 'GOOGLE' | 'NAVER' | 'DAUM' | 'BING'
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
   jobId     String    @unique
   siteId    Int
   site      Site      @relation(fields: [siteId], references: [id])
-  job       Job       @relation(fields: [jobId], references: [id])
-
-  @@index([siteId])
+  job       Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
