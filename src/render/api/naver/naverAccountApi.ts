@@ -1,18 +1,8 @@
 import { api } from '../api'
+import { NaverAccount } from '../types'
 
-export interface NaverAccount {
-  id: number
-  naverId: string
-  password: string
-  name: string
-  isActive: boolean
-  isLoggedIn: boolean
-  lastLogin: string
-  createdAt: string
-  updatedAt: string
-}
-
-export type CreateNaverAccountDto = Omit<NaverAccount, 'id' | 'createdAt' | 'updatedAt' | 'lastLogin' | 'isLoggedIn'>
+export type { NaverAccount }
+export type CreateNaverAccountDto = Pick<NaverAccount, 'name' | 'naverId' | 'password'> & { isActive?: boolean }
 
 const naverAccountApi = {
   getAll: () => api.get<NaverAccount[]>('/naver-accounts'),

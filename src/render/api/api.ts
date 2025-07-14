@@ -1,21 +1,31 @@
 import axios from 'axios'
+import { getErrorMessage } from './types'
+
+// API 응답 타입을 재정의
+declare module 'axios' {
+  export interface AxiosInstance {
+    get<T = any>(url: string, config?: any): Promise<T>
+    post<T = any>(url: string, data?: any, config?: any): Promise<T>
+    patch<T = any>(url: string, data?: any, config?: any): Promise<T>
+    delete<T = any>(url: string, config?: any): Promise<T>
+  }
+}
 
 export const api = axios.create({
   baseURL: 'http://localhost:3553',
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 // 응답 인터셉터 추가
 api.interceptors.response.use(
-  response => response.data,
+  response => {
+    // 성공 응답은 data만 반환
+    return response.data
+  },
   error => {
-    // 에러 응답이 있는 경우
-    if (error.response) {
-      return Promise.reject(error.response.data)
-    }
-    // 네트워크 에러 등의 경우
-    return Promise.reject(error)
+    // 에러 응답은 에러 메시지를 포함하여 reject
+    return Promise.reject({
+      message: getErrorMessage(error),
+      ...error,
+    })
   },
 )

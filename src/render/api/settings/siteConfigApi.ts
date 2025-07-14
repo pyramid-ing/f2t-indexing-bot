@@ -51,68 +51,40 @@ export interface Site {
   isActive: boolean
   naverConfig: {
     use: boolean
-    selectedNaverAccountId?: string
-    loginUrl: string
-    headless: boolean
+    selectedNaverAccountId?: number
+    loginUrl?: string
+    headless?: boolean
   }
   daumConfig: {
     use: boolean
-    siteUrl: string
-    loginUrl: string
-    password: string
-    headless: boolean
+    siteUrl?: string
+    loginUrl?: string
+    password?: string
+    headless?: boolean
   }
   googleConfig: {
     use: boolean
-    serviceAccountJson: string
+    serviceAccountJson?: string
   }
   bingConfig: {
     use: boolean
-    apiKey: string
+    apiKey?: string
   }
 }
 
 // 사이트 설정 관리 API
 export const siteConfigApi = {
-  getAll: async (): Promise<Site[]> => {
-    const response = await api.get(BASE_PATH)
-    return response.data
-  },
-
-  getById: async (id: number): Promise<Site> => {
-    const response = await api.get(`${BASE_PATH}/${id}`)
-    return response.data
-  },
-
-  create: async (data: Omit<Site, 'id'>): Promise<Site> => {
-    const response = await api.post(BASE_PATH, data)
-    return response.data
-  },
-
-  update: async (id: number, data: Partial<Site>): Promise<Site> => {
-    const response = await api.put(`${BASE_PATH}/${id}`, data)
-    return response.data
-  },
-
-  delete: async (id: number): Promise<void> => {
-    await api.delete(`${BASE_PATH}/${id}`)
-  },
-
-  getByDomain: async (domain: string): Promise<Site> => {
-    const response = await api.get(`${BASE_PATH}/domain/${encodeURIComponent(domain)}`)
-    return response.data
-  },
-
-  getActive: async (): Promise<Site[]> => {
-    const response = await api.get(`${BASE_PATH}/active`)
-    return response.data
-  },
-
+  getAll: () => api.get<Site[]>('/sites'),
+  getById: (id: number) => api.get<Site>(`${BASE_PATH}/${id}`),
+  create: (data: Omit<Site, 'id'>) => api.post<Site>('/sites', data),
+  update: (id: number, data: Partial<Site>) => api.put<Site>(`/sites/${id}`, data),
+  delete: (id: number) => api.delete(`/sites/${id}`),
+  getByDomain: (domain: string) => api.get<Site>(`${BASE_PATH}/domain/${encodeURIComponent(domain)}`),
+  getActive: () => api.get<Site[]>(`${BASE_PATH}/active`),
   findByUrl: async (url: string): Promise<SiteConfig | null> => {
     const domain = new URL(url).hostname
     try {
-      const response = await api.get(`${BASE_PATH}/domain/${encodeURIComponent(domain)}`)
-      return response.data
+      return await api.get<SiteConfig>(`${BASE_PATH}/domain/${encodeURIComponent(domain)}`)
     } catch (error) {
       if (error?.status === 404) {
         return null

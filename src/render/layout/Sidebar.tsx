@@ -29,18 +29,7 @@ const Sidebar: React.FC = () => {
   ]
 
   return (
-    <Sider
-      collapsible
-      collapsed={collapsed}
-      onCollapse={setCollapsed}
-      theme="light"
-      style={{
-        height: '100vh',
-        position: 'sticky',
-        top: 0,
-        left: 0,
-      }}
-    >
+    <Sider collapsible collapsed={collapsed} onCollapse={setCollapsed} theme="light" style={{}}>
       <div className="h-16 flex items-center justify-center">
         <h1 className="text-lg font-bold">F2T 인덱싱</h1>
       </div>

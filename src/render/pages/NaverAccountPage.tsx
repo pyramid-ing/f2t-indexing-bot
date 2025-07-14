@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Table, Button, Modal, Form, Input, message, Typography, Card } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import { naverAccountApi, NaverAccount, CreateNaverAccountDto } from '@render/api/naver/naverAccountApi'
 
 const { Title } = Typography
+const { confirm } = Modal
 
 const NaverAccountPage: React.FC = () => {
   const [accounts, setAccounts] = useState<NaverAccount[]>([])
@@ -18,8 +19,8 @@ const NaverAccountPage: React.FC = () => {
   const loadAccounts = async () => {
     try {
       setLoading(true)
-      const data = await naverAccountApi.getAll()
-      setAccounts(data)
+      const response = await naverAccountApi.getAll()
+      setAccounts(response)
     } catch (error) {
       console.error('Failed to load Naver accounts:', error)
       message.error('네이버 계정 목록을 불러오는데 실패했습니다')
@@ -47,18 +48,28 @@ const NaverAccountPage: React.FC = () => {
     }
   }
 
-  const handleDeleteAccount = async (id: number) => {
-    try {
-      setLoading(true)
-      await naverAccountApi.delete(id)
-      message.success('네이버 계정이 삭제되었습니다')
-      await loadAccounts()
-    } catch (error) {
-      console.error('Failed to delete Naver account:', error)
-      message.error('네이버 계정 삭제에 실패했습니다')
-    } finally {
-      setLoading(false)
-    }
+  const showDeleteConfirm = (account: NaverAccount) => {
+    confirm({
+      title: '네이버 계정을 삭제하시겠습니까?',
+      icon: <ExclamationCircleOutlined />,
+      content: `계정 이름: ${account.name} (${account.naverId})`,
+      okText: '삭제',
+      okType: 'danger',
+      cancelText: '취소',
+      onOk: async () => {
+        try {
+          setLoading(true)
+          await naverAccountApi.delete(account.id)
+          message.success('네이버 계정이 삭제되었습니다')
+          await loadAccounts()
+        } catch (error) {
+          console.error('Failed to delete Naver account:', error)
+          message.error('네이버 계정 삭제에 실패했습니다')
+        } finally {
+          setLoading(false)
+        }
+      },
+    })
   }
 
   const columns = [
@@ -94,7 +105,7 @@ const NaverAccountPage: React.FC = () => {
       title: '작업',
       key: 'action',
       render: (_: any, record: NaverAccount) => (
-        <Button type="link" danger onClick={() => handleDeleteAccount(record.id)}>
+        <Button type="link" danger onClick={() => showDeleteConfirm(record)}>
           삭제
         </Button>
       ),
