@@ -8,7 +8,7 @@ interface BingSettingsProps {
 
 const BingSettings: React.FC<BingSettingsProps> = ({ site }) => {
   return (
-    <div>
+    <>
       <Form.Item name={['bing', 'use']} valuePropName="checked" label="빙 인덱싱 사용">
         <Switch />
       </Form.Item>
@@ -16,7 +16,7 @@ const BingSettings: React.FC<BingSettingsProps> = ({ site }) => {
       <Form.Item name={['bing', 'apiKey']} label="API 키">
         <Input.Password placeholder="API 키를 입력하세요" />
       </Form.Item>
-    </div>
+    </>
   )
 }
 

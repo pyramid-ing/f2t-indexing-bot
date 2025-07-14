@@ -9,7 +9,6 @@ interface NaverSettingsProps {
 }
 
 const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
-  const [form] = Form.useForm()
   const [accounts, setAccounts] = React.useState<NaverAccount[]>([])
   const [loading, setLoading] = React.useState(false)
 
@@ -30,15 +29,8 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
     }
   }
 
-  const initialValues = {
-    use: site.naverConfig?.use || false,
-    selectedNaverAccountId: site.naverConfig?.selectedNaverAccountId,
-    loginUrl: site.naverConfig?.loginUrl || '',
-    headless: site.naverConfig?.headless || false,
-  }
-
   return (
-    <Form form={form} layout="vertical" initialValues={initialValues}>
+    <>
       <Form.Item name={['naver', 'use']} valuePropName="checked" label="네이버 인덱싱 사용">
         <Switch />
       </Form.Item>
@@ -64,7 +56,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
       <Form.Item name={['naver', 'headless']} valuePropName="checked" label="헤드리스 모드">
         <Switch />
       </Form.Item>
-    </Form>
+    </>
   )
 }
 

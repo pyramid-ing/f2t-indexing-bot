@@ -8,7 +8,7 @@ interface DaumSettingsProps {
 
 const DaumSettings: React.FC<DaumSettingsProps> = ({ site }) => {
   return (
-    <div>
+    <>
       <Form.Item name={['daum', 'use']} valuePropName="checked" label="다음 인덱싱 사용">
         <Switch />
       </Form.Item>
@@ -28,7 +28,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ site }) => {
       <Form.Item name={['daum', 'headless']} valuePropName="checked" label="헤드리스 모드">
         <Switch />
       </Form.Item>
-    </div>
+    </>
   )
 }
 
