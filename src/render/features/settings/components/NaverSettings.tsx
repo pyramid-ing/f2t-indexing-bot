@@ -1,8 +1,7 @@
 import React from 'react'
 import { Form, Input, Select, Switch, Spin } from 'antd'
-import { Site } from '@render/api/settings/siteConfigApi'
-import { naverAccountApi } from '@render/api'
-import { NaverAccount } from '@render/api/types'
+import { Site } from '@render/api/siteConfigApi'
+import { getAllNaverAccounts, NaverAccount } from '@render/api/naverAccountApi'
 
 interface NaverSettingsProps {
   site: Site
@@ -19,7 +18,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
   const loadAccounts = async () => {
     try {
       setLoading(true)
-      const data = await naverAccountApi.getAll()
+      const data = await getAllNaverAccounts()
       setAccounts(data || [])
     } catch (error) {
       console.error('네이버 계정 목록을 불러오는데 실패했습니다:', error)

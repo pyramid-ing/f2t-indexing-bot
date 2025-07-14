@@ -1,6 +1,6 @@
 import React from 'react'
 import { Modal, Descriptions } from 'antd'
-import { Job } from '@render/api/job/jobApi'
+import { Job } from '@render/api/jobApi'
 
 export interface IndexingDetailModalProps {
   task: Job

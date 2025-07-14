@@ -1,6 +1,6 @@
 import React from 'react'
 import { Form, Input, Switch } from 'antd'
-import { Site } from '@render/api/settings/siteConfigApi'
+import { Site } from '@render/api/siteConfigApi'
 
 interface IndexingSettingsProps {
   site: Site

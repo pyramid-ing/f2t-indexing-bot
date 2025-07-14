@@ -218,7 +218,7 @@ async function bootstrap() {
     //   defaultVersion: '1',
     //   type: VersioningType.URI,
     // })
-    // app.setGlobalPrefix('api', { exclude: ['sitemap.xml'] })
+    // app.setGlobalPrefix('apiClient', { exclude: ['sitemap.xml'] })
     app.useGlobalPipes(
       new ValidationPipe({
         transform: true,

@@ -2,7 +2,7 @@
 
 ## 디렉토리 구조 및 용도
 
-### 1. API 레이어 (`api/`)
+### 1. API 레이어 (`apiClient/`)
 - `apiClient.ts`: 기본 API 클라이언트 설정 및 인터셉터
 - 도메인별 API 클라이언트 분리 (예: `bloggerApi.ts`, `settingsApi.ts`)
 - 모든 백엔드 통신은 반드시 API 클라이언트를 통해 수행
@@ -60,7 +60,7 @@
    - Props drilling 피하기
 
 3. API 통신
-   - API 호출은 반드시 api/ 디렉토리의 클라이언트 사용
+   - API 호출은 반드시 apiClient/ 디렉토리의 클라이언트 사용
    - 에러 처리는 errorHelpers.ts 활용
    - 데이터 캐싱 고려
 description:

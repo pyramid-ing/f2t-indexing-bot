@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { IndexingDetailModal, IndexingTaskTable, useIndexingTasks } from '@render/features/dashboard'
 import { message, Input, Button, Space } from 'antd'
-import { indexingApi } from '@render/api/indexing/indexingApi'
+import { createIndexJob } from '@render/api/jobApi'
 
 export const IndexingDashboard: React.FC = () => {
   const { tasks, loading, selectedTask, onTaskSelect, onTaskClose, onTaskRetry, onTaskDelete, refresh } =
@@ -28,7 +28,7 @@ export const IndexingDashboard: React.FC = () => {
       // 여기서는 예시로 siteId=1로 고정
       const siteId = 1
       for (const url of urls) {
-        await indexingApi.createIndexJob({ siteId, url })
+        await createIndexJob({ siteId, url })
       }
       message.success('인덱싱 요청이 등록되었습니다.')
       setUrlInput('')
@@ -42,7 +42,7 @@ export const IndexingDashboard: React.FC = () => {
 
   const handleRequestIndexing = async (task: any) => {
     try {
-      await indexingApi.createIndexJob({ siteId: task.siteId, url: task.url })
+      await createIndexJob({ siteId: task.siteId, url: task.url })
       message.success('인덱싱 요청이 재등록되었습니다.')
       refresh()
     } catch (err: any) {

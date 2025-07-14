@@ -3,8 +3,7 @@ import { Typography, Select, Form, Input, Button, Space, Card, Tabs, Modal, mess
 import { PlusOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
-import { siteConfigApi } from '@render/api'
-import { Site } from '@render/api/settings/siteConfigApi'
+import { getAllSites, createSite, updateSite, Site } from '@render/api/siteConfigApi'
 
 const { Title } = Typography
 const { TabPane } = Tabs
@@ -71,7 +70,7 @@ const SettingsPage: React.FC = () => {
   const fetchSites = async () => {
     try {
       setLoading(true)
-      const data = await siteConfigApi.getAll()
+      const data = await getAllSites()
       const siteList = Array.isArray(data) ? data : []
       setSites(siteList)
       if (siteList.length > 0) {
@@ -91,7 +90,7 @@ const SettingsPage: React.FC = () => {
 
     try {
       setLoading(true)
-      await siteConfigApi.update(selectedSite.id, {
+      await updateSite(selectedSite.id, {
         name: values.general.name,
         domain: values.general.domain,
         siteUrl: values.general.siteUrl,
@@ -113,7 +112,7 @@ const SettingsPage: React.FC = () => {
   const handleAddSite = async (values: AddSiteFormData) => {
     try {
       setLoading(true)
-      await siteConfigApi.create({
+      await createSite({
         ...values,
         isActive: true,
         googleConfig: {

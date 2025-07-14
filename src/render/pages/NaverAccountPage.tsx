@@ -1,7 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { Table, Button, Modal, Form, Input, message, Typography, Card } from 'antd'
 import { PlusOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
-import { naverAccountApi, NaverAccount, CreateNaverAccountDto } from '@render/api/naver/naverAccountApi'
+import {
+  getAllNaverAccounts,
+  createNaverAccount,
+  deleteNaverAccount,
+  NaverAccount,
+  CreateNaverAccountDto,
+} from '@render/api/naverAccountApi'
 
 const { Title } = Typography
 const { confirm } = Modal
@@ -19,7 +25,7 @@ const NaverAccountPage: React.FC = () => {
   const loadAccounts = async () => {
     try {
       setLoading(true)
-      const response = await naverAccountApi.getAll()
+      const response = await getAllNaverAccounts()
       setAccounts(response)
     } catch (error) {
       console.error('Failed to load Naver accounts:', error)
@@ -32,7 +38,7 @@ const NaverAccountPage: React.FC = () => {
   const handleAddAccount = async (values: CreateNaverAccountDto) => {
     try {
       setLoading(true)
-      await naverAccountApi.create({
+      await createNaverAccount({
         ...values,
         isActive: true,
       })
@@ -59,7 +65,7 @@ const NaverAccountPage: React.FC = () => {
       onOk: async () => {
         try {
           setLoading(true)
-          await naverAccountApi.delete(account.id)
+          await deleteNaverAccount(account.id)
           message.success('네이버 계정이 삭제되었습니다')
           await loadAccounts()
         } catch (error) {

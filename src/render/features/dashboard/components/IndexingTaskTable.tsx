@@ -1,6 +1,6 @@
 import React from 'react'
 import { Table, Button, Space, Tag } from 'antd'
-import { Job, JobStatus } from '@render/api/job/jobApi'
+import { Job, JobStatus } from '@render/api/jobApi'
 
 interface IndexingTaskTableProps {
   tasks: Job[]
