@@ -76,10 +76,19 @@ export const ErrorCodeMap: Record<ErrorCode, ErrorCodeMeta> = {
     message: () => 'Daum 인증이 실패했습니다. PIN 또는 계정 정보를 확인해주세요.',
   },
   [ErrorCode.DAUM_UNKNOWN_ERROR]: { status: 500, message: meta => `Daum 색인 요청 실패: ${meta?.errorMessage || ''}` },
+  [ErrorCode.DAUM_DUPLICATE_URL]: {
+    status: 409,
+    message: meta => `이미 등록된 URL입니다.${meta?.errorMessage ? ' (' + meta.errorMessage + ')' : ''}`,
+  },
+  [ErrorCode.DAUM_INVALID_URL]: { status: 400, message: meta => meta?.errorMessage || '올바르지 않은 URL입니다.' },
 
   // 사이트 관련
   [ErrorCode.SITE_NOT_FOUND]: { status: 404, message: () => '사이트를 찾을 수 없습니다.' },
   [ErrorCode.SITE_DOMAIN_DUPLICATE]: { status: 409, message: () => '이미 존재하는 도메인입니다.' },
   [ErrorCode.SITE_INACTIVE]: { status: 400, message: () => '비활성화된 사이트입니다.' },
   [ErrorCode.SITE_DOMAIN_MISMATCH]: { status: 400, message: () => '도메인이 일치하지 않습니다.' },
+
+  [ErrorCode.JOB_NOT_FOUND]: { status: 404, message: () => '작업을 찾을 수 없습니다.' },
+  [ErrorCode.JOB_STATUS_INVALID]: { status: 400, message: () => '잘못된 작업 상태입니다.' },
+  [ErrorCode.JOB_STATUS_CHANGE_FAILED]: { status: 400, message: () => '작업 상태 변경에 실패했습니다.' },
 }

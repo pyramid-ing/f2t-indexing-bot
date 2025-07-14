@@ -7,6 +7,7 @@ import { JobLogsService } from '../job-logs/job-logs.service'
 import { IndexJobService } from '../index-job/index-job.service'
 import { CustomHttpException } from '@main/common/errors/custom-http.exception'
 import { ErrorCode } from '@main/common/errors/error-code.enum'
+import { ErrorCodeMap } from '@main/common/errors/error-code.map'
 
 @Injectable()
 export class JobQueueProcessor implements OnModuleInit {
@@ -52,8 +53,6 @@ export class JobQueueProcessor implements OnModuleInit {
       }
 
       await this.processJob(job)
-    } catch (error) {
-      this.logger.error(`작업 처리 중 오류 발생: ${error.message}`)
     } finally {
       this.isProcessing = false
     }
@@ -90,12 +89,21 @@ export class JobQueueProcessor implements OnModuleInit {
         status: JobStatus.FAILED,
         errorMessage: error.message,
       })
+      // ErrorCodeMap에서 매핑
+      let logMessage = `작업 처리 중 오류 발생: ${error.message}`
+      if (error instanceof CustomHttpException) {
+        const mapped = ErrorCodeMap[error.errorCode]
+        if (mapped) {
+          logMessage = `작업 처리 중 오류 발생: ${mapped.message(error.metadata)}`
+        }
+      }
       await this.jobLogsService.create({
         jobId: job.id,
-        message: `작업 처리 중 오류 발생: ${error.message}`,
+        message: logMessage,
         level: 'error',
       })
       this.logger.error(`작업 ${job.id} 처리 중 오류 발생: ${error.message}`)
+      throw error
     }
   }
 }

@@ -64,4 +64,5 @@ export interface CreateJobLogDto {
   jobId: string
   message: string
   level?: JobLogLevel
+  errorCode?: number
 }

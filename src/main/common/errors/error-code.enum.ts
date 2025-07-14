@@ -38,6 +38,8 @@ export enum ErrorCode {
   // ✅ Daum 관련 (5000번대)
   DAUM_CONFIG_DISABLED = 5001,
   DAUM_AUTH_FAIL = 5002,
+  DAUM_DUPLICATE_URL = 5003,
+  DAUM_INVALID_URL = 5005,
   DAUM_UNKNOWN_ERROR = 5099,
 
   // ✅ Site 관련 (6000번대)

@@ -98,11 +98,11 @@ export class IndexJobService implements JobProcessor {
         message: result.message,
       }
     } catch (error) {
-      // 에러 로그 기록
+      // 에러 로그 기록 (errorCode만 기록, 메시지 매핑은 글로벌 필터에서)
       await this.prisma.jobLog.create({
         data: {
           jobId: job.id,
-          message: `${provider} 인덱싱 요청 실패: ${error.message}`,
+          message: `${provider} 인덱싱 요청 실패: ${error.errorCode || error.code || error.message}`,
           level: 'error',
         },
       })
