@@ -25,7 +25,7 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ site }) => {
         <Input.Password />
       </Form.Item>
 
-      <Form.Item name={['daum', 'headless']} valuePropName="checked" label="헤드리스 모드">
+      <Form.Item name={['daum', 'headless']} valuePropName="checked" label="창 숨김">
         <Switch />
       </Form.Item>
     </>

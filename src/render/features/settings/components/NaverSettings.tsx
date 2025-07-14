@@ -52,7 +52,7 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
         <Input placeholder="https://nid.naver.com/nidlogin.login" />
       </Form.Item>
 
-      <Form.Item name={['naver', 'headless']} valuePropName="checked" label="헤드리스 모드">
+      <Form.Item name={['naver', 'headless']} valuePropName="checked" label="창 숨김">
         <Switch />
       </Form.Item>
     </>
