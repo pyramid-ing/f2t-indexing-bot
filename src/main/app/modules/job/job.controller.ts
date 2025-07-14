@@ -2,12 +2,16 @@ import { Controller, Get, Post, Delete, Param, Query, Body, Put } from '@nestjs/
 import { JobService } from './job.service'
 import { JobLogsService } from '../job-logs/job-logs.service'
 import { JobStatus, UpdateJobDto } from './job.types'
+import { CustomHttpException } from '@main/common/errors/custom-http.exception'
+import { ErrorCode } from '@main/common/errors/error-code.enum'
+import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 
 @Controller('jobs')
 export class JobController {
   constructor(
     private readonly jobService: JobService,
     private readonly jobLogsService: JobLogsService,
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get()
@@ -150,5 +154,61 @@ export class JobController {
       success: true,
       message: `${jobs.length}개의 작업이 삭제되었습니다.`,
     }
+  }
+
+  // 등록대기 -> 등록요청 (개별)
+  @Post(':id/request-to-pending')
+  async requestToPending(@Param('id') jobId: string) {
+    try {
+      const job = await this.prisma.job.findUnique({ where: { id: jobId } })
+      if (!job) {
+        throw new CustomHttpException(ErrorCode.JOB_NOT_FOUND, { jobId })
+      }
+      if (job.status !== JobStatus.REQUEST) {
+        throw new CustomHttpException(ErrorCode.JOB_STATUS_INVALID, { jobId, status: job.status })
+      }
+      await this.prisma.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.PENDING },
+      })
+      return { success: true, message: '상태가 등록대기(pending)로 변경되었습니다.' }
+    } catch (error) {
+      if (error instanceof CustomHttpException) throw error
+      throw new CustomHttpException(ErrorCode.JOB_STATUS_CHANGE_FAILED)
+    }
+  }
+
+  // 등록요청 -> 등록대기 (개별)
+  @Post(':id/pending-to-request')
+  async pendingToRequest(@Param('id') jobId: string) {
+    try {
+      const job = await this.prisma.job.findUnique({ where: { id: jobId } })
+      if (!job) {
+        throw new CustomHttpException(ErrorCode.JOB_NOT_FOUND, { jobId })
+      }
+      if (job.status !== JobStatus.PENDING) {
+        throw new CustomHttpException(ErrorCode.JOB_STATUS_INVALID, { jobId, status: job.status })
+      }
+      await this.prisma.job.update({
+        where: { id: jobId },
+        data: { status: JobStatus.REQUEST },
+      })
+      return { success: true, message: '상태가 등록요청(request)로 변경되었습니다.' }
+    } catch (error) {
+      if (error instanceof CustomHttpException) throw error
+      throw new CustomHttpException(ErrorCode.JOB_STATUS_CHANGE_FAILED)
+    }
+  }
+
+  // 벌크 등록대기 -> 등록요청
+  @Post('pending-to-request')
+  async bulkPendingToRequest(@Body() data: { ids: string[] }) {
+    return this.jobService.bulkPendingToRequest(data.ids)
+  }
+
+  // 벌크 등록요청 -> 등록대기
+  @Post('request-to-pending')
+  async bulkRequestToPending(@Body() data: { ids: string[] }) {
+    return this.jobService.bulkRequestToPending(data.ids)
   }
 }

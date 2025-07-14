@@ -11,6 +11,7 @@ export enum JobType {
 
 export enum JobStatus {
   PENDING = 'pending',
+  REQUEST = 'request',
   PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
@@ -31,7 +32,7 @@ export interface Job {
   createdAt: string
   updatedAt: string
   logs?: JobLog[]
-  indexJob?: IndexJob
+  IndexJob?: IndexJob
 }
 
 export interface JobLog {
@@ -81,4 +82,39 @@ export async function retryJob(id: string): Promise<Job> {
 
 export async function deleteJob(id: string): Promise<void> {
   await api.delete(`${BASE_PATH}/${id}`)
+}
+
+export async function updateJobScheduledAt(id: string, scheduledAt: string | null): Promise<Job> {
+  const response = await api.patch(`${BASE_PATH}/${id}`, { scheduledAt })
+  return response.data
+}
+
+export async function getJobLogs(jobId: string): Promise<JobLog[]> {
+  const response = await api.get(`${BASE_PATH}/${jobId}/logs`)
+  return response.data
+}
+
+export async function getLatestJobLog(jobId: string): Promise<JobLog | null> {
+  const response = await api.get(`${BASE_PATH}/${jobId}/logs/latest`)
+  return response.data
+}
+
+export async function retryJobs(ids: string[]): Promise<{ success: boolean; message: string }> {
+  const response = await api.post(`${BASE_PATH}/retry`, { ids })
+  return response.data
+}
+
+export async function deleteJobs(ids: string[]): Promise<{ success: boolean; message: string }> {
+  const response = await api.delete(BASE_PATH, { data: { ids } })
+  return response.data
+}
+
+export async function requestToPending(id: string): Promise<{ success: boolean; message: string }> {
+  const response = await api.post(`${BASE_PATH}/${id}/request-to-pending`, {})
+  return response.data
+}
+
+export async function pendingToRequest(id: string): Promise<{ success: boolean; message: string }> {
+  const response = await api.post(`${BASE_PATH}/${id}/pending-to-request`, {})
+  return response.data
 }

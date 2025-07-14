@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { IndexingDetailModal, IndexingTaskTable, useIndexingTasks } from '@render/features/dashboard'
+import { useIndexingTasks } from '@render/features/dashboard'
 import { message, Input, Button, Space } from 'antd'
 import { createIndexJob } from '@render/api/jobApi'
+import JobTable from '@render/features/work-management/JobTable'
 
 export const IndexingDashboard: React.FC = () => {
   const { tasks, loading, selectedTask, onTaskSelect, onTaskClose, onTaskRetry, onTaskDelete, refresh } =
@@ -64,15 +65,7 @@ export const IndexingDashboard: React.FC = () => {
           인덱싱 요청
         </Button>
       </Space>
-      <IndexingTaskTable
-        tasks={tasks}
-        loading={loading}
-        onTaskSelect={onTaskSelect}
-        onTaskRetry={onTaskRetry}
-        onTaskDelete={onTaskDelete}
-        onRequestIndexing={handleRequestIndexing}
-      />
-      {selectedTask && <IndexingDetailModal task={selectedTask} onClose={onTaskClose} />}
+      <JobTable></JobTable>
     </div>
   )
 }

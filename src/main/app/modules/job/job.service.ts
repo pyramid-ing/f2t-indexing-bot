@@ -124,4 +124,32 @@ export class JobService {
       throw error
     }
   }
+
+  // 등록대기 -> 등록요청
+  async pendingToRequest(id: string) {
+    return this.update(id, { status: JobStatus.REQUEST, resultMsg: '등록요청으로 전환됨' })
+  }
+
+  // 등록요청 -> 등록대기
+  async requestToPending(id: string) {
+    return this.update(id, { status: JobStatus.PENDING, resultMsg: '등록대기로 전환됨' })
+  }
+
+  // 벌크 등록대기 -> 등록요청
+  async bulkPendingToRequest(ids: string[]) {
+    const jobs = await this.findAll({ where: { id: { in: ids }, status: JobStatus.PENDING } })
+    const results = await Promise.all(
+      jobs.map(job => this.update(job.id, { status: JobStatus.REQUEST, resultMsg: '등록요청으로 전환됨' })),
+    )
+    return { success: true, message: `${results.length}개 등록요청 전환` }
+  }
+
+  // 벌크 등록요청 -> 등록대기
+  async bulkRequestToPending(ids: string[]) {
+    const jobs = await this.findAll({ where: { id: { in: ids }, status: JobStatus.REQUEST } })
+    const results = await Promise.all(
+      jobs.map(job => this.update(job.id, { status: JobStatus.PENDING, resultMsg: '등록대기로 전환됨' })),
+    )
+    return { success: true, message: `${results.length}개 등록대기 전환` }
+  }
 }
