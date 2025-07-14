@@ -177,6 +177,11 @@ export class BingIndexerService {
         )
       }
 
+      // Bing API의 InvalidApiKey 에러 처리
+      if (error.response?.status === 400 && error.response?.data?.ErrorCode === 3) {
+        throw new Error('Bing API Key가 유효하지 않습니다. (InvalidApiKey)')
+      }
+
       throw new BingSubmissionError(
         `Bing 색인 요청 실패: ${error.message}`,
         'submitUrlToBing',
@@ -316,6 +321,11 @@ export class BingIndexerService {
         )
       }
 
+      // Bing API의 InvalidApiKey 에러 처리
+      if (error.response?.status === 400 && error.response?.data?.ErrorCode === 3) {
+        error.message = 'Bing API Key가 유효하지 않습니다. (InvalidApiKey)'
+      }
+
       throw new BingSubmissionError(
         `Bing 다중 색인 요청 실패: ${error.message}`,
         'submitMultipleUrlsToBing',
@@ -364,34 +374,28 @@ export class BingIndexerService {
 
   async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
     try {
-      const site = await this.prisma.site.findUnique({
-        where: { id: siteId },
-      })
-
-      if (!site) {
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
+      if (!siteConfig) {
         throw new Error('사이트를 찾을 수 없습니다.')
       }
-
-      const settings = await this.settingsService.getAppStatus()
-      const bingSettings = settings.bing
-
-      if (!bingSettings?.apiKey) {
+      const bingConfig = siteConfig.bingConfig
+      if (!bingConfig?.apiKey) {
         throw new Error('Bing API Key가 설정되지 않았습니다.')
       }
-
       const response = await axios.post(
-        'https://ssl.bing.com/webmaster/api.svc/json/SubmitUrl',
+        `https://ssl.bing.com/webmaster/api.svc/json/SubmitUrl?apikey=${encodeURIComponent(bingConfig.apiKey)}`,
         {
-          siteUrl: site.domain,
+          siteUrl: siteConfig.siteUrl,
           url,
         },
         {
           headers: {
             'Content-Type': 'application/json',
-            'X-Bing-ApiKey': bingSettings.apiKey,
           },
         },
       )
+
+      // TODO 성공코드 확인후 처리 필요
 
       // 성공 로그
       const job = await this.prisma.indexJob.findFirst({
@@ -426,8 +430,13 @@ export class BingIndexerService {
         message: '인덱싱 요청이 성공적으로 처리되었습니다.',
       }
     } catch (error) {
+      // Bing API의 InvalidApiKey 에러 메시지 추출
+      if (error.response?.status === 400 && error.response?.data?.ErrorCode === 3) {
+        error.message = 'Bing API Key가 유효하지 않습니다. (InvalidApiKey)'
+      }
+
       // 실패 로그
-      const job = await this.prisma.indexJob.findFirst({
+      const indexJob = await this.prisma.indexJob.findFirst({
         where: {
           url,
           provider: 'bing',
@@ -437,10 +446,10 @@ export class BingIndexerService {
         },
       })
 
-      if (job?.job) {
+      if (indexJob?.job) {
         // 작업 상태 및 결과 메시지 업데이트
         await this.prisma.job.update({
-          where: { id: job.job.id },
+          where: { id: indexJob.job.id },
           data: {
             status: 'failed',
             resultMsg: error.message,
@@ -448,7 +457,7 @@ export class BingIndexerService {
         })
 
         await this.jobLogsService.create({
-          jobId: job.job.id.toString(),
+          jobId: indexJob.job.id.toString(),
           message: `Bing 인덱싱 요청 실패: ${error.message}`,
           level: 'error',
         })

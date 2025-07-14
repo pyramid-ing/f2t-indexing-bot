@@ -30,7 +30,7 @@ export class JobQueueProcessor implements OnModuleInit {
       },
       data: {
         status: JobStatus.FAILED,
-        errorMsg: '시스템 재시작으로 인해 작업이 중단되었습니다.',
+        errorMessage: '시스템 재시작으로 인해 작업이 중단되었습니다.',
       },
     })
   }
@@ -93,7 +93,7 @@ export class JobQueueProcessor implements OnModuleInit {
       // 오류 발생 시 처리
       await this.jobService.update(job.id, {
         status: JobStatus.FAILED,
-        errorMsg: error.message,
+        errorMessage: error.message,
       })
 
       await this.jobLogsService.create({

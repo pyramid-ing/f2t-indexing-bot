@@ -379,22 +379,15 @@ export class GoogleIndexerService {
 
   async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
     try {
-      const site = await this.prisma.site.findUnique({
-        where: { id: siteId },
-      })
-
-      if (!site) {
+      const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
+      if (!siteConfig) {
         throw new Error('사이트를 찾을 수 없습니다.')
       }
-
-      const settings = await this.settingsService.getAppStatus()
-      const googleSettings = settings.google
-
-      if (!googleSettings?.serviceAccountJson) {
+      const googleConfig = siteConfig.googleConfig
+      if (!googleConfig?.serviceAccountJson) {
         throw new Error('Google Service Account JSON이 설정되지 않았습니다.')
       }
-
-      const headers = await this.googleAuthService.getAuthHeaders(googleSettings.serviceAccountJson)
+      const headers = await this.googleAuthService.getAuthHeaders(googleConfig.serviceAccountJson)
       const response = await axios.post(
         'https://indexing.googleapis.com/v3/urlNotifications:publish',
         {
@@ -403,6 +396,14 @@ export class GoogleIndexerService {
         },
         { headers },
       )
+
+      // TODO 성공시 아래처럼 나옴
+      // status 200
+      //{
+      //   "urlNotificationMetadata": {
+      //     "url": "https://pyramid-ing.com/"
+      //   }
+      // }
 
       // 성공 로그
       const job = await this.prisma.indexJob.findFirst({
@@ -428,6 +429,13 @@ export class GoogleIndexerService {
         message: '인덱싱 요청이 성공적으로 처리되었습니다.',
       }
     } catch (error) {
+      // {
+      //   "error": {
+      //   "code": 400,
+      //       "message": "Invalid attribute. 'url' is not in standard URL format: pyramid-ing.com/2025/07/07/%ec%b9%b4%ec%b9%b4%ec%98%a4%ed%8e%98%ec%9d%b4-atm-%ec%b6%9c%ea%b8%88-%eb%b0%a9%eb%b2%95-%ec%b9%b4%eb%93%9c%ec%97%86%ec%9d%b4-%ec%8a%a4%eb%a7%88%ed%8a%b8%ed%8f%b0-%ec%9d%b8%ec%b6%9c",
+      //       "status": "INVALID_ARGUMENT"
+      // }
+      // }
       // 실패 로그
       const job = await this.prisma.indexJob.findFirst({
         where: {

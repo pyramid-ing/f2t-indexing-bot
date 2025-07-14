@@ -8,6 +8,7 @@ interface IndexingTaskTableProps {
   onTaskSelect: (task: Job) => void
   onTaskRetry: (taskId: string) => void
   onTaskDelete: (taskId: string) => void
+  onRequestIndexing?: (task: Job) => void
 }
 
 export const IndexingTaskTable: React.FC<IndexingTaskTableProps> = ({
@@ -16,6 +17,7 @@ export const IndexingTaskTable: React.FC<IndexingTaskTableProps> = ({
   onTaskSelect,
   onTaskRetry,
   onTaskDelete,
+  onRequestIndexing,
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -84,6 +86,11 @@ export const IndexingTaskTable: React.FC<IndexingTaskTableProps> = ({
           <Button type="link" danger onClick={() => onTaskDelete(record.id)}>
             삭제
           </Button>
+          {onRequestIndexing && (
+            <Button type="link" onClick={() => onRequestIndexing(record)}>
+              인덱싱 요청
+            </Button>
+          )}
         </Space>
       ),
     },

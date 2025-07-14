@@ -127,7 +127,7 @@ export const indexingApi = {
   },
 
   createIndexJob: async (options: { siteId: number; url: string }) => {
-    const res = await axios.post(`${API_BASE_URL}/index-jobs`, options)
+    const res = await axios.post(`${API_BASE_URL}/index-job`, options)
     return res.data
   },
 

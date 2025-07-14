@@ -25,6 +25,22 @@ export class IndexJobService implements JobProcessor {
     private readonly daumIndexer: DaumIndexerService,
   ) {}
 
+  // URL 정규화 함수 (클래스 메서드로 이동)
+  static normalizeUrl(rawUrl: string): string {
+    try {
+      const urlObj = new URL(rawUrl)
+      // www. 유지, 프로토콜 유지, 마지막 슬래시만 제거
+      let protocol = urlObj.protocol.replace(/:$/, '') // 'https:' -> 'https'
+      let host = urlObj.host // www. 포함 host 그대로
+      let pathname = urlObj.pathname.replace(/\/$/, '') // 끝 슬래시만 제거
+      // pathname이 빈 문자열이면 '/'로 대체 (루트 경로 보존)
+      if (pathname === '') pathname = '/'
+      return `${protocol}://${host}${pathname}${urlObj.search}`
+    } catch {
+      return rawUrl.trim()
+    }
+  }
+
   canProcess(job: Job): boolean {
     return job.type === JobType.INDEX
   }
@@ -93,7 +109,11 @@ export class IndexJobService implements JobProcessor {
   }
 
   async create(data: CreateIndexJobDto): Promise<SubmitUrlResult> {
-    const { siteId, url, scheduledAt = new Date(), priority = 1 } = data
+    const { siteId, url, scheduledAt, priority } = data
+    // subject, desc, scheduledAt 기본값 처리
+    const finalSubject = (data as any).subject ?? `인덱싱 요청: ${url}`
+    const finalDesc = (data as any).desc ?? '자동 생성된 인덱싱 작업'
+    const finalScheduledAt = scheduledAt ?? new Date()
 
     // 사이트 확인
     const site = await this.prisma.site.findUnique({
@@ -103,6 +123,23 @@ export class IndexJobService implements JobProcessor {
     if (!site) {
       throw new Error('사이트를 찾을 수 없습니다.')
     }
+
+    // URL이 해당 사이트 도메인에 속하는지 검사
+    try {
+      const urlObj = new URL(url)
+      const inputDomain = urlObj.hostname.replace(/^www\./, '')
+      const siteDomain = site.domain.replace(/^www\./, '')
+      if (inputDomain !== siteDomain) {
+        throw new Error(`입력한 URL의 도메인(${inputDomain})이 사이트 도메인(${siteDomain})과 일치하지 않습니다.`)
+      }
+    } catch (e) {
+      throw new Error('유효하지 않은 URL입니다.')
+    }
+
+    // 정규화된 URL로 중복 체크 및 저장 (provider별로 체크)
+    const normalizedUrl = IndexJobService.normalizeUrl(url)
+    // provider가 여러 개일 수 있으므로, activeEngines 루프 안에서 각각 체크
+    // 아래 코드를 기존 jobs = await Promise.all(...) 위로 이동
 
     // 활성화된 검색엔진 확인
     const activeEngines = []
@@ -123,38 +160,47 @@ export class IndexJobService implements JobProcessor {
     // 각 검색엔진에 대해 작업 생성
     const jobs = await Promise.all(
       activeEngines.map(async provider => {
+        // provider별 중복 체크
+        const existing = await this.prisma.indexJob.findFirst({
+          where: {
+            siteId,
+            url: normalizedUrl,
+            provider,
+          },
+        })
+        if (existing) {
+          // 이미 해당 provider로 인덱싱 요청된 경우는 건너뜀(혹은 에러 대신 무시)
+          return null
+        }
         const job = await this.prisma.job.create({
           data: {
             type: JobType.INDEX,
             status: JobStatus.PENDING,
-            data: JSON.stringify({
-              url,
-              provider,
-              siteId,
-            }),
-            indexJob: {
+            subject: finalSubject,
+            desc: finalDesc,
+            scheduledAt: finalScheduledAt,
+            priority: priority ?? 1,
+            IndexJob: {
               create: {
                 siteId,
                 provider,
-                url,
+                url: normalizedUrl,
               },
             },
           },
           include: {
             logs: true,
-            indexJob: true,
+            IndexJob: true,
           },
         })
-
         // 작업 생성 로그
         await this.prisma.jobLog.create({
           data: {
             jobId: job.id,
-            message: `인덱싱 작업 생성됨: ${provider} - ${url}`,
+            message: `인덱싱 작업 생성됨: ${provider} - ${normalizedUrl}`,
             level: 'info',
           },
         })
-
         return job
       }),
     )
@@ -215,7 +261,7 @@ export class IndexJobService implements JobProcessor {
         status: 'PENDING',
         startedAt: null,
         completedAt: null,
-        errorMsg: null,
+        errorMessage: null,
         resultMsg: null,
       },
     })
@@ -225,5 +271,18 @@ export class IndexJobService implements JobProcessor {
     return this.prisma.job.delete({
       where: { id },
     })
+  }
+
+  // 여러 URL 중 이미 인덱싱된 URL 목록 반환
+  async findExistingUrls(siteId: number, urls: string[]): Promise<string[]> {
+    const normalizedUrls = urls.map(IndexJobService.normalizeUrl)
+    const found = await this.prisma.indexJob.findMany({
+      where: {
+        siteId,
+        url: { in: normalizedUrls },
+      },
+      select: { url: true },
+    })
+    return found.map(f => f.url)
   }
 }

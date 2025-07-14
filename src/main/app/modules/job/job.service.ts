@@ -17,16 +17,12 @@ export class JobService {
         updateData.status = dto.status
       }
 
-      if (dto.data) {
-        updateData.data = JSON.stringify(dto.data)
-      }
-
       if (dto.resultMsg) {
         updateData.resultMsg = dto.resultMsg
       }
 
-      if (dto.errorMsg) {
-        updateData.errorMsg = dto.errorMsg
+      if (dto.errorMessage) {
+        updateData.errorMessage = dto.errorMessage
       }
 
       return await this.prisma.job.update({
@@ -34,7 +30,7 @@ export class JobService {
         data: updateData,
         include: {
           logs: true,
-          indexJob: true,
+          IndexJob: true,
         },
       })
     } catch (error) {
@@ -49,7 +45,7 @@ export class JobService {
         where: { id },
         include: {
           logs: true,
-          indexJob: true,
+          IndexJob: true,
         },
       })
     } catch (error) {
@@ -74,7 +70,7 @@ export class JobService {
         take,
         include: {
           logs: true,
-          indexJob: true,
+          IndexJob: true,
         },
       })
     } catch (error) {
@@ -120,7 +116,7 @@ export class JobService {
         },
         include: {
           logs: true,
-          indexJob: true,
+          IndexJob: true,
         },
       })
     } catch (error) {

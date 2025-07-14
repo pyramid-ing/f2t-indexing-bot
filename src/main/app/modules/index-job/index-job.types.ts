@@ -15,29 +15,17 @@ export class CreateIndexJobDto {
   @IsNumber()
   siteId: number
 
-  @Transform(({ value }) => value.toUpperCase())
+  @IsOptional()
+  @Transform(({ value }) => value?.toUpperCase?.() ?? value)
   @IsEnum(IndexProvider)
-  provider: IndexProvider
+  provider?: IndexProvider
 
   @IsOptional()
   @IsDate()
-  @Transform(({ value }) => new Date(value))
+  @Transform(({ value }) => (value ? new Date(value) : undefined))
   scheduledAt?: Date
 
   @IsOptional()
   @IsNumber()
   priority?: number
-}
-
-export interface SubmitUrlResult {
-  id: string
-  siteId: string
-  url: string
-  status: string
-  scheduledAt: Date
-  createdAt: Date
-  startedAt?: Date
-  completedAt?: Date
-  errorMsg?: string
-  resultMsg?: string
 }

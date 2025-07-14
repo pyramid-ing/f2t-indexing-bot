@@ -4,7 +4,7 @@ import { Type } from 'class-transformer'
 
 export enum JobStatus {
   PENDING = 'pending',
-  PROCESSING = 'processing`',
+  PROCESSING = 'processing',
   COMPLETED = 'completed',
   FAILED = 'failed',
   CANCELLED = 'cancelled',
@@ -56,7 +56,7 @@ export class UpdateJobDto {
 
   @IsOptional()
   @IsString()
-  errorMsg?: string
+  errorMessage?: string
 }
 
 export interface CreateJobLogDto {
