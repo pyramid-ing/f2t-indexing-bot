@@ -1,5 +1,5 @@
 import React from 'react'
-import { Form, Input, Select, Switch, Spin } from 'antd'
+import { Form, Select, Switch, Spin } from 'antd'
 import { Site } from '@render/api/siteConfigApi'
 import { getAllNaverAccounts, NaverAccount } from '@render/api/naverAccountApi'
 
@@ -46,10 +46,6 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
             </Select.Option>
           ))}
         </Select>
-      </Form.Item>
-
-      <Form.Item name={['naver', 'loginUrl']} label="로그인 URL">
-        <Input placeholder="https://nid.naver.com/nidlogin.login" />
       </Form.Item>
 
       <Form.Item name={['naver', 'headless']} valuePropName="checked" label="창 숨김">

@@ -17,10 +17,6 @@ const DaumSettings: React.FC<DaumSettingsProps> = ({ site }) => {
         <Input placeholder="https://example.com" />
       </Form.Item>
 
-      <Form.Item name={['daum', 'loginUrl']} label="로그인 URL">
-        <Input placeholder="https://accounts.kakao.com/login" />
-      </Form.Item>
-
       <Form.Item name={['daum', 'password']} label="비밀번호">
         <Input.Password />
       </Form.Item>

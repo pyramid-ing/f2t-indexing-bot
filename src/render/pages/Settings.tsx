@@ -29,8 +29,8 @@ const SettingsPage: React.FC = () => {
   }, [])
 
   const setFormWithSite = (site: Site) => {
-    const defaultNaverConfig = { use: false, selectedNaverAccountId: undefined, loginUrl: '', headless: false }
-    const defaultDaumConfig = { use: false, siteUrl: '', loginUrl: '', password: '', headless: false }
+    const defaultNaverConfig = { use: false, selectedNaverAccountId: undefined, headless: false }
+    const defaultDaumConfig = { use: false, siteUrl: '', password: '', headless: false }
     const defaultGoogleConfig = { use: false, serviceAccountJson: '' }
     const defaultBingConfig = { use: false, apiKey: '' }
     settingsForm.resetFields()
@@ -122,14 +122,12 @@ const SettingsPage: React.FC = () => {
         naverConfig: {
           use: false,
           selectedNaverAccountId: undefined,
-          loginUrl: '',
           headless: false,
         },
         daumConfig: {
           use: false,
           siteUrl: '',
           password: '',
-          loginUrl: '',
           headless: false,
         },
         bingConfig: {

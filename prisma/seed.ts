@@ -40,14 +40,12 @@ async function main() {
       use: false,
       naverId: '',
       password: '',
-      loginUrl: '',
     }
 
     const defaultDaumConfig = {
       use: false,
       siteUrl: '',
       password: '',
-      loginUrl: '',
     }
 
     await prisma.site.create({
