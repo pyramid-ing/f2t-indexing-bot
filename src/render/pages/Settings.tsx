@@ -1,15 +1,8 @@
 import React, { useEffect, useState } from 'react'
-import { Typography, Select, Form, Input, Button, Space, Card, Tabs, Modal, message } from 'antd'
+import { Typography, Select, Form, Input, Button, Space, Card, Tabs, Modal, message, Switch } from 'antd'
 import { PlusOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
-import {
-  BingSettings,
-  DaumSettings,
-  GeneralSettings,
-  GoogleSettings,
-  NaverSettings,
-  SiteSettings,
-} from '@render/features/settings'
+import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
 import { siteConfigApi } from '@render/api'
 import { Site } from '@render/api/settings/siteConfigApi'
 
@@ -162,12 +155,14 @@ const SettingsPage: React.FC = () => {
         {
           key: 'general',
           label: '일반',
-          children: <GeneralSettings site={selectedSite} />,
-        },
-        {
-          key: 'site',
-          label: '사이트',
-          children: <SiteSettings site={selectedSite} />,
+          children: (
+            <>
+              <Form.Item name={['site', 'isActive']} valuePropName="checked" label="사이트 활성화">
+                <Switch />
+              </Form.Item>
+              <GeneralSettings site={selectedSite} />
+            </>
+          ),
         },
         {
           key: 'naver',
