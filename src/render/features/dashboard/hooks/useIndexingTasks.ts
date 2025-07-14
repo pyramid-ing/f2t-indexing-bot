@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { jobApi } from '@render/api/job/jobApi'
+import { jobApi, Job, JobStatus } from '@render/api/job/jobApi'
 
 export interface IndexingTask {
   id: string
@@ -15,16 +15,35 @@ export interface IndexingTask {
   resultMessage?: string
 }
 
+// IndexingTask → Job 변환 함수
+type ToJob = (task: IndexingTask) => Job
+const toJob: ToJob = task => ({
+  id: task.id,
+  siteId: task.siteId,
+  siteName: task.siteName,
+  provider: task.provider,
+  url: task.url,
+  status: task.status as JobStatus, // 실제 값이 JobStatus와 일치한다고 가정
+  createdAt: task.createdAt,
+  scheduledAt: task.scheduledAt,
+  startedAt: undefined,
+  completedAt: task.completedAt,
+  errorMsg: task.errorMessage,
+  resultMsg: task.resultMessage,
+})
+
 export const useIndexingTasks = () => {
-  const [tasks, setTasks] = useState<IndexingTask[]>([])
+  const [tasks, setTasks] = useState<Job[]>([])
   const [loading, setLoading] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<IndexingTask | null>(null)
+  const [selectedTask, setSelectedTask] = useState<Job | null>(null)
 
   const loadTasks = async () => {
     try {
       setLoading(true)
       const data = await jobApi.getAll()
-      setTasks(data)
+      if (data) {
+        setTasks(data?.map(toJob))
+      }
     } catch (error) {
       console.error('Failed to load tasks:', error)
     } finally {
@@ -36,7 +55,7 @@ export const useIndexingTasks = () => {
     loadTasks()
   }, [])
 
-  const handleTaskSelect = (task: IndexingTask) => {
+  const handleTaskSelect = (task: Job) => {
     setSelectedTask(task)
   }
 

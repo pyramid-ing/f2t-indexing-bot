@@ -1,4 +1,3 @@
-import type { NaverLoginStatus } from '../api'
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -8,6 +7,7 @@ import {
 } from '@ant-design/icons'
 import { Button, Card, Col, Row, Space, Tag, Typography } from 'antd'
 import React from 'react'
+import { NaverLoginStatus } from '@render/api/types'
 
 const { Title, Text } = Typography
 
