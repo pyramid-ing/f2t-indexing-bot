@@ -8,6 +8,8 @@ import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { JobType } from '../job/job.types'
 import { CreateIndexJobDto } from './index-job.types'
 import { JobStatus } from '../job/job.types'
+import { CustomHttpException } from '@main/common/errors/custom-http.exception'
+import { ErrorCode } from '@main/common/errors/error-code.enum'
 
 interface SubmitUrlResult {
   success: boolean
@@ -54,7 +56,7 @@ export class IndexJobService implements JobProcessor {
     })
 
     if (!indexJob) {
-      throw new Error('인덱스 작업 정보를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '인덱스 작업 정보를 찾을 수 없습니다.' })
     }
 
     const { provider, url, site } = indexJob
@@ -76,7 +78,7 @@ export class IndexJobService implements JobProcessor {
           result = await this.daumIndexer.submitUrl(site.id, url)
           break
         default:
-          throw new Error(`지원하지 않는 인덱서: ${provider}`)
+          throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: `지원하지 않는 인덱서: ${provider}` })
       }
 
       // 작업 로그 기록
@@ -89,7 +91,7 @@ export class IndexJobService implements JobProcessor {
       })
 
       if (!result.success) {
-        throw new Error(result.message)
+        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: result.message })
       }
 
       return {
@@ -121,7 +123,7 @@ export class IndexJobService implements JobProcessor {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '사이트를 찾을 수 없습니다.' })
     }
 
     // URL이 해당 사이트 도메인에 속하는지 검사
@@ -130,10 +132,12 @@ export class IndexJobService implements JobProcessor {
       const inputDomain = urlObj.hostname.replace(/^www\./, '')
       const siteDomain = site.domain.replace(/^www\./, '')
       if (inputDomain !== siteDomain) {
-        throw new Error(`입력한 URL의 도메인(${inputDomain})이 사이트 도메인(${siteDomain})과 일치하지 않습니다.`)
+        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, {
+          errorMessage: `입력한 URL의 도메인(${inputDomain})이 사이트 도메인(${siteDomain})과 일치하지 않습니다.`,
+        })
       }
     } catch (e) {
-      throw new Error('유효하지 않은 URL입니다.')
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '유효하지 않은 URL입니다.' })
     }
 
     // 정규화된 URL로 중복 체크 및 저장 (provider별로 체크)
@@ -154,7 +158,7 @@ export class IndexJobService implements JobProcessor {
     if (daumConfig?.use) activeEngines.push('DAUM')
 
     if (activeEngines.length === 0) {
-      throw new Error('활성화된 검색엔진이 없습니다.')
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '활성화된 검색엔진이 없습니다.' })
     }
 
     // 각 검색엔진에 대해 작업 생성

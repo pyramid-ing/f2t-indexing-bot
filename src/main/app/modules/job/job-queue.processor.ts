@@ -5,6 +5,8 @@ import { JobStatus, JobType } from './job.types'
 import { JobService } from './job.service'
 import { JobLogsService } from '../job-logs/job-logs.service'
 import { IndexJobService } from '../index-job/index-job.service'
+import { CustomHttpException } from '@main/common/errors/custom-http.exception'
+import { ErrorCode } from '@main/common/errors/error-code.enum'
 
 @Injectable()
 export class JobQueueProcessor implements OnModuleInit {
@@ -59,49 +61,40 @@ export class JobQueueProcessor implements OnModuleInit {
 
   private async processJob(job: any) {
     try {
-      // 작업 상태를 처리 중으로 변경
       await this.jobService.update(job.id, {
         status: JobStatus.PROCESSING,
       })
-
       await this.jobLogsService.create({
         jobId: job.id,
         message: '작업 처리를 시작합니다.',
         level: 'info',
       })
-
       const processor = this.processors[job.type]
       if (!processor) {
-        throw new Error(`지원하지 않는 작업 타입: ${job.type}`)
+        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, {
+          errorMessage: `지원하지 않는 작업 타입: ${job.type}`,
+        })
       }
-
-      // 작업 처리
       const result = await processor.process(job)
-
-      // 작업 완료 처리
       await this.jobService.update(job.id, {
         status: JobStatus.COMPLETED,
         resultMsg: result.message,
       })
-
       await this.jobLogsService.create({
         jobId: job.id,
         message: `작업이 완료되었습니다: ${result.message}`,
         level: 'info',
       })
     } catch (error) {
-      // 오류 발생 시 처리
       await this.jobService.update(job.id, {
         status: JobStatus.FAILED,
         errorMessage: error.message,
       })
-
       await this.jobLogsService.create({
         jobId: job.id,
         message: `작업 처리 중 오류 발생: ${error.message}`,
         level: 'error',
       })
-
       this.logger.error(`작업 ${job.id} 처리 중 오류 발생: ${error.message}`)
     }
   }

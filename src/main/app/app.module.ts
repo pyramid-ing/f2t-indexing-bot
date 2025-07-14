@@ -8,7 +8,7 @@ import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
 import { GlobalExceptionFilter } from '@main/filters/global-exception.filter'
 import { Module, ValidationPipe } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
-import { APP_FILTER, APP_PIPE, HttpAdapterHost } from '@nestjs/core'
+import { APP_FILTER, APP_PIPE } from '@nestjs/core'
 import { app, BrowserWindow } from 'electron'
 import { JobModule } from '@main/app/modules/job/job.module'
 import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
@@ -57,10 +57,10 @@ import { NaverAccountModule } from '@main/app/modules/naver-account/naver-accoun
     {
       // 의존성 주입이 가능하도록 module에도 설정해준다.
       provide: APP_FILTER,
-      useFactory: (httpAdapter: HttpAdapterHost) => {
-        return new GlobalExceptionFilter(httpAdapter)
+      useFactory: () => {
+        return new GlobalExceptionFilter()
       },
-      inject: [HttpAdapterHost],
+      inject: [],
     },
     {
       provide: APP_PIPE,

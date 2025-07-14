@@ -1,11 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { NaverAuthError } from '@main/filters/error.types'
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
 import { SiteConfigService } from '@main/app/modules/site-config/site-config.service'
 import { NaverAccountService } from '../naver-account/naver-account.service'
 import { sleep } from '@main/app/utils/sleep'
 import { Browser, chromium, Page } from 'playwright'
+import { CustomHttpException } from '@main/common/errors/custom-http.exception'
+import { ErrorCode } from '@main/common/errors/error-code.enum'
 
 export interface NaverIndexerOptions {
   siteId: number
@@ -42,35 +43,23 @@ export class NaverIndexerService implements OnModuleInit {
 
   private async getNaverConfig(siteId: number) {
     try {
-      // 사이트 설정 조회
       const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
       if (!siteConfig) {
-        throw new NaverAuthError(`등록되지 않은 사이트입니다: ${siteId}`, 'getNaverConfig', {
-          siteId,
-          exists: false,
-        })
+        throw new CustomHttpException(ErrorCode.NAVER_ACCOUNT_NOT_FOUND, { siteId, exists: false })
       }
 
-      // 네이버 설정 확인
       if (!siteConfig.naverConfig || !siteConfig.naverConfig.use) {
-        throw new NaverAuthError(`사이트의 네이버 설정이 비활성화되어 있습니다: ${siteId}`, 'getNaverConfig', {
-          siteId,
-          naverConfigEnabled: false,
-        })
+        throw new CustomHttpException(ErrorCode.NAVER_CONFIG_DISABLED, { siteId, naverConfigEnabled: false })
       }
 
       const naverAccountId = siteConfig.naverConfig.selectedNaverAccountId
       if (!naverAccountId) {
-        throw new NaverAuthError(`사이트에 네이버 계정이 선택되지 않았습니다: ${siteId}`, 'getNaverConfig', {
-          siteId,
-          hasSelectedAccount: false,
-        })
+        throw new CustomHttpException(ErrorCode.NAVER_ACCOUNT_NOT_SELECTED, { siteId, hasSelectedAccount: false })
       }
 
-      // 선택된 네이버 계정 조회
       const account = await this.naverAccountService.getAccountById(naverAccountId)
       if (!account) {
-        throw new NaverAuthError(`등록되지 않은 네이버 계정입니다: ID ${naverAccountId}`, 'getNaverConfig', {
+        throw new CustomHttpException(ErrorCode.NAVER_ACCOUNT_NOT_FOUND, {
           siteId,
           accountId: naverAccountId,
           exists: false,
@@ -78,7 +67,7 @@ export class NaverIndexerService implements OnModuleInit {
       }
 
       if (!account.isActive) {
-        throw new NaverAuthError(`비활성화된 네이버 계정입니다: ${account.naverId}`, 'getNaverConfig', {
+        throw new CustomHttpException(ErrorCode.NAVER_ACCOUNT_INACTIVE, {
           siteId,
           accountId: naverAccountId,
           naverId: account.naverId,
@@ -89,13 +78,13 @@ export class NaverIndexerService implements OnModuleInit {
       return {
         naverId: account.naverId,
         password: account.password,
-        headless: siteConfig.naverConfig.headless ?? true, // 사이트 설정의 headless 값 사용, 기본값 true
+        headless: siteConfig.naverConfig.headless ?? true,
       }
     } catch (error) {
-      if (error instanceof NaverAuthError) {
+      if (error instanceof CustomHttpException) {
         throw error
       }
-      throw new NaverAuthError(`Naver 설정 조회 실패: ${error.message}`, 'getNaverConfig', { siteId })
+      throw new CustomHttpException(ErrorCode.NAVER_UNKNOWN_ERROR, { siteId, errorMessage: error.message })
     }
   }
 
@@ -156,10 +145,9 @@ export class NaverIndexerService implements OnModuleInit {
   }
 
   async submitUrl(siteId: number, url: string): Promise<{ success: boolean; message: string }> {
-    // Playwright로 headless: false 브라우저 띄워서 네이버 서치어드바이저에 직접 인덱싱 요청
     const siteConfig = await this.siteConfigService.getSiteConfig(siteId)
     if (!siteConfig) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.NAVER_ACCOUNT_NOT_FOUND, { siteId })
     }
     const dbConfig = await this.getNaverConfig(siteId)
     const naverId = dbConfig.naverId
@@ -167,24 +155,31 @@ export class NaverIndexerService implements OnModuleInit {
     const useHeadless = false
     const browser: Browser = await chromium.launch({
       headless: useHeadless,
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', // 내장 크롬 경로
+      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     })
     const page: Page = await browser.newPage()
-    // 쿠키 불러오기 (없으면 로그인 시도)
     let hasCookie = await this.loadCookies(page, naverId)
     if (!hasCookie) {
       this.logger.log('쿠키가 없어 네이버 로그인을 시도합니다...')
       const loginSuccess = await this.tryLoginAndSaveCookies(page, naverId, naverPw)
       if (!loginSuccess) {
         await browser.close()
-        throw new Error('쿠키 파일이 없고, 자동 로그인에도 실패했습니다. 수동 로그인 후 쿠키를 저장해 주세요.')
+        throw new CustomHttpException(ErrorCode.NAVER_AUTH_FAIL, {
+          siteId,
+          naverId,
+          errorMessage: '쿠키 파일이 없고, 자동 로그인에도 실패했습니다.',
+        })
       }
     }
     await page.goto(`https://searchadvisor.naver.com/console/site/request/crawl?site=${siteConfig.siteUrl}`)
     await sleep(2000)
     if (page.url().includes('nid.naver.com')) {
       await browser.close()
-      throw new Error('네이버 로그인이 필요합니다. 쿠키가 만료되었거나 존재하지 않습니다.')
+      throw new CustomHttpException(ErrorCode.NAVER_AUTH_FAIL, {
+        siteId,
+        naverId,
+        errorMessage: '네이버 로그인이 필요합니다. 쿠키가 만료되었거나 존재하지 않습니다.',
+      })
     }
     // 인덱싱 입력창에 url 입력 및 확인 버튼 클릭
     const inputSelector = 'input[type="text"][maxlength="2048"]'

@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaService } from '@main/app/modules/common/prisma/prisma.service'
+import { CustomHttpException } from '@main/common/errors/custom-http.exception'
+import { ErrorCode } from '@main/common/errors/error-code.enum'
 
 // 검색엔진별 설정 인터페이스
 export interface GoogleSiteConfig {
@@ -54,7 +56,6 @@ export class SiteConfigService {
 
   async createSiteConfig(data: SiteConfigData) {
     try {
-      // 도메인 추출 (URL에서 도메인만 추출)
       const domain = this.extractDomain(data.siteUrl)
 
       return await this.prisma.site.create({
@@ -71,9 +72,9 @@ export class SiteConfigService {
       })
     } catch (error) {
       if (error.code === 'P2002') {
-        throw new Error('이미 존재하는 도메인입니다.')
+        throw new CustomHttpException(ErrorCode.SITE_DOMAIN_DUPLICATE, { errorMessage: '이미 존재하는 도메인입니다.' })
       }
-      throw error
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: error.message })
     }
   }
 
@@ -83,7 +84,7 @@ export class SiteConfigService {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     return {
@@ -107,7 +108,7 @@ export class SiteConfigService {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { domain })
     }
 
     return {
@@ -131,7 +132,7 @@ export class SiteConfigService {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     const updateData: any = {}
@@ -159,7 +160,7 @@ export class SiteConfigService {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     const updateData: any = {}
@@ -181,7 +182,7 @@ export class SiteConfigService {
     })
 
     if (!site) {
-      throw new Error('사이트를 찾을 수 없습니다.')
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     await this.prisma.site.delete({
@@ -263,14 +264,14 @@ export class SiteConfigService {
     const siteConfig = await this.getSiteConfig(siteId)
 
     if (!siteConfig) {
-      throw new Error(`등록되지 않은 사이트입니다: siteId=${siteId}`)
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     const urlDomain = this.extractProtocolAndDomain(urlToIndex)
     const siteDomain = this.extractProtocolAndDomain(siteConfig.siteUrl)
 
     if (urlDomain !== siteDomain) {
-      throw new Error(`도메인이 일치하지 않습니다. 인덱싱할 URL: ${urlDomain}, 등록된 사이트: ${siteDomain}`)
+      throw new CustomHttpException(ErrorCode.SITE_DOMAIN_MISMATCH, { urlDomain, siteDomain })
     }
   }
 
@@ -281,11 +282,11 @@ export class SiteConfigService {
     const siteConfig = await this.getSiteConfig(siteId)
 
     if (!siteConfig) {
-      throw new Error(`등록되지 않은 사이트입니다: siteId=${siteId}`)
+      throw new CustomHttpException(ErrorCode.SITE_NOT_FOUND, { siteId })
     }
 
     if (!siteConfig.isActive) {
-      throw new Error(`비활성화된 사이트입니다: siteId=${siteId}`)
+      throw new CustomHttpException(ErrorCode.SITE_INACTIVE, { siteId })
     }
 
     return siteConfig

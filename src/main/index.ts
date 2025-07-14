@@ -2,10 +2,8 @@ import type { ValidationError } from '@nestjs/common'
 import { AppModule } from '@main/app/app.module'
 import { EnvConfig } from '@main/config/env.config'
 import { LoggerConfig } from '@main/config/logger.config'
-import { environment } from '@main/environments/environment'
-import { GlobalExceptionFilter } from '@main/filters/global-exception.filter'
 import { BadRequestException, ValidationPipe } from '@nestjs/common'
-import { HttpAdapterHost, NestFactory } from '@nestjs/core'
+import { NestFactory } from '@nestjs/core'
 import * as bodyParser from 'body-parser'
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
 import { WinstonModule } from 'nest-winston'
@@ -204,7 +202,7 @@ async function bootstrap() {
               prettyPrint: true,
             }),
           ),
-          level: environment.production ? 'info' : 'silly',
+          level: EnvConfig.isPackaged ? 'info' : 'silly',
         }),
       ],
     })
@@ -230,9 +228,6 @@ async function bootstrap() {
         },
       }),
     )
-
-    const httpAdapter = app.get(HttpAdapterHost)
-    app.useGlobalFilters(new GlobalExceptionFilter(httpAdapter)) // HttpAdapterHost 주입
 
     // Support 10mb csv/json files for importing activities
     app.use(bodyParser.json({ limit: '10mb' }))
