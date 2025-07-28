@@ -63,85 +63,73 @@ export class IndexJobService implements JobProcessor {
 
     let result: { success: boolean; message: string }
 
-    try {
-      switch (provider.toUpperCase()) {
-        case 'GOOGLE':
-          result = await this.googleIndexer.submitUrl(site.id, url)
-          break
-        case 'BING':
-          result = await this.bingIndexer.submitUrl(site.id, url)
-          break
-        case 'NAVER':
-          result = await this.naverIndexer.submitUrl(site.id, url)
-          break
-        case 'DAUM':
-          result = await this.daumIndexer.submitUrl(site.id, url)
-          break
-        default:
-          throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: `지원하지 않는 인덱서: ${provider}` })
-      }
+    switch (provider.toUpperCase()) {
+      case 'GOOGLE':
+        result = await this.googleIndexer.submitUrl(site.id, url)
+        break
+      case 'BING':
+        result = await this.bingIndexer.submitUrl(site.id, url)
+        break
+      case 'NAVER':
+        result = await this.naverIndexer.submitUrl(site.id, url)
+        break
+      case 'DAUM':
+        result = await this.daumIndexer.submitUrl(site.id, url)
+        break
+      default:
+        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: `지원하지 않는 인덱서: ${provider}` })
+    }
 
-      // 작업 로그 기록
-      await this.prisma.jobLog.create({
-        data: {
-          jobId: job.id,
-          message: `${provider} 인덱싱 요청 완료: ${result.message}`,
-          level: result.success ? 'info' : 'error',
-        },
-      })
+    // 작업 로그 기록
+    await this.prisma.jobLog.create({
+      data: {
+        jobId: job.id,
+        message: `${provider} 인덱싱 요청 완료: ${result.message}`,
+        level: result.success ? 'info' : 'error',
+      },
+    })
 
-      if (!result.success) {
-        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: result.message })
-      }
+    if (!result.success) {
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: result.message })
+    }
 
-      return {
-        message: result.message,
-      }
-    } catch (error) {
-      // 에러 로그 기록 (errorCode만 기록, 메시지 매핑은 글로벌 필터에서)
-      await this.prisma.jobLog.create({
-        data: {
-          jobId: job.id,
-          message: `${provider} 인덱싱 요청 실패: ${error.errorCode || error.code || error.message}`,
-          level: 'error',
-        },
-      })
-      throw error
+    return {
+      message: result.message,
     }
   }
 
   async create(data: CreateIndexJobDto): Promise<SubmitUrlResult> {
-    const { siteId, url, scheduledAt, priority } = data
+    const { url } = data
     // subject, desc, scheduledAt 기본값 처리
     const finalSubject = (data as any).subject ?? `인덱싱 요청: ${url}`
     const finalDesc = (data as any).desc ?? '자동 생성된 인덱싱 작업'
-    const finalScheduledAt = scheduledAt ?? new Date()
+    const finalScheduledAt = new Date()
 
-    // 사이트 확인
-    const site = await this.prisma.site.findUnique({
-      where: { id: siteId },
-    })
-
-    if (!site) {
-      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '사이트를 찾을 수 없습니다.' })
-    }
-
-    // URL이 해당 사이트 도메인에 속하는지 검사
+    // 1. url에서 도메인 추출
+    let domain: string
     try {
       const urlObj = new URL(url)
-      const inputDomain = urlObj.hostname.replace(/^www\./, '')
-      const siteDomain = site.domain.replace(/^www\./, '')
-      if (inputDomain !== siteDomain) {
-        throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, {
-          errorMessage: `입력한 URL의 도메인(${inputDomain})이 사이트 도메인(${siteDomain})과 일치하지 않습니다.`,
-        })
-      }
+      domain = urlObj.hostname.replace(/^www\./, '')
     } catch (e) {
       throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '유효하지 않은 URL입니다.' })
     }
 
+    // 2. 추출된 도메인으로 site 찾기
+    const site = await this.prisma.site.findUnique({
+      where: { domain },
+    })
+
+    // 3. 존재하지 않으면 에러
+    if (!site) {
+      throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, {
+        errorMessage: `도메인 '${domain}'에 해당하는 사이트를 찾을 수 없습니다.`,
+      })
+    }
+
     // 정규화된 URL로 중복 체크 및 저장 (provider별로 체크)
     const normalizedUrl = IndexJobService.normalizeUrl(url)
+    const priority = 1
+
     // provider가 여러 개일 수 있으므로, activeEngines 루프 안에서 각각 체크
     // 아래 코드를 기존 jobs = await Promise.all(...) 위로 이동
 
@@ -167,7 +155,7 @@ export class IndexJobService implements JobProcessor {
         // provider별 중복 체크
         const existing = await this.prisma.indexJob.findFirst({
           where: {
-            siteId,
+            siteId: site.id,
             url: normalizedUrl,
             provider,
           },
@@ -183,10 +171,10 @@ export class IndexJobService implements JobProcessor {
             subject: finalSubject,
             desc: finalDesc,
             scheduledAt: finalScheduledAt,
-            priority: priority ?? 1,
+            priority,
             IndexJob: {
               create: {
-                siteId,
+                siteId: site.id,
                 provider,
                 url: normalizedUrl,
               },

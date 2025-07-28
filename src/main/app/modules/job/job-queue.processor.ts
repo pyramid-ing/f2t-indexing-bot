@@ -85,10 +85,6 @@ export class JobQueueProcessor implements OnModuleInit {
         level: 'info',
       })
     } catch (error) {
-      await this.jobService.update(job.id, {
-        status: JobStatus.FAILED,
-        errorMessage: error.message,
-      })
       // ErrorCodeMap에서 매핑
       let logMessage = `작업 처리 중 오류 발생: ${error.message}`
       if (error instanceof CustomHttpException) {
@@ -97,13 +93,20 @@ export class JobQueueProcessor implements OnModuleInit {
           logMessage = `작업 처리 중 오류 발생: ${mapped.message(error.metadata)}`
         }
       }
-      await this.jobLogsService.create({
-        jobId: job.id,
-        message: logMessage,
-        level: 'error',
-      })
-      this.logger.error(`작업 ${job.id} 처리 중 오류 발생: ${error.message}`)
-      throw error
+      await this.jobLogsService.createJobLog(job.id, logMessage, 'error')
+      this.logger.error(logMessage, error.stack)
+      await this.markJobAsFailed(job.id, error.message)
     }
+  }
+
+  private async markJobAsFailed(jobId: string, errorMsg: string) {
+    await this.prisma.job.update({
+      where: { id: jobId },
+      data: {
+        status: JobStatus.FAILED,
+        errorMessage: errorMsg,
+        completedAt: new Date(),
+      },
+    })
   }
 }

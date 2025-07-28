@@ -25,11 +25,8 @@ export const IndexingDashboard: React.FC = () => {
     }
     setSubmitting(true)
     try {
-      // TODO: 사이트 선택 기능이 있다면 siteId도 함께 전달해야 함
-      // 여기서는 예시로 siteId=1로 고정
-      const siteId = 1
       for (const url of urls) {
-        await createIndexJob({ siteId, url })
+        await createIndexJob({ url })
       }
       message.success('인덱싱 요청이 등록되었습니다.')
       setUrlInput('')
@@ -43,7 +40,7 @@ export const IndexingDashboard: React.FC = () => {
 
   const handleRequestIndexing = async (task: any) => {
     try {
-      await createIndexJob({ siteId: task.siteId, url: task.url })
+      await createIndexJob({ url: task.url })
       message.success('인덱싱 요청이 재등록되었습니다.')
       refresh()
     } catch (err: any) {

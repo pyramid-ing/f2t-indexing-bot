@@ -55,7 +55,7 @@ export interface IndexJob {
   updatedAt: string
 }
 
-export async function createIndexJob(options: { siteId: number; url: string }): Promise<Job> {
+export async function createIndexJob(options: { url: string }): Promise<Job> {
   const res = await api.post(`/index-job`, options)
   return res.data
 }

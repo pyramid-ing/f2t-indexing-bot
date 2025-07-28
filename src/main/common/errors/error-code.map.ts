@@ -11,7 +11,7 @@ export const ErrorCodeMap: Record<ErrorCode, ErrorCodeMeta> = {
   [ErrorCode.USER_DUPLICATE]: { status: 409, message: () => '이미 존재하는 사용자입니다.' },
 
   // 서버/기타
-  [ErrorCode.INTERNAL_ERROR]: { status: 500, message: () => '서버 내부 오류' },
+  [ErrorCode.INTERNAL_ERROR]: { status: 500, message: meta => `서버 내부 오류: ${meta.errorMessage}` },
 
   // Bing 관련
   [ErrorCode.BING_CONFIG_DISABLED]: { status: 400, message: () => 'Bing 색인이 비활성화되어 있습니다.' },

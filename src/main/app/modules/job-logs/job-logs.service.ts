@@ -12,6 +12,15 @@ export class JobLogsService {
       data,
     })
   }
+  async createJobLog(jobId: string, message: string, level: 'info' | 'error' | 'warn' = 'info') {
+    return this.prisma.jobLog.create({
+      data: {
+        jobId,
+        message,
+        level,
+      },
+    })
+  }
 
   async findByJobId(jobId: string): Promise<JobLog[]> {
     return this.prisma.jobLog.findMany({
