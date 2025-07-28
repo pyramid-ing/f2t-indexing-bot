@@ -124,14 +124,20 @@ const AppSidebar: React.FC = () => {
     },
     {
       key: '2',
+      path: '/indexing-settings',
+      label: '인덱싱설정',
+      icon: <SettingOutlined />,
+    },
+    {
+      key: '3',
       path: '/settings',
       label: '설정',
       icon: <SettingOutlined />,
     },
     {
-      key: '3',
+      key: '4',
       path: '/naver-accounts',
-      label: '네이버 계정',
+      label: '네이버계정',
       icon: <UserOutlined />,
     },
   ]

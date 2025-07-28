@@ -45,4 +45,11 @@ export class SettingsController {
     const status = await this.settingsService.getAppStatus()
     return { success: true, data: status }
   }
+
+  @Put('ai')
+  async updateAiSettings(@Body() settings: any) {
+    this.logger.log('AI 설정 업데이트 요청:', settings)
+    await this.settingsService.updateGlobalAiSettings(settings)
+    return { success: true, message: 'AI 설정이 업데이트되었습니다.' }
+  }
 }

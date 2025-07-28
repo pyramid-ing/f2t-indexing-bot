@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { HttpModule } from '@nestjs/axios'
 import { ConfigModule } from '@nestjs/config'
 import { NaverIndexerService } from './naver-indexer.service'
+import { AiCaptchaSolverService } from './ai-captcha-solver.service'
 import { SiteConfigModule } from '@main/app/modules/site-config/site-config.module'
 import { CommonModule } from '@main/app/modules/common/common.module'
 import { JobLogsModule } from '@main/app/modules/job-logs/job-logs.module'
@@ -19,7 +20,15 @@ import { NaverAccountModule } from '../naver-account/naver-account.module'
     NaverAccountModule,
   ],
   controllers: [],
-  providers: [NaverIndexerService],
+  providers: [
+    NaverIndexerService,
+    AiCaptchaSolverService,
+    {
+      provide: 'CAPTCHA_SOLVER',
+      useClass: AiCaptchaSolverService, // AI 서비스 사용
+      // useClass: DefaultCaptchaSolver, // 기본 서비스 사용 (AI 서비스 연동 전)
+    },
+  ],
   exports: [NaverIndexerService],
 })
 export class NaverIndexerModule {}

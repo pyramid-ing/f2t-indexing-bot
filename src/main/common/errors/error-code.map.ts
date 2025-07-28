@@ -63,6 +63,18 @@ export const ErrorCodeMap: Record<ErrorCode, ErrorCodeMeta> = {
     status: 401,
     message: () => '네이버 인증이 실패했습니다. 쿠키 또는 계정 정보를 확인해주세요.',
   },
+  [ErrorCode.NAVER_CAPTCHA_DETECTED]: {
+    status: 400,
+    message: () => '네이버 로그인 시 캡챠가 감지되었습니다. AI 서비스를 이용하여 자동 해제를 시도합니다.',
+  },
+  [ErrorCode.NAVER_CAPTCHA_SOLVE_FAILED]: {
+    status: 400,
+    message: () => '캡챠 해제에 실패했습니다. 수동으로 캡챠를 해제해주세요.',
+  },
+  [ErrorCode.NAVER_AI_SERVICE_ERROR]: {
+    status: 500,
+    message: meta => `AI 서비스 오류: ${meta?.errorMessage || ''}`,
+  },
   [ErrorCode.NAVER_UNKNOWN_ERROR]: {
     status: 500,
     message: meta => `네이버 색인 요청 실패: ${meta?.errorMessage || ''}`,

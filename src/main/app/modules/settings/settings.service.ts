@@ -26,6 +26,7 @@ export class SettingsService {
           bing: { use: false, apiKey: '' },
           naver: { use: false, naverId: '', password: '', headless: true },
           daum: { use: false, siteUrl: '', password: '', headless: true },
+          ai: { use: false, openaiApiKey: '' },
         }
 
         await (this.prisma as any).settings.create({
@@ -149,6 +150,33 @@ export class SettingsService {
       this.logger.log('Daum 전역 설정 업데이트 완료')
     } catch (error) {
       this.logger.error('Daum 전역 설정 업데이트 실패:', error)
+      throw error
+    }
+  }
+
+  // AI 전역 설정 업데이트
+  async updateGlobalAiSettings(settings: any) {
+    try {
+      const currentSettings = await this.getGlobalEngineSettings()
+      const updatedSettings = {
+        ...currentSettings,
+        ai: { ...currentSettings.ai, ...settings },
+      }
+
+      await (this.prisma as any).settings.upsert({
+        where: { id: 2 },
+        create: {
+          id: 2,
+          data: JSON.stringify(updatedSettings),
+        },
+        update: {
+          data: JSON.stringify(updatedSettings),
+        },
+      })
+
+      this.logger.log('AI 전역 설정 업데이트 완료')
+    } catch (error) {
+      this.logger.error('AI 전역 설정 업데이트 실패:', error)
       throw error
     }
   }

@@ -63,3 +63,19 @@ export async function getActiveSites(): Promise<Site[]> {
   const res = await api.get<Site[]>(`${BASE_PATH}/active`)
   return res.data
 }
+
+// 전역 설정 관리 API
+export async function getGlobalSettings(): Promise<any> {
+  const res = await api.get('/settings')
+  return res.data
+}
+
+export async function updateGlobalSettings(data: any): Promise<any> {
+  const res = await api.put('/settings', data)
+  return res.data
+}
+
+export async function updateAiSettings(data: any): Promise<any> {
+  const res = await api.put('/settings/ai', data)
+  return res.data
+}
