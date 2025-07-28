@@ -130,9 +130,6 @@ export class IndexJobService implements JobProcessor {
     const normalizedUrl = IndexJobService.normalizeUrl(url)
     const priority = 1
 
-    // provider가 여러 개일 수 있으므로, activeEngines 루프 안에서 각각 체크
-    // 아래 코드를 기존 jobs = await Promise.all(...) 위로 이동
-
     // 활성화된 검색엔진 확인
     const activeEngines = []
     const googleConfig = JSON.parse(site.googleConfig)
@@ -149,19 +146,32 @@ export class IndexJobService implements JobProcessor {
       throw new CustomHttpException(ErrorCode.INTERNAL_ERROR, { errorMessage: '활성화된 검색엔진이 없습니다.' })
     }
 
+    // 기존 등록된 URL 확인
+    const existingJobs = await this.prisma.indexJob.findMany({
+      where: {
+        siteId: site.id,
+        url: normalizedUrl,
+        provider: { in: activeEngines },
+      },
+    })
+
+    // 모든 활성화된 검색엔진에 이미 등록된 경우
+    if (existingJobs.length === activeEngines.length) {
+      const registeredEngines = existingJobs.map(job => job.provider).join(', ')
+      throw new CustomHttpException(ErrorCode.INDEX_JOB_ALL_ENGINES_REGISTERED, {
+        errorMessage: `이미 해당 URL에 대해 모든 검색엔진에 반영되었습니다. (등록된 검색엔진: ${registeredEngines})`,
+        url: normalizedUrl,
+        registeredEngines,
+      })
+    }
+
     // 각 검색엔진에 대해 작업 생성
     const jobs = await Promise.all(
       activeEngines.map(async provider => {
         // provider별 중복 체크
-        const existing = await this.prisma.indexJob.findFirst({
-          where: {
-            siteId: site.id,
-            url: normalizedUrl,
-            provider,
-          },
-        })
+        const existing = existingJobs.find(job => job.provider === provider)
         if (existing) {
-          // 이미 해당 provider로 인덱싱 요청된 경우는 건너뜀(혹은 에러 대신 무시)
+          // 이미 해당 provider로 인덱싱 요청된 경우는 건너뜀
           return null
         }
         const job = await this.prisma.job.create({
@@ -197,9 +207,20 @@ export class IndexJobService implements JobProcessor {
       }),
     )
 
+    // 실제로 생성된 작업만 필터링
+    const createdJobs = jobs.filter(job => job !== null)
+
+    if (createdJobs.length === 0) {
+      // 모든 검색엔진에 이미 등록된 경우 (위에서 체크했지만 혹시 모를 경우)
+      throw new CustomHttpException(ErrorCode.INDEX_JOB_ALL_ENGINES_REGISTERED, {
+        errorMessage: '이미 해당 URL에 대해 모든 검색엔진에 반영되었습니다.',
+        url: normalizedUrl,
+      })
+    }
+
     return {
       success: true,
-      message: `${activeEngines.length}개의 검색엔진에 대한 인덱싱 작업이 생성되었습니다.`,
+      message: `${createdJobs.length}개의 검색엔진에 대한 인덱싱 작업이 생성되었습니다.`,
       resultUrl: url,
     }
   }

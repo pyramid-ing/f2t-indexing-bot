@@ -103,4 +103,14 @@ export const ErrorCodeMap: Record<ErrorCode, ErrorCodeMeta> = {
   [ErrorCode.JOB_NOT_FOUND]: { status: 404, message: () => '작업을 찾을 수 없습니다.' },
   [ErrorCode.JOB_STATUS_INVALID]: { status: 400, message: () => '잘못된 작업 상태입니다.' },
   [ErrorCode.JOB_STATUS_CHANGE_FAILED]: { status: 400, message: () => '작업 상태 변경에 실패했습니다.' },
+
+  // IndexJob 관련
+  [ErrorCode.INDEX_JOB_URL_ALREADY_REGISTERED]: {
+    status: 409,
+    message: meta => `이미 등록된 URL입니다: ${meta?.url || ''}`,
+  },
+  [ErrorCode.INDEX_JOB_ALL_ENGINES_REGISTERED]: {
+    status: 409,
+    message: meta => meta?.errorMessage || '이미 해당 URL에 대해 모든 검색엔진에 반영되었습니다.',
+  },
 }

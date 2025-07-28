@@ -26,9 +26,18 @@ export const IndexingDashboard: React.FC = () => {
     setSubmitting(true)
     try {
       for (const url of urls) {
-        await createIndexJob({ url })
+        try {
+          await createIndexJob({ url })
+          message.success('인덱싱 요청 처리가 완료되었습니다.')
+        } catch (err: any) {
+          // 중복 URL 에러 처리
+          if (err?.response?.data?.errorCode === 8002) {
+            message.warning(`${url}: 이미 모든 검색엔진에 등록되어 있습니다.`)
+          } else {
+            message.error(`${url}: ${err?.response?.data?.errorMessage || err?.message || '알 수 없는 오류'}`)
+          }
+        }
       }
-      message.success('인덱싱 요청이 등록되었습니다.')
       setUrlInput('')
       refresh()
     } catch (err: any) {
@@ -44,7 +53,14 @@ export const IndexingDashboard: React.FC = () => {
       message.success('인덱싱 요청이 재등록되었습니다.')
       refresh()
     } catch (err: any) {
-      message.error('인덱싱 요청 중 오류가 발생했습니다: ' + (err?.message || ''))
+      // 중복 URL 에러 처리
+      if (err?.response?.data?.errorCode === 8002) {
+        message.warning(`${task.url}: 이미 모든 검색엔진에 등록되어 있습니다.`)
+      } else {
+        message.error(
+          '인덱싱 요청 중 오류가 발생했습니다: ' + (err?.response?.data?.errorMessage || err?.message || ''),
+        )
+      }
     }
   }
 
