@@ -171,15 +171,21 @@ export class NaverIndexerService implements OnModuleInit {
         })
       }
     }
+
     await page.goto(`https://searchadvisor.naver.com/console/site/request/crawl?site=${siteConfig.siteUrl}`)
     await sleep(2000)
     if (page.url().includes('nid.naver.com')) {
-      await browser.close()
-      throw new CustomHttpException(ErrorCode.NAVER_AUTH_FAIL, {
-        siteId,
-        naverId,
-        errorMessage: '네이버 로그인이 필요합니다. 쿠키가 만료되었거나 존재하지 않습니다.',
-      })
+      const loginSuccess = await this.tryLoginAndSaveCookies(page, naverId, naverPw)
+      if (!loginSuccess) {
+        await browser.close()
+        throw new CustomHttpException(ErrorCode.NAVER_AUTH_FAIL, {
+          siteId,
+          naverId,
+          errorMessage: '쿠키 파일이 없고, 자동 로그인에도 실패했습니다.',
+        })
+      }
+
+      await page.goto(`https://searchadvisor.naver.com/console/site/request/crawl?site=${siteConfig.siteUrl}`)
     }
     // 인덱싱 입력창에 url 입력 및 확인 버튼 클릭
     const inputSelector = 'input[type="text"][maxlength="2048"]'
