@@ -129,13 +129,25 @@ export class GoogleIndexerService {
       if (error.response?.status === 401) {
         throw new CustomHttpException(ErrorCode.GOOGLE_AUTH_FAIL, { url, siteId, type, responseStatus: 401 })
       } else if (error.response?.status === 403) {
-        throw new CustomHttpException(ErrorCode.GOOGLE_API_FORBIDDEN, {
-          url,
-          siteId,
-          type,
-          responseStatus: 403,
-          responseData: error.response?.data,
-        })
+        // Google API 403 에러의 세부 메시지를 확인하여 구체적인 에러 처리
+        const errorData = error.response?.data?.error
+        if (errorData?.message?.includes('Failed to verify the URL ownership')) {
+          throw new CustomHttpException(ErrorCode.GOOGLE_URL_OWNERSHIP_VERIFICATION_FAILED, {
+            url,
+            siteId,
+            type,
+            responseStatus: 403,
+            responseData: error.response?.data,
+          })
+        } else {
+          throw new CustomHttpException(ErrorCode.GOOGLE_API_FORBIDDEN, {
+            url,
+            siteId,
+            type,
+            responseStatus: 403,
+            responseData: error.response?.data,
+          })
+        }
       } else if (error.response?.status === 429) {
         throw new CustomHttpException(ErrorCode.GOOGLE_API_RATE_LIMIT, {
           url,
@@ -390,9 +402,25 @@ export class GoogleIndexerService {
         })
       }
 
+      // Google API 에러 메시지에 따른 구체적인 에러 처리
+      let errorMessage = error.message
+
+      if (error.response?.status === 403) {
+        const errorData = error.response?.data?.error
+        if (errorData?.message?.includes('Failed to verify the URL ownership')) {
+          errorMessage = 'URL 소유권 확인에 실패했습니다. Google Search Console에서 사이트 소유권을 확인해주세요.'
+        } else {
+          errorMessage = 'Google Indexing API 권한이 없습니다. 서비스 계정 권한을 확인해주세요.'
+        }
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Google API 인증이 실패했습니다. 서비스 계정 JSON을 확인해주세요.'
+      } else if (error.response?.status === 429) {
+        errorMessage = 'Google API 요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
+      }
+
       return {
         success: false,
-        message: `인덱싱 요청 실패: ${error.message}`,
+        message: `인덱싱 요청 실패: ${errorMessage}`,
       }
     }
   }

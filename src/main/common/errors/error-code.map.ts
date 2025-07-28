@@ -49,6 +49,10 @@ export const ErrorCodeMap: Record<ErrorCode, ErrorCodeMeta> = {
   },
   [ErrorCode.GOOGLE_API_INVALID_KEY]: { status: 400, message: () => 'Google API Key가 유효하지 않습니다.' },
   [ErrorCode.GOOGLE_API_ERROR]: { status: 502, message: meta => `Google API 오류: ${meta?.errorMessage || ''}` },
+  [ErrorCode.GOOGLE_URL_OWNERSHIP_VERIFICATION_FAILED]: {
+    status: 403,
+    message: () => 'URL 소유권 확인에 실패했습니다. Google Search Console에서 사이트 소유권을 확인해주세요.',
+  },
   [ErrorCode.GOOGLE_UNKNOWN_ERROR]: {
     status: 500,
     message: meta => `Google 색인 요청 실패: ${meta?.errorMessage || ''}`,
