@@ -7,7 +7,7 @@ import {
 } from '@ant-design/icons'
 import { Button, Card, Col, Row, Space, Tag, Typography } from 'antd'
 import React from 'react'
-import { NaverLoginStatus } from '@render/api/types'
+import { NaverLoginStatus } from '@render/api/naverAccountApi'
 
 const { Title, Text } = Typography
 

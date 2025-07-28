@@ -138,6 +138,7 @@ export class DaumIndexerService {
     })
     await page.fill('#collectReqUrl', url)
     await page.click('.btn_result')
+    await sleep(2000)
     let isSuccess = false
     let msg = ''
     let errorFromDesc = ''

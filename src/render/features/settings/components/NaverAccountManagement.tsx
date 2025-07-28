@@ -1,8 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { Button, Form, Input, message, Modal, Table, Typography } from 'antd'
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { naverAccountApi, CreateNaverAccountDto } from '@render/api/naver/naverAccountApi'
-import { NaverAccount } from '@render/api/types'
+import {
+  createNaverAccount,
+  CreateNaverAccountDto,
+  deleteNaverAccount,
+  getAllNaverAccounts,
+  NaverAccount,
+} from '@render/api/naverAccountApi'
 
 const { Title } = Typography
 
@@ -19,7 +24,7 @@ const NaverAccountManagement: React.FC = () => {
   const fetchAccounts = async () => {
     try {
       setLoading(true)
-      const response = await naverAccountApi.getAll()
+      const response = await getAllNaverAccounts()
       console.log(response)
       setAccounts(Array.isArray(response) ? response : [])
     } catch (error) {
@@ -74,7 +79,7 @@ const NaverAccountManagement: React.FC = () => {
 
   const handleAdd = async (values: CreateNaverAccountDto) => {
     try {
-      const response = await naverAccountApi.create({
+      const response = await createNaverAccount({
         ...values,
         isActive: true,
       })
@@ -90,7 +95,7 @@ const NaverAccountManagement: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await naverAccountApi.delete(id)
+      const response = await deleteNaverAccount(id)
       message.success('계정이 삭제되었습니다.')
       fetchAccounts()
     } catch (error) {
