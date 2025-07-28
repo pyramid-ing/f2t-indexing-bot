@@ -14,6 +14,7 @@ import { JobModule } from '@main/app/modules/job/job.module'
 import { IndexJobModule } from '@main/app/modules/index-job/index-job.module'
 import { ScheduleModule } from '@nestjs/schedule'
 import { NaverAccountModule } from '@main/app/modules/naver-account/naver-account.module'
+import { SitemapModule } from '@main/app/modules/sitemap/sitemap.module'
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { NaverAccountModule } from '@main/app/modules/naver-account/naver-accoun
     JobModule,
     IndexJobModule,
     NaverAccountModule,
+    SitemapModule,
   ],
   providers: [
     {

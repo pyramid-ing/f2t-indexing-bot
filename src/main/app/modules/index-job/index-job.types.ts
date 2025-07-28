@@ -1,4 +1,4 @@
-import { IsString } from 'class-validator'
+import { IsString, IsOptional, IsNumber } from 'class-validator'
 
 export enum IndexProvider {
   GOOGLE = 'GOOGLE',
@@ -10,4 +10,12 @@ export enum IndexProvider {
 export class CreateIndexJobDto {
   @IsString()
   url: string
+
+  @IsString()
+  @IsOptional()
+  provider?: string
+
+  @IsNumber()
+  @IsOptional()
+  siteId?: number
 }

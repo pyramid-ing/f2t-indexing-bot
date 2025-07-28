@@ -3,6 +3,7 @@ import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Sw
 import { PlusOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
+import { SitemapSettings } from '@render/features/settings/components/SitemapSettings'
 import { getAllSites, createSite, updateSite, Site } from '@render/api/siteConfigApi'
 
 const { Title } = Typography
@@ -159,6 +160,11 @@ const IndexingSettingsPage: React.FC = () => {
               <GeneralSettings site={selectedSite} />
             </>
           ),
+        },
+        {
+          key: 'sitemap',
+          label: 'Sitemap',
+          children: <SitemapSettings siteId={selectedSite.id} />,
         },
         {
           key: 'naver',
