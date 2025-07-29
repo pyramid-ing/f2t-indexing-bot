@@ -1,7 +1,9 @@
 import React from 'react'
-import { Form, Select, Switch, Spin } from 'antd'
+import { Form, Select, Switch, Spin, Alert, Space, Typography } from 'antd'
 import { Site } from '@render/api/siteConfigApi'
 import { getAllNaverAccounts, NaverAccount } from '@render/api/naverAccountApi'
+
+const { Text } = Typography
 
 interface NaverSettingsProps {
   site: Site
@@ -30,6 +32,13 @@ const NaverSettings: React.FC<NaverSettingsProps> = ({ site }) => {
 
   return (
     <>
+      <Alert
+        message="네이버 정책: 50개/일 (저희 프로그램 문제가 아닙니다)"
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+      />
+
       <Form.Item name={['naver', 'use']} valuePropName="checked" label="네이버 인덱싱 사용">
         <Switch />
       </Form.Item>

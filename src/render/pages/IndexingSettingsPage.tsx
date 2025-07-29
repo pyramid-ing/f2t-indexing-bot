@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input, Tooltip } from 'antd'
+import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input, Tooltip, Alert } from 'antd'
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
@@ -248,6 +248,21 @@ const IndexingSettingsPage: React.FC = () => {
   return (
     <PageContainer title="인덱싱 설정">
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* 일일 제한 안내 */}
+        <Alert
+          message="일일 인덱싱 제한 안내"
+          description={
+            <Space direction="vertical" size="small">
+              <Text>각 검색 엔진의 정책입니다 (저희 프로그램 문제가 아닙니다):</Text>
+              <Text>• 네이버: 50개/일</Text>
+              <Text>• 구글: 200개/일</Text>
+              <Text>• 빙: 100개/일</Text>
+            </Space>
+          }
+          type="info"
+          showIcon
+        />
+
         {/* 사이트 선택 및 관리 섹션 */}
         <Card title="사이트 관리" className="shadow-sm" style={{ marginBottom: '24px' }}>
           <Space>
