@@ -1,8 +1,10 @@
 import React, { useState } from 'react'
 import { useIndexingTasks } from '@render/features/dashboard'
-import { message, Input, Button, Space } from 'antd'
+import { message, Input, Button, Space, Card, Typography } from 'antd'
 import { createIndexJob } from '@render/api/jobApi'
 import JobTable from '@render/features/work-management/JobTable'
+
+const { Title } = Typography
 
 export const IndexingDashboard: React.FC = () => {
   const { tasks, loading, selectedTask, onTaskSelect, onTaskClose, onTaskRetry, onTaskDelete, refresh } =
@@ -65,19 +67,27 @@ export const IndexingDashboard: React.FC = () => {
   }
 
   return (
-    <div className="p-4">
-      <Space direction="vertical" style={{ width: '100%' }} size="middle">
-        <Input.TextArea
-          rows={4}
-          value={urlInput}
-          onChange={handleUrlInputChange}
-          placeholder="여러 개의 URL을 줄 단위로 입력하세요."
-        />
-        <Button type="primary" onClick={handleSubmit} loading={submitting}>
-          인덱싱 요청
-        </Button>
-      </Space>
-      <JobTable></JobTable>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      {/* URL 입력 섹션 */}
+      <Card title="새 인덱싱 요청" className="shadow-sm" style={{ marginBottom: '24px' }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Input.TextArea
+            rows={4}
+            value={urlInput}
+            onChange={handleUrlInputChange}
+            placeholder="여러 개의 URL을 줄 단위로 입력하세요."
+            style={{ fontSize: '14px' }}
+          />
+          <Button type="primary" onClick={handleSubmit} loading={submitting} size="large">
+            인덱싱 요청
+          </Button>
+        </Space>
+      </Card>
+
+      {/* 작업 목록 섹션 */}
+      <Card title="인덱싱 작업 목록" className="shadow-sm">
+        <JobTable />
+      </Card>
     </div>
   )
 }

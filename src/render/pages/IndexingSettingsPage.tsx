@@ -247,8 +247,9 @@ const IndexingSettingsPage: React.FC = () => {
 
   return (
     <PageContainer title="인덱싱 설정">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center mb-6">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {/* 사이트 선택 및 관리 섹션 */}
+        <Card title="사이트 관리" className="shadow-sm" style={{ marginBottom: '24px' }}>
           <Space>
             <Select
               style={{ width: 200 }}
@@ -274,10 +275,11 @@ const IndexingSettingsPage: React.FC = () => {
               </Button>
             )}
           </Space>
-        </div>
+        </Card>
 
+        {/* 설정 섹션 */}
         {selectedSite ? (
-          <Card>
+          <Card title="인덱싱 설정" className="shadow-sm">
             <Form form={settingsForm} onFinish={handleSave} disabled={loading} layout="vertical">
               <Tabs items={indexingItems} type="card" />
               <Form.Item>
@@ -288,7 +290,7 @@ const IndexingSettingsPage: React.FC = () => {
             </Form>
           </Card>
         ) : (
-          <Card>
+          <Card title="인덱싱 설정" className="shadow-sm">
             <div className="text-center py-8 text-gray-500">사이트를 선택하거나 추가해주세요.</div>
           </Card>
         )}
