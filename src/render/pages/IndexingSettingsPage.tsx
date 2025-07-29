@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react'
 import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input } from 'antd'
-import { PlusOutlined } from '@ant-design/icons'
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
 import { SitemapSettings } from '@render/features/settings/components/SitemapSettings'
-import { getAllSites, createSite, updateSite, Site } from '@render/api/siteConfigApi'
+import { getAllSites, createSite, updateSite, deleteSite, Site } from '@render/api/siteConfigApi'
 
 const { Title } = Typography
 const { TabPane } = Tabs
@@ -20,6 +20,8 @@ const IndexingSettingsPage: React.FC = () => {
   const [sites, setSites] = useState<Site[]>([])
   const [selectedSite, setSelectedSite] = useState<Site | null>(null)
   const [isModalVisible, setIsModalVisible] = useState(false)
+  const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false)
+  const [siteToDelete, setSiteToDelete] = useState<Site | null>(null)
   const [addSiteForm] = Form.useForm()
   const [loading, setLoading] = useState(false)
   const [settingsForm] = Form.useForm()
@@ -75,6 +77,8 @@ const IndexingSettingsPage: React.FC = () => {
       setSites(siteList)
       if (siteList.length > 0) {
         handleSiteSelect(siteList[0])
+      } else {
+        setSelectedSite(null)
       }
     } catch (error) {
       console.error('Failed to load sites:', error)
@@ -147,6 +151,29 @@ const IndexingSettingsPage: React.FC = () => {
     }
   }
 
+  const handleDeleteSite = async () => {
+    if (!siteToDelete) return
+
+    try {
+      setLoading(true)
+      await deleteSite(siteToDelete.id)
+      message.success('사이트가 삭제되었습니다')
+      setIsDeleteModalVisible(false)
+      setSiteToDelete(null)
+      await fetchSites()
+    } catch (error) {
+      console.error('Failed to delete site:', error)
+      message.error('사이트 삭제에 실패했습니다')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const showDeleteModal = (site: Site) => {
+    setSiteToDelete(site)
+    setIsDeleteModalVisible(true)
+  }
+
   const indexingItems = selectedSite
     ? [
         {
@@ -212,19 +239,30 @@ const IndexingSettingsPage: React.FC = () => {
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
             사이트 추가
           </Button>
+          {selectedSite && (
+            <Button danger icon={<DeleteOutlined />} onClick={() => showDeleteModal(selectedSite)} disabled={loading}>
+              사이트 제거
+            </Button>
+          )}
         </Space>
       </div>
 
-      <Card>
-        <Form form={settingsForm} onFinish={handleSave} disabled={loading} layout="vertical">
-          <Tabs items={indexingItems} type="card" />
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={loading}>
-              인덱싱 설정 저장
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
+      {selectedSite ? (
+        <Card>
+          <Form form={settingsForm} onFinish={handleSave} disabled={loading} layout="vertical">
+            <Tabs items={indexingItems} type="card" />
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={loading}>
+                인덱싱 설정 저장
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+      ) : (
+        <Card>
+          <div className="text-center py-8 text-gray-500">사이트를 선택하거나 추가해주세요.</div>
+        </Card>
+      )}
 
       <Modal
         title="새 사이트 추가"
@@ -260,6 +298,27 @@ const IndexingSettingsPage: React.FC = () => {
             <Input placeholder="예: https://example.com" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="사이트 삭제 확인"
+        open={isDeleteModalVisible}
+        onOk={handleDeleteSite}
+        onCancel={() => {
+          setIsDeleteModalVisible(false)
+          setSiteToDelete(null)
+        }}
+        confirmLoading={loading}
+        okText="삭제"
+        cancelText="취소"
+        okButtonProps={{ danger: true }}
+      >
+        <p>
+          <strong>{siteToDelete?.name}</strong> 사이트를 삭제하시겠습니까?
+        </p>
+        <p className="text-gray-500 text-sm mt-2">
+          이 작업은 되돌릴 수 없으며, 해당 사이트의 모든 설정과 데이터가 영구적으로 삭제됩니다.
+        </p>
       </Modal>
     </div>
   )
