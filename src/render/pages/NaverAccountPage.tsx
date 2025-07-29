@@ -8,6 +8,7 @@ import {
   NaverAccount,
   CreateNaverAccountDto,
 } from '@render/api/naverAccountApi'
+import PageContainer from '@render/components/shared/PageContainer'
 
 const { Title } = Typography
 const { confirm } = Modal
@@ -119,10 +120,9 @@ const NaverAccountPage: React.FC = () => {
   ]
 
   return (
-    <div className="p-6">
+    <PageContainer title="네이버 계정 관리">
       <Card>
         <div className="flex justify-between items-center mb-4">
-          <Title level={2}>네이버 계정 관리</Title>
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
             계정 추가
           </Button>
@@ -163,7 +163,7 @@ const NaverAccountPage: React.FC = () => {
           </Form>
         </Modal>
       </Card>
-    </div>
+    </PageContainer>
   )
 }
 

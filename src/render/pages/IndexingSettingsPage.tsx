@@ -6,6 +6,7 @@ import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSetti
 import { SitemapSettings } from '@render/features/settings/components/SitemapSettings'
 import { getAllSites, createSite, updateSite, deleteSite, Site } from '@render/api/siteConfigApi'
 import { extractDomainFromUrl, convertDomainToReadableName } from '@render/utils/urlUtils'
+import PageContainer from '@render/components/shared/PageContainer'
 
 const { Title, Text } = Typography
 const { TabPane } = Tabs
@@ -245,148 +246,149 @@ const IndexingSettingsPage: React.FC = () => {
     : []
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <Title level={2}>인덱싱 설정</Title>
-        <Space>
-          <Select
-            style={{ width: 200 }}
-            placeholder="사이트 선택"
-            value={selectedSite?.id}
-            onChange={id => {
-              const site = sites.find(s => s.id === id)
-              if (site) handleSiteSelect(site)
-            }}
-            options={
-              sites?.map(site => ({
-                label: site.name,
-                value: site.id,
-              })) || []
-            }
-          />
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
-            사이트 추가
-          </Button>
-          {selectedSite && (
-            <Button danger icon={<DeleteOutlined />} onClick={() => showDeleteModal(selectedSite)} disabled={loading}>
-              사이트 제거
+    <PageContainer title="인덱싱 설정">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <Space>
+            <Select
+              style={{ width: 200 }}
+              placeholder="사이트 선택"
+              value={selectedSite?.id}
+              onChange={id => {
+                const site = sites.find(s => s.id === id)
+                if (site) handleSiteSelect(site)
+              }}
+              options={
+                sites?.map(site => ({
+                  label: site.name,
+                  value: site.id,
+                })) || []
+              }
+            />
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setIsModalVisible(true)}>
+              사이트 추가
             </Button>
-          )}
-        </Space>
-      </div>
-
-      {selectedSite ? (
-        <Card>
-          <Form form={settingsForm} onFinish={handleSave} disabled={loading} layout="vertical">
-            <Tabs items={indexingItems} type="card" />
-            <Form.Item>
-              <Button type="primary" htmlType="submit" loading={loading}>
-                인덱싱 설정 저장
+            {selectedSite && (
+              <Button danger icon={<DeleteOutlined />} onClick={() => showDeleteModal(selectedSite)} disabled={loading}>
+                사이트 제거
               </Button>
+            )}
+          </Space>
+        </div>
+
+        {selectedSite ? (
+          <Card>
+            <Form form={settingsForm} onFinish={handleSave} disabled={loading} layout="vertical">
+              <Tabs items={indexingItems} type="card" />
+              <Form.Item>
+                <Button type="primary" htmlType="submit" loading={loading}>
+                  인덱싱 설정 저장
+                </Button>
+              </Form.Item>
+            </Form>
+          </Card>
+        ) : (
+          <Card>
+            <div className="text-center py-8 text-gray-500">사이트를 선택하거나 추가해주세요.</div>
+          </Card>
+        )}
+
+        <Modal
+          title="새 사이트 추가"
+          open={isModalVisible}
+          onOk={addSiteForm.submit}
+          onCancel={() => {
+            setIsModalVisible(false)
+            addSiteForm.resetFields()
+          }}
+          confirmLoading={loading}
+          width={600}
+        >
+          <Form form={addSiteForm} layout="vertical" onFinish={handleAddSite}>
+            <Form.Item
+              name="name"
+              label={
+                <span>
+                  사이트 이름
+                  <Tooltip title="관리용 이름으로, 원하는 이름을 자유롭게 입력하세요.">
+                    <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                  </Tooltip>
+                </span>
+              }
+              rules={[{ required: true, message: '사이트 이름을 입력해주세요' }]}
+            >
+              <Input placeholder="예: 내 블로그" />
+            </Form.Item>
+
+            <Form.Item
+              name="domain"
+              label={
+                <span>
+                  도메인
+                  <Tooltip title="사이트 URL을 입력하면 자동으로 추출됩니다.">
+                    <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                  </Tooltip>
+                </span>
+              }
+              rules={[{ required: true, message: '도메인을 입력해주세요' }]}
+            >
+              <Text
+                style={{
+                  display: 'block',
+                  padding: '4px 11px',
+                  minHeight: '32px',
+                  lineHeight: '24px',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '6px',
+                  backgroundColor: '#f5f5f5',
+                }}
+              >
+                {Form.useWatch('domain', addSiteForm) || '도메인이 자동으로 추출됩니다'}
+              </Text>
+            </Form.Item>
+
+            <Form.Item
+              name="siteUrl"
+              label={
+                <span>
+                  사이트 URL
+                  <Tooltip title="전체 URL을 입력해주세요 (예: https://example.com)">
+                    <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                  </Tooltip>
+                </span>
+              }
+              rules={[
+                { required: true, message: '사이트 URL을 입력해주세요' },
+                { type: 'url', message: '올바른 URL 형식을 입력해주세요' },
+              ]}
+            >
+              <Input placeholder="예: https://example.com" onChange={handleSiteUrlChange} />
             </Form.Item>
           </Form>
-        </Card>
-      ) : (
-        <Card>
-          <div className="text-center py-8 text-gray-500">사이트를 선택하거나 추가해주세요.</div>
-        </Card>
-      )}
+        </Modal>
 
-      <Modal
-        title="새 사이트 추가"
-        open={isModalVisible}
-        onOk={addSiteForm.submit}
-        onCancel={() => {
-          setIsModalVisible(false)
-          addSiteForm.resetFields()
-        }}
-        confirmLoading={loading}
-        width={600}
-      >
-        <Form form={addSiteForm} layout="vertical" onFinish={handleAddSite}>
-          <Form.Item
-            name="name"
-            label={
-              <span>
-                사이트 이름
-                <Tooltip title="관리용 이름으로, 원하는 이름을 자유롭게 입력하세요.">
-                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
-                </Tooltip>
-              </span>
-            }
-            rules={[{ required: true, message: '사이트 이름을 입력해주세요' }]}
-          >
-            <Input placeholder="예: 내 블로그" />
-          </Form.Item>
-
-          <Form.Item
-            name="domain"
-            label={
-              <span>
-                도메인
-                <Tooltip title="사이트 URL을 입력하면 자동으로 추출됩니다.">
-                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
-                </Tooltip>
-              </span>
-            }
-            rules={[{ required: true, message: '도메인을 입력해주세요' }]}
-          >
-            <Text
-              style={{
-                display: 'block',
-                padding: '4px 11px',
-                minHeight: '32px',
-                lineHeight: '24px',
-                border: '1px solid #d9d9d9',
-                borderRadius: '6px',
-                backgroundColor: '#f5f5f5',
-              }}
-            >
-              {Form.useWatch('domain', addSiteForm) || '도메인이 자동으로 추출됩니다'}
-            </Text>
-          </Form.Item>
-
-          <Form.Item
-            name="siteUrl"
-            label={
-              <span>
-                사이트 URL
-                <Tooltip title="전체 URL을 입력해주세요 (예: https://example.com)">
-                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
-                </Tooltip>
-              </span>
-            }
-            rules={[
-              { required: true, message: '사이트 URL을 입력해주세요' },
-              { type: 'url', message: '올바른 URL 형식을 입력해주세요' },
-            ]}
-          >
-            <Input placeholder="예: https://example.com" onChange={handleSiteUrlChange} />
-          </Form.Item>
-        </Form>
-      </Modal>
-
-      <Modal
-        title="사이트 삭제 확인"
-        open={isDeleteModalVisible}
-        onOk={handleDeleteSite}
-        onCancel={() => {
-          setIsDeleteModalVisible(false)
-          setSiteToDelete(null)
-        }}
-        confirmLoading={loading}
-        okText="삭제"
-        cancelText="취소"
-        okButtonProps={{ danger: true }}
-      >
-        <p>
-          <strong>{siteToDelete?.name}</strong> 사이트를 삭제하시겠습니까?
-        </p>
-        <p className="text-gray-500 text-sm mt-2">
-          이 작업은 되돌릴 수 없으며, 해당 사이트의 모든 설정과 데이터가 영구적으로 삭제됩니다.
-        </p>
-      </Modal>
-    </div>
+        <Modal
+          title="사이트 삭제 확인"
+          open={isDeleteModalVisible}
+          onOk={handleDeleteSite}
+          onCancel={() => {
+            setIsDeleteModalVisible(false)
+            setSiteToDelete(null)
+          }}
+          confirmLoading={loading}
+          okText="삭제"
+          cancelText="취소"
+          okButtonProps={{ danger: true }}
+        >
+          <p>
+            <strong>{siteToDelete?.name}</strong> 사이트를 삭제하시겠습니까?
+          </p>
+          <p className="text-gray-500 text-sm mt-2">
+            이 작업은 되돌릴 수 없으며, 해당 사이트의 모든 설정과 데이터가 영구적으로 삭제됩니다.
+          </p>
+        </Modal>
+      </div>
+    </PageContainer>
   )
 }
 

@@ -66,7 +66,6 @@ export const IndexingDashboard: React.FC = () => {
 
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">인덱싱 대시보드</h1>
       <Space direction="vertical" style={{ width: '100%' }} size="middle">
         <Input.TextArea
           rows={4}

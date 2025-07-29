@@ -3,6 +3,7 @@ import { Typography, Card, Tabs, Form, Button, message } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import AiSettings from '@render/features/settings/components/AiSettings'
 import { getGlobalSettings, updateGlobalSettings } from '@render/api/siteConfigApi'
+import PageContainer from '@render/components/shared/PageContainer'
 
 const { Title } = Typography
 
@@ -53,22 +54,25 @@ const SettingsPage: React.FC = () => {
   ]
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <Title level={2}>전역 설정</Title>
+    <PageContainer title="전역 설정">
+      <div className="space-y-6">
+        <Card>
+          <Form
+            form={globalSettingsForm}
+            onFinish={handleSaveGlobalSettings}
+            disabled={savingSettings}
+            layout="vertical"
+          >
+            <Tabs items={globalItems} type="card" />
+            <Form.Item>
+              <Button type="primary" htmlType="submit" loading={savingSettings}>
+                전역 설정 저장
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
       </div>
-
-      <Card>
-        <Form form={globalSettingsForm} onFinish={handleSaveGlobalSettings} disabled={savingSettings} layout="vertical">
-          <Tabs items={globalItems} type="card" />
-          <Form.Item>
-            <Button type="primary" htmlType="submit" loading={savingSettings}>
-              전역 설정 저장
-            </Button>
-          </Form.Item>
-        </Form>
-      </Card>
-    </div>
+    </PageContainer>
   )
 }
 

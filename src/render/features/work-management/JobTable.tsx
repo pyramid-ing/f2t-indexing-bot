@@ -31,7 +31,6 @@ import {
   requestToPending,
   pendingToRequest,
 } from '../../api/jobApi'
-import PageContainer from '../../components/shared/PageContainer'
 import dayjs from 'dayjs'
 import 'dayjs/locale/ko'
 import { api } from '@render/api/apiClient'
@@ -598,7 +597,7 @@ const JobTable: React.FC = () => {
   ).length
 
   return (
-    <PageContainer title="작업 관리" maxWidth="none">
+    <>
       {/* 필터 영역 (상태/타입/검색 등) */}
       <div style={{ marginBottom: 12 }}>
         <Space size="middle" wrap>
@@ -905,7 +904,7 @@ const JobTable: React.FC = () => {
           )}
         </div>
       </Modal>
-    </PageContainer>
+    </>
   )
 }
 
