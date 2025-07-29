@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
-import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input } from 'antd'
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'
+import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input, Tooltip } from 'antd'
+import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'
 import { SitemapSettings } from '@render/features/settings/components/SitemapSettings'
 import { getAllSites, createSite, updateSite, deleteSite, Site } from '@render/api/siteConfigApi'
+import { extractDomainFromUrl, convertDomainToReadableName } from '@render/utils/urlUtils'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 const { TabPane } = Tabs
 
 interface AddSiteFormData {
@@ -30,7 +31,22 @@ const IndexingSettingsPage: React.FC = () => {
     fetchSites()
   }, [])
 
+  const fixSiteData = (site: Site): Site => {
+    // 사이트 이름이 URL로 되어 있는 경우 도메인에서 추출하여 수정
+    if (site.name.startsWith('http')) {
+      const domain = extractDomainFromUrl(site.name)
+      if (domain) {
+        return {
+          ...site,
+          name: convertDomainToReadableName(domain), // 도메인을 읽기 쉬운 이름으로 변환
+        }
+      }
+    }
+    return site
+  }
+
   const setFormWithSite = (site: Site) => {
+    const fixedSite = fixSiteData(site)
     const defaultNaverConfig = { use: false, selectedNaverAccountId: undefined, headless: false }
     const defaultDaumConfig = { use: false, siteUrl: '', password: '', headless: false }
     const defaultGoogleConfig = { use: false, serviceAccountJson: '' }
@@ -38,42 +54,43 @@ const IndexingSettingsPage: React.FC = () => {
     settingsForm.resetFields()
     settingsForm.setFieldsValue({
       general: {
-        name: site.name,
-        domain: site.domain,
-        siteUrl: site.siteUrl,
+        name: fixedSite.name,
+        domain: fixedSite.domain,
+        siteUrl: fixedSite.siteUrl,
       },
       site: {
-        isActive: site.isActive ?? true,
+        isActive: fixedSite.isActive ?? true,
       },
       naver: {
         ...defaultNaverConfig,
-        ...site.naverConfig,
+        ...fixedSite.naverConfig,
       },
       daum: {
         ...defaultDaumConfig,
-        ...site.daumConfig,
+        ...fixedSite.daumConfig,
       },
       google: {
         ...defaultGoogleConfig,
-        ...site.googleConfig,
+        ...fixedSite.googleConfig,
       },
       bing: {
         ...defaultBingConfig,
-        ...site.bingConfig,
+        ...fixedSite.bingConfig,
       },
     })
   }
 
   const handleSiteSelect = (site: Site) => {
-    setSelectedSite(site)
-    setFormWithSite(site)
+    const fixedSite = fixSiteData(site)
+    setSelectedSite(fixedSite)
+    setFormWithSite(fixedSite)
   }
 
   const fetchSites = async () => {
     try {
       setLoading(true)
       const data = await getAllSites()
-      const siteList = Array.isArray(data) ? data : []
+      const siteList = Array.isArray(data) ? data.map(fixSiteData) : []
       setSites(siteList)
       if (siteList.length > 0) {
         handleSiteSelect(siteList[0])
@@ -105,6 +122,7 @@ const IndexingSettingsPage: React.FC = () => {
         bingConfig: values.bing,
       })
       message.success('인덱싱 설정이 저장되었습니다.')
+      await fetchSites() // 사이트 목록 다시 로드하여 수정된 데이터 반영
     } catch (error) {
       console.error('Failed to save settings:', error)
       message.error('인덱싱 설정 저장에 실패했습니다.')
@@ -172,6 +190,16 @@ const IndexingSettingsPage: React.FC = () => {
   const showDeleteModal = (site: Site) => {
     setSiteToDelete(site)
     setIsDeleteModalVisible(true)
+  }
+
+  const handleSiteUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value
+    if (url) {
+      const domain = extractDomainFromUrl(url)
+      if (domain) {
+        addSiteForm.setFieldsValue({ domain })
+      }
+    }
   }
 
   const indexingItems = selectedSite
@@ -273,29 +301,67 @@ const IndexingSettingsPage: React.FC = () => {
           addSiteForm.resetFields()
         }}
         confirmLoading={loading}
+        width={600}
       >
         <Form form={addSiteForm} layout="vertical" onFinish={handleAddSite}>
           <Form.Item
             name="name"
-            label="사이트 이름"
+            label={
+              <span>
+                사이트 이름
+                <Tooltip title="관리용 이름으로, 원하는 이름을 자유롭게 입력하세요.">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
             rules={[{ required: true, message: '사이트 이름을 입력해주세요' }]}
           >
             <Input placeholder="예: 내 블로그" />
           </Form.Item>
 
-          <Form.Item name="domain" label="도메인" rules={[{ required: true, message: '도메인을 입력해주세요' }]}>
-            <Input placeholder="예: example.com" />
+          <Form.Item
+            name="domain"
+            label={
+              <span>
+                도메인
+                <Tooltip title="사이트 URL을 입력하면 자동으로 추출됩니다.">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
+            rules={[{ required: true, message: '도메인을 입력해주세요' }]}
+          >
+            <Text
+              style={{
+                display: 'block',
+                padding: '4px 11px',
+                minHeight: '32px',
+                lineHeight: '24px',
+                border: '1px solid #d9d9d9',
+                borderRadius: '6px',
+                backgroundColor: '#f5f5f5',
+              }}
+            >
+              {Form.useWatch('domain', addSiteForm) || '도메인이 자동으로 추출됩니다'}
+            </Text>
           </Form.Item>
 
           <Form.Item
             name="siteUrl"
-            label="사이트 URL"
+            label={
+              <span>
+                사이트 URL
+                <Tooltip title="전체 URL을 입력해주세요 (예: https://example.com)">
+                  <InfoCircleOutlined style={{ marginLeft: 8, color: '#999' }} />
+                </Tooltip>
+              </span>
+            }
             rules={[
               { required: true, message: '사이트 URL을 입력해주세요' },
               { type: 'url', message: '올바른 URL 형식을 입력해주세요' },
             ]}
           >
-            <Input placeholder="예: https://example.com" />
+            <Input placeholder="예: https://example.com" onChange={handleSiteUrlChange} />
           </Form.Item>
         </Form>
       </Modal>
