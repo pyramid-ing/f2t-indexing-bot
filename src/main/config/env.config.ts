@@ -98,7 +98,7 @@ export class EnvConfig {
     process.env.PRISMA_QUERY_ENGINE_BINARY = enginePath
     process.env.PRISMA_QUERY_ENGINE_LIBRARY = libPath
     process.env.COOKIE_DIR = path.join(this.userDataCustomPath, 'cookies')
-    process.env.ICON_DIR = path.join(this.userDataCustomPath, 'tray-icons')
+    process.env.ICON_DIR = path.join(this.userDataCustomPath, 'tray_icons')
   }
 
   private static initializeDatabase() {
