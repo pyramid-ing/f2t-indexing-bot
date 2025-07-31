@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - 수정된 버그를 여기에 추가
 
+## [1.2.0]
+사이트맵 날짜별 자동 색인
+
 ## [1.1.3]
 Tray추가
 
