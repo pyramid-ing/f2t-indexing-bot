@@ -40,6 +40,7 @@ export class EnvConfig {
     if (this.isPackaged) {
       this.setupPackagedEnvironment()
       this.initializeDatabase()
+      this.initializeTrayIcon()
 
       LoggerConfig.info('=== Application Start ===')
       LoggerConfig.logSystemInfo()
@@ -97,6 +98,7 @@ export class EnvConfig {
     process.env.PRISMA_QUERY_ENGINE_BINARY = enginePath
     process.env.PRISMA_QUERY_ENGINE_LIBRARY = libPath
     process.env.COOKIE_DIR = path.join(this.userDataCustomPath, 'cookies')
+    process.env.ICON_DIR = path.join(this.userDataCustomPath, 'tray-icons')
   }
 
   private static initializeDatabase() {
@@ -116,6 +118,34 @@ export class EnvConfig {
       }
     } catch (error) {
       LoggerConfig.error(`데이터베이스 초기화 중 오류:`, error)
+    }
+  }
+
+  private static initializeTrayIcon() {
+    try {
+      if (this.isPackaged) {
+        const iconDir = process.env.ICON_DIR
+        if (!iconDir) {
+          LoggerConfig.warn('ICON_DIR 환경 변수가 설정되지 않았습니다.')
+          return
+        }
+
+        // 아이콘 디렉토리 생성
+        if (!fs.existsSync(iconDir)) {
+          fs.mkdirSync(iconDir, { recursive: true })
+        }
+
+        // 아이콘 파일 복사
+        const sourceIconPath = path.join(this.resourcePath, 'static', 'assets', 'tray-icon.png')
+        const targetIconPath = path.join(iconDir, 'tray-icon.png')
+
+        if (fs.existsSync(sourceIconPath) && !fs.existsSync(targetIconPath)) {
+          fs.copyFileSync(sourceIconPath, targetIconPath)
+          LoggerConfig.info(`트레이 아이콘 복사 완료: ${targetIconPath}`)
+        }
+      }
+    } catch (error) {
+      LoggerConfig.error(`트레이 아이콘 초기화 중 오류:`, error)
     }
   }
 
