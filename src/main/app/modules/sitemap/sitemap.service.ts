@@ -26,9 +26,12 @@ export class SitemapService {
   async createSitemapConfig(siteId: number, data: CreateSitemapConfigDto): Promise<any> {
     return this.prisma.sitemapConfig.create({
       data: {
-        siteId,
+        name: data.name,
         sitemapType: data.sitemapType,
         isEnabled: data.isEnabled ?? true,
+        site: {
+          connect: { id: siteId },
+        },
       },
       include: { site: true },
     })
@@ -40,7 +43,11 @@ export class SitemapService {
   async updateSitemapConfig(id: string, data: UpdateSitemapConfigDto): Promise<any> {
     return this.prisma.sitemapConfig.update({
       where: { id: parseInt(id) },
-      data,
+      data: {
+        name: data.name,
+        sitemapType: data.sitemapType,
+        isEnabled: data.isEnabled,
+      },
       include: { site: true },
     })
   }

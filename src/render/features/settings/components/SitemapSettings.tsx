@@ -13,6 +13,7 @@ import {
   message,
   Select,
   DatePicker,
+  Input,
 } from 'antd'
 import {
   CalendarOutlined,
@@ -43,7 +44,6 @@ const SITEMAP_TYPES = [
     value: 'wordpress',
     label: '워드프레스 (RankMath SEO)',
     description: '워드프레스 RankMath SEO 사이트맵',
-    disabled: true,
   },
 ]
 
@@ -103,6 +103,7 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
   const handleEditConfig = (config: SitemapConfig) => {
     setEditingConfig(config)
     form.setFieldsValue({
+      name: config.name,
       sitemapType: config.sitemapType,
       isEnabled: config.isEnabled,
     })
@@ -288,7 +289,11 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
                     <Space>
                       <Text strong>{getSitemapTypeLabel(config.sitemapType)}</Text>
                       <Tag color="blue">{getSitemapTypeLabel(config.sitemapType)}</Tag>
-                      {config.isEnabled ? <Tag color="green">자동색인중</Tag> : <Tag color="default">자동색인 비활성</Tag>}
+                      {config.isEnabled ? (
+                        <Tag color="green">자동색인중</Tag>
+                      ) : (
+                        <Tag color="default">자동색인 비활성</Tag>
+                      )}
                     </Space>
                   }
                   description={
@@ -317,13 +322,20 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
       >
         <Form form={form} layout="vertical" onFinish={handleSaveConfig}>
           <Form.Item
+            name="name"
+            label="사이트맵 설정명"
+            rules={[{ required: true, message: '사이트맵 설정명을 입력해주세요' }]}
+          >
+            <Input placeholder="사이트맵 설정명을 입력하세요" />
+          </Form.Item>
+          <Form.Item
             name="sitemapType"
             label="사이트맵 타입"
             rules={[{ required: true, message: '사이트맵 타입을 선택해주세요' }]}
           >
             <Select placeholder="사이트맵 타입을 선택하세요">
               {SITEMAP_TYPES.map(type => (
-                <Option key={type.value} value={type.value} disabled={type.disabled}>
+                <Option key={type.value} value={type.value}>
                   <div>
                     <div>{type.label}</div>
                     <div style={{ fontSize: '12px', color: '#999' }}>{type.description}</div>
