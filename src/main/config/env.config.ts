@@ -136,7 +136,7 @@ export class EnvConfig {
         }
 
         // 아이콘 파일 복사
-        const sourceIconPath = path.join(this.resourcePath, 'static', 'assets', 'tray-icon.png')
+        const sourceIconPath = path.join(this.resourcePath, 'resources', 'tray_icons', 'tray-icon.png')
         const targetIconPath = path.join(iconDir, 'tray-icon.png')
 
         if (fs.existsSync(sourceIconPath) && !fs.existsSync(targetIconPath)) {
