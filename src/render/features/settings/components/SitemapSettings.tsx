@@ -48,13 +48,6 @@ const SITEMAP_TYPES = [
   },
 ]
 
-const INDEXING_MODES = [
-  { value: 'recentCount', label: '최근 N개 글', description: '최신 글 N개만 색인' },
-  { value: 'recentDays', label: '최근 N일', description: '최근 N일 이내 글만 색인' },
-  { value: 'fromDate', label: '특정 날짜 이후', description: '특정 날짜 이후 글만 색인' },
-  { value: 'all', label: '전체 색인', description: '모든 글 색인 (권장하지 않음)' },
-]
-
 interface SitemapSettingsProps {
   siteId: number
 }
@@ -62,8 +55,8 @@ interface SitemapSettingsProps {
 export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
   const [configs, setConfigs] = useState<SitemapConfig[]>([])
   const [indexingConfig, setIndexingConfig] = useState<IndexingConfig>({
-    mode: 'recentCount',
-    count: 50,
+    mode: 'fromDate',
+    startDate: dayjs().format('YYYY-MM-DD'),
   })
   const [modalVisible, setModalVisible] = useState(false)
   const [indexingModalVisible, setIndexingModalVisible] = useState(false)
@@ -157,10 +150,8 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
       setLoading(true)
 
       const config: IndexingConfig = {
-        mode: values.mode,
-        count: values.count,
-        days: values.days,
-        startDate: values.startDate ? dayjs(values.startDate).format('YYYY-MM-DD') : undefined,
+        mode: 'fromDate',
+        startDate: values.startDate ? dayjs(values.startDate).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD'),
       }
 
       await sitemapApi.updateIndexingConfig(siteId, config)
@@ -197,24 +188,8 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
     return found ? found.label : type
   }
 
-  const getIndexingModeLabel = (mode: string) => {
-    const found = INDEXING_MODES.find(m => m.value === mode)
-    return found ? found.label : mode
-  }
-
   const getIndexingConfigDescription = () => {
-    switch (indexingConfig.mode) {
-      case 'recentCount':
-        return `최근 ${indexingConfig.count || 50}개 글 색인`
-      case 'recentDays':
-        return `최근 ${indexingConfig.days || 7}일 이내 글 색인`
-      case 'fromDate':
-        return `${indexingConfig.startDate || '날짜 미설정'} 이후 글 색인`
-      case 'all':
-        return '전체 글 색인'
-      default:
-        return '설정되지 않음'
-    }
+    return `${indexingConfig.startDate || '날짜 미설정'} 이후 글 색인`
   }
 
   if (loading && configs.length === 0) {
@@ -379,70 +354,25 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
         onOk={indexingForm.submit}
         onCancel={() => setIndexingModalVisible(false)}
         confirmLoading={loading}
-        width={600}
+        width={500}
       >
+        <div style={{ marginBottom: '16px' }}>
+          <Text type="secondary">색인할 글의 시작 날짜를 설정하세요. 이 날짜 이후에 작성된 글들만 색인됩니다.</Text>
+        </div>
         <Form
           form={indexingForm}
           layout="vertical"
           onFinish={handleSaveIndexingConfig}
           initialValues={{
-            mode: indexingConfig.mode,
-            count: indexingConfig.count,
-            days: indexingConfig.days,
-            startDate: indexingConfig.startDate ? dayjs(indexingConfig.startDate) : undefined,
+            startDate: indexingConfig.startDate ? dayjs(indexingConfig.startDate) : dayjs(),
           }}
         >
-          <Form.Item name="mode" label="색인 모드" rules={[{ required: true, message: '색인 모드를 선택해주세요' }]}>
-            <Select placeholder="색인 모드를 선택하세요">
-              {INDEXING_MODES.map(mode => (
-                <Option key={mode.value} value={mode.value}>
-                  <div>
-                    <div>{mode.label}</div>
-                    <div style={{ fontSize: '12px', color: '#999' }}>{mode.description}</div>
-                  </div>
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-
-          <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.mode !== currentValues.mode}>
-            {({ getFieldValue }) => {
-              const mode = getFieldValue('mode')
-
-              return (
-                <>
-                  {mode === 'recentCount' && (
-                    <Form.Item
-                      name="count"
-                      label="색인할 글 개수"
-                      rules={[{ required: true, message: '개수를 입력해주세요' }]}
-                    >
-                      <Input type="number" min={1} max={1000} placeholder="예: 50" />
-                    </Form.Item>
-                  )}
-
-                  {mode === 'recentDays' && (
-                    <Form.Item
-                      name="days"
-                      label="색인할 기간 (일)"
-                      rules={[{ required: true, message: '일수를 입력해주세요' }]}
-                    >
-                      <Input type="number" min={1} max={365} placeholder="예: 7" />
-                    </Form.Item>
-                  )}
-
-                  {mode === 'fromDate' && (
-                    <Form.Item
-                      name="startDate"
-                      label="시작 날짜"
-                      rules={[{ required: true, message: '시작 날짜를 선택해주세요' }]}
-                    >
-                      <DatePicker style={{ width: '100%' }} placeholder="시작 날짜를 선택하세요" />
-                    </Form.Item>
-                  )}
-                </>
-              )
-            }}
+          <Form.Item
+            name="startDate"
+            label="시작 날짜"
+            rules={[{ required: true, message: '시작 날짜를 선택해주세요' }]}
+          >
+            <DatePicker style={{ width: '100%' }} placeholder="시작 날짜를 선택하세요" format="YYYY-MM-DD" />
           </Form.Item>
         </Form>
       </Modal>
