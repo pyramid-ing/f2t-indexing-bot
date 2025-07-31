@@ -1,5 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { Typography, Select, Form, Button, Space, Card, Tabs, Modal, message, Switch, Input, Tooltip, Alert } from 'antd'
+import {
+  Typography,
+  Select,
+  Form,
+  Button,
+  Space,
+  Card,
+  Tabs,
+  Modal,
+  message,
+  Switch,
+  Input,
+  Tooltip,
+  Alert,
+} from 'antd'
 import { PlusOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons'
 import { useNavigate } from 'react-router-dom'
 import { BingSettings, DaumSettings, GeneralSettings, GoogleSettings, NaverSettings } from '@render/features/settings'

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Form, Select, Switch, Spin, Alert, Space, Typography } from 'antd'
+import { Form, Select, Switch, Spin, Alert, Typography } from 'antd'
 import { Site } from '@render/api/siteConfigApi'
 import { getAllNaverAccounts, NaverAccount } from '@render/api/naverAccountApi'
 

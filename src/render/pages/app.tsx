@@ -11,6 +11,7 @@ const App: React.FC = () => {
     <AppLayout>
       <Routes>
         <Route path="/" element={<IndexingDashboardPage />} />
+        <Route path="/dashboard" element={<IndexingDashboardPage />} />
         <Route path="/indexing-settings" element={<IndexingSettingsPage />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/naver-accounts" element={<NaverAccountPage />} />
