@@ -112,7 +112,7 @@ function setupTray(win: BrowserWindow) {
           minWidth: 800,
           minHeight: 600,
           autoHideMenuBar: true,
-          icon: process.env.ICON_DIR ? join(process.env.ICON_DIR, 'tray-icon.png') : join(__dirname, '../../resources/tray_icons/tray-icon.png'),
+          icon: process.env.ICON_DIR,
           webPreferences: {
             contextIsolation: true,
             preload: join(__dirname, '../preload/index.cjs'),
