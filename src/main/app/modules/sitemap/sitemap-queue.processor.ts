@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Cron, CronExpression } from '@nestjs/schedule'
+import { Cron } from '@nestjs/schedule'
 import { PrismaService } from '../common/prisma/prisma.service'
 import { IndexJobService } from '../index-job/index-job.service'
 import * as xml2js from 'xml2js'
@@ -230,10 +230,10 @@ export class SitemapQueueProcessor {
   }
 
   /**
-   * 1분마다 실행되는 cron 작업
+   * 10분마다 실행되는 cron 작업
    * 활성화된 사이트맵들을 파싱하고 새로운 URL들을 인덱싱 작업으로 생성
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron('0 */10 * * * *')
   async parseSitemaps(): Promise<void> {
     this.logger.log('Sitemap 파싱 작업 시작')
 

@@ -9,13 +9,11 @@ export interface SitemapConfig {
 }
 
 export interface CreateSitemapConfigDto {
-  name: string
   sitemapType: string
   isEnabled?: boolean
 }
 
 export interface UpdateSitemapConfigDto {
-  name?: string
   sitemapType?: string
   isEnabled?: boolean
 }

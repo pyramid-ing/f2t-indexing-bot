@@ -24,10 +24,9 @@ export class SitemapService {
    * 사이트맵 설정 생성
    */
   async createSitemapConfig(siteId: number, data: CreateSitemapConfigDto): Promise<any> {
-    return await this.prisma.sitemapConfig.create({
+    return this.prisma.sitemapConfig.create({
       data: {
         siteId,
-        name: data.name,
         sitemapType: data.sitemapType,
         isEnabled: data.isEnabled ?? true,
       },

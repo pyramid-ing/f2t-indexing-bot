@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import {
   Form,
-  Input,
   Switch,
   Button,
   Alert,
@@ -104,7 +103,6 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
   const handleEditConfig = (config: SitemapConfig) => {
     setEditingConfig(config)
     form.setFieldsValue({
-      name: config.name,
       sitemapType: config.sitemapType,
       isEnabled: config.isEnabled,
     })
@@ -288,9 +286,9 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
                 <List.Item.Meta
                   title={
                     <Space>
-                      <Text strong>{config.name}</Text>
+                      <Text strong>{getSitemapTypeLabel(config.sitemapType)}</Text>
                       <Tag color="blue">{getSitemapTypeLabel(config.sitemapType)}</Tag>
-                      {config.isEnabled ? <Tag color="green">활성</Tag> : <Tag color="default">비활성</Tag>}
+                      {config.isEnabled ? <Tag color="green">자동색인중</Tag> : <Tag color="default">자동색인 비활성</Tag>}
                     </Space>
                   }
                   description={
@@ -319,13 +317,6 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
       >
         <Form form={form} layout="vertical" onFinish={handleSaveConfig}>
           <Form.Item
-            name="name"
-            label="사이트맵 이름"
-            rules={[{ required: true, message: '사이트맵 이름을 입력해주세요' }]}
-          >
-            <Input placeholder="예: 메인 사이트맵, 블로그 사이트맵" />
-          </Form.Item>
-          <Form.Item
             name="sitemapType"
             label="사이트맵 타입"
             rules={[{ required: true, message: '사이트맵 타입을 선택해주세요' }]}
@@ -341,7 +332,7 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
               ))}
             </Select>
           </Form.Item>
-          <Form.Item name="isEnabled" label="활성화" valuePropName="checked" initialValue={true}>
+          <Form.Item name="isEnabled" label="자동색인" valuePropName="checked" initialValue={true}>
             <Switch />
           </Form.Item>
         </Form>
