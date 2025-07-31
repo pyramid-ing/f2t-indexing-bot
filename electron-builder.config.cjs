@@ -14,7 +14,7 @@ const config = {
     {
       provider: 'github',
       owner: 'pyramid-ing',
-      repo: 'f2t-indexing-pc',
+      repo: 'f2t-indexing-bot',
       releaseType: 'release',
     },
   ],
