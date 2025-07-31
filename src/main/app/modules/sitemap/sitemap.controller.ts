@@ -1,6 +1,13 @@
 import { Controller, Get, Post, Put, Delete, Param, Body, Query } from '@nestjs/common'
 import { SitemapService } from './sitemap.service'
 
+interface IndexingConfig {
+  mode: 'recentCount' | 'recentDays' | 'fromDate' | 'all'
+  count?: number
+  days?: number
+  startDate?: string
+}
+
 @Controller('sitemap')
 export class SitemapController {
   constructor(private readonly sitemapService: SitemapService) {}
@@ -17,15 +24,7 @@ export class SitemapController {
    * 사이트맵 설정 생성
    */
   @Post('configs/:siteId')
-  async createSitemapConfig(
-    @Param('siteId') siteId: string,
-    @Body()
-    data: {
-      name: string
-      sitemapType: string
-      isEnabled?: boolean
-    },
-  ) {
+  async createSitemapConfig(@Param('siteId') siteId: string, @Body() data: any) {
     return await this.sitemapService.createSitemapConfig(parseInt(siteId), data)
   }
 
@@ -51,6 +50,22 @@ export class SitemapController {
   @Delete('configs/:id')
   async deleteSitemapConfig(@Param('id') id: string) {
     return await this.sitemapService.deleteSitemapConfig(id)
+  }
+
+  /**
+   * 사이트의 색인 기준 설정 가져오기
+   */
+  @Get('indexing-config/:siteId')
+  async getIndexingConfig(@Param('siteId') siteId: string) {
+    return await this.sitemapService.getIndexingConfig(parseInt(siteId))
+  }
+
+  /**
+   * 사이트의 색인 기준 설정 업데이트
+   */
+  @Put('indexing-config/:siteId')
+  async updateIndexingConfig(@Param('siteId') siteId: string, @Body() config: any) {
+    return await this.sitemapService.updateIndexingConfig(parseInt(siteId), config)
   }
 
   /**

@@ -4,62 +4,200 @@ import { PrismaService } from '../common/prisma/prisma.service'
 import { IndexJobService } from '../index-job/index-job.service'
 import * as xml2js from 'xml2js'
 import axios from 'axios'
-
-interface SitemapUrl {
-  loc: string
-  lastmod?: string
-}
-
-// 플랫폼별 사이트맵 처리기 인터페이스
-interface SitemapProcessor {
-  canProcess(sitemapType: string): boolean
-  processSitemap(xmlText: string, baseUrl: string): Promise<SitemapUrl[]>
-}
+import {
+  SitemapUrl,
+  IndexingConfig,
+  SitemapProcessor,
+  EngineConfig,
+  CreateIndexJobDto,
+  SitemapItem,
+  UrlItem,
+  XmlData,
+} from './sitemap.types'
 
 // 통합 사이트맵 처리기 (모든 플랫폼 지원)
 class DefaultSitemapProcessor implements SitemapProcessor {
+  private readonly logger = new Logger(DefaultSitemapProcessor.name)
+
   canProcess(sitemapType: string): boolean {
-    return ['blogspot', 'tistory', 'wordpress'].includes(sitemapType)
+    return ['blogspot', 'tistory', 'wordpress', 'custom'].includes(sitemapType)
   }
 
-  async processSitemap(xmlText: string, baseUrl: string): Promise<SitemapUrl[]> {
-    const parser = new xml2js.Parser({ explicitArray: false })
+  async processSitemap(xmlText: string, baseUrl: string, indexingConfig?: IndexingConfig): Promise<SitemapUrl[]> {
+    const parser = new xml2js.Parser({
+      explicitArray: false,
+    })
     const data = await parser.parseStringPromise(xmlText)
 
+    // XML 구조 분석 및 처리
+    return this.processXmlData(data, baseUrl, indexingConfig)
+  }
+
+  /**
+   * XML 데이터를 분석하여 적절한 처리기로 라우팅
+   */
+  private async processXmlData(data: XmlData, baseUrl: string, indexingConfig?: IndexingConfig): Promise<SitemapUrl[]> {
     const urls: SitemapUrl[] = []
-    const xmlUrls: string[] = [] // XML URL들을 별도로 수집
 
-    if (data.urlset && data.urlset.url) {
-      const urlArray = Array.isArray(data.urlset.url) ? data.urlset.url : [data.urlset.url]
+    // XML 구조 로깅
+    this.logger.log(`XML 구조 분석: ${Object.keys(data).join(', ')}`)
+    this.logger.log(`Base URL: ${baseUrl}`)
 
-      for (const url of urlArray) {
-        // loc이 있는 URL만 처리
-        if (url.loc && typeof url.loc === 'string') {
-          // XML URL인지 확인 (확장자가 .xml이거나 sitemap이 포함된 경우)
-          if (this.isXmlUrl(url.loc)) {
-            xmlUrls.push(url.loc)
-          } else {
-            urls.push({
-              loc: url.loc,
-              lastmod: url.lastmod || undefined, // lastmod가 없어도 처리
-            })
+    // 1. sitemapindex 처리 (재귀)
+    if (this.isSitemapIndex(data)) {
+      this.logger.log('SitemapIndex 감지 - 재귀 처리 시작')
+
+      // 다양한 네임스페이스에서 sitemap 배열 추출
+      let sitemapArray: SitemapItem[] = []
+      if (data.sitemapindex && data.sitemapindex.sitemap) {
+        sitemapArray = Array.isArray(data.sitemapindex.sitemap)
+          ? data.sitemapindex.sitemap
+          : [data.sitemapindex.sitemap]
+        this.logger.log('표준 sitemapindex 구조 사용')
+      } else if (data['sitemap:sitemapindex'] && data['sitemap:sitemapindex']['sitemap:sitemap']) {
+        sitemapArray = Array.isArray(data['sitemap:sitemapindex']['sitemap:sitemap'])
+          ? data['sitemap:sitemapindex']['sitemap:sitemap']
+          : [data['sitemap:sitemapindex']['sitemap:sitemap']]
+        this.logger.log('네임스페이스 sitemapindex 구조 사용')
+      }
+
+      this.logger.log(`하위 sitemap 개수: ${sitemapArray.length}`)
+
+      for (const sitemap of sitemapArray) {
+        const loc = sitemap.loc || sitemap['sitemap:loc']
+        if (loc && typeof loc === 'string') {
+          try {
+            this.logger.log(`하위 sitemap 처리: ${loc}`)
+            const response = await axios.get(loc)
+            const nestedUrls = await this.processXmlData(await this.parseXml(response.data), loc, indexingConfig)
+            urls.push(...nestedUrls)
+            this.logger.log(`하위 sitemap 처리 완료: ${loc} (${nestedUrls.length}개 URL)`)
+          } catch (error) {
+            this.logger.error(`Sitemap 재귀 처리 실패: ${loc}`, error)
           }
         }
       }
     }
+    // 2. urlset 처리 (최종 URL 리스트)
+    else if (this.isUrlSet(data)) {
+      this.logger.log('UrlSet 감지 - URL 리스트 추출')
 
-    // XML URL들을 재귀적으로 처리
-    for (const xmlUrl of xmlUrls) {
-      try {
-        const response = await axios.get(xmlUrl)
-        const nestedUrls = await this.processSitemap(response.data, xmlUrl)
-        urls.push(...nestedUrls)
-      } catch (error) {
-        console.error(`XML URL 처리 실패: ${xmlUrl}`, error)
+      // 다양한 네임스페이스에서 URL 배열 추출
+      let urlArray: UrlItem[] = []
+      if (data.urlset && data.urlset.url) {
+        urlArray = Array.isArray(data.urlset.url) ? data.urlset.url : [data.urlset.url]
+        this.logger.log('표준 urlset 구조 사용')
+      } else if (data['sitemap:urlset'] && data['sitemap:urlset']['sitemap:url']) {
+        urlArray = Array.isArray(data['sitemap:urlset']['sitemap:url'])
+          ? data['sitemap:urlset']['sitemap:url']
+          : [data['sitemap:urlset']['sitemap:url']]
+        this.logger.log('네임스페이스 urlset 구조 사용')
+      }
+
+      this.logger.log(`URL 개수: ${urlArray.length}`)
+
+      for (const url of urlArray) {
+        const loc = url.loc || url['sitemap:loc']
+        if (loc && typeof loc === 'string') {
+          // XML URL이 아닌 실제 페이지 URL만 처리
+          if (!this.isXmlUrl(loc)) {
+            urls.push({
+              loc,
+              lastmod: url.lastmod || url['sitemap:lastmod'] || undefined,
+            })
+          } else {
+            this.logger.log(`XML URL 건너뜀: ${loc}`)
+          }
+        }
       }
     }
+    // 4. 알 수 없는 형식
+    else {
+      this.logger.warn('알 수 없는 XML 형식:', Object.keys(data))
+      this.logger.warn('사용 가능한 키들:', JSON.stringify(data, null, 2))
+    }
 
-    return urls
+    this.logger.log(`처리된 URL 개수: ${urls.length}`)
+
+    // 5. 색인 기준에 따른 필터링
+    const filteredUrls = this.filterUrlsByIndexingConfig(urls, indexingConfig)
+    this.logger.log(`필터링 후 URL 개수: ${filteredUrls.length}`)
+
+    return filteredUrls
+  }
+
+  /**
+   * XML이 sitemapindex인지 확인
+   */
+  private isSitemapIndex(data: XmlData): boolean {
+    // 다양한 네임스페이스 형태 지원
+    return (
+      (data.sitemapindex && data.sitemapindex.sitemap) ||
+      (data['sitemap:urlset'] && data['sitemap:urlset']['sitemap:sitemap']) ||
+      (data['sitemap:sitemapindex'] && data['sitemap:sitemapindex']['sitemap:sitemap'])
+    )
+  }
+
+  /**
+   * XML이 urlset인지 확인
+   */
+  private isUrlSet(data: XmlData): boolean {
+    // 다양한 네임스페이스 형태 지원
+    return (
+      !!(data.urlset && data.urlset.url) ||
+      !!(data['sitemap:urlset'] && data['sitemap:urlset']['sitemap:url']) ||
+      !!(data['urlset'] && data['urlset']['url'])
+    )
+  }
+
+  /**
+   * XML 파싱 헬퍼 함수
+   */
+  private async parseXml(xmlText: string): Promise<XmlData> {
+    const parser = new xml2js.Parser({
+      explicitArray: false,
+    })
+    return await parser.parseStringPromise(xmlText)
+  }
+
+  /**
+   * 색인 기준에 따라 URL 필터링
+   */
+  private filterUrlsByIndexingConfig(urls: SitemapUrl[], config?: IndexingConfig): SitemapUrl[] {
+    if (!config || config.mode === 'all') {
+      return urls
+    }
+
+    // lastmod 기준으로 정렬 (최신순)
+    const sortedUrls = urls.sort((a, b) => {
+      const dateA = a.lastmod ? new Date(a.lastmod).getTime() : 0
+      const dateB = b.lastmod ? new Date(b.lastmod).getTime() : 0
+      return dateB - dateA
+    })
+
+    switch (config.mode) {
+      case 'recentCount':
+        return sortedUrls.slice(0, config.count || 50)
+
+      case 'recentDays':
+        const cutoffDate = new Date()
+        cutoffDate.setDate(cutoffDate.getDate() - (config.days || 7))
+        return sortedUrls.filter(url => {
+          if (!url.lastmod) return false
+          return new Date(url.lastmod) >= cutoffDate
+        })
+
+      case 'fromDate':
+        if (!config.startDate) return sortedUrls
+        const startDate = new Date(config.startDate)
+        return sortedUrls.filter(url => {
+          if (!url.lastmod) return false
+          return new Date(url.lastmod) >= startDate
+        })
+
+      default:
+        return sortedUrls
+    }
   }
 
   /**
@@ -71,7 +209,9 @@ class DefaultSitemapProcessor implements SitemapProcessor {
       lowerUrl.endsWith('.xml') ||
       lowerUrl.includes('sitemap') ||
       lowerUrl.includes('sitemap_index') ||
-      lowerUrl.includes('sitemap-index')
+      lowerUrl.includes('sitemap-index') ||
+      lowerUrl.includes('rss') ||
+      lowerUrl.includes('feed')
     )
   }
 }
@@ -94,12 +234,12 @@ export class SitemapQueueProcessor {
    * 활성화된 사이트맵들을 파싱하고 새로운 URL들을 인덱싱 작업으로 생성
    */
   @Cron(CronExpression.EVERY_MINUTE)
-  async parseSitemaps() {
+  async parseSitemaps(): Promise<void> {
     this.logger.log('Sitemap 파싱 작업 시작')
 
     try {
       // 활성화된 사이트맵 설정들을 조회
-      const sitemapConfigs = await this.prisma.sitemapConfig.findMany({
+      const sitemapConfigs = await (this.prisma as any).sitemapConfig.findMany({
         where: {
           isEnabled: true,
         },
@@ -119,9 +259,12 @@ export class SitemapQueueProcessor {
   /**
    * 특정 사이트맵 설정을 처리
    */
-  async processSitemapConfig(config: any) {
+  async processSitemapConfig(config: any): Promise<void> {
     try {
       this.logger.log(`사이트맵 "${config.name}" (${config.sitemapType}) 처리 시작`)
+
+      // 색인 기준 설정 파싱
+      const indexingConfig = this.parseIndexingConfig(config.site.indexingConfig)
 
       // sitemap URL 생성
       const sitemapUrl = this.generateSitemapUrl(config.site.siteUrl, config.sitemapType)
@@ -130,14 +273,21 @@ export class SitemapQueueProcessor {
       const response = await axios.get(sitemapUrl)
       const xmlText = response.data
 
+      // Content-Type 확인 (HTML 응답 방지)
+      const contentType = response.headers['content-type'] || ''
+      if (contentType.includes('text/html')) {
+        this.logger.warn(`사이트맵 "${config.name}": HTML 응답 감지, 건너뜀`)
+        return
+      }
+
       // 플랫폼별 처리기 찾기
       const processor = this.processors.find(p => p.canProcess(config.sitemapType))
       if (!processor) {
         throw new Error(`지원하지 않는 사이트맵 타입: ${config.sitemapType}`)
       }
 
-      // 플랫폼별 처리
-      const urls = await processor.processSitemap(xmlText, sitemapUrl)
+      // 플랫폼별 처리 (색인 기준 포함)
+      const urls = await processor.processSitemap(xmlText, sitemapUrl, indexingConfig)
 
       // 새로운 URL들 찾기
       const newUrls = await this.findNewUrls(config.siteId, urls)
@@ -148,14 +298,35 @@ export class SitemapQueueProcessor {
       }
 
       // 마지막 파싱 시간 업데이트
-      await this.prisma.sitemapConfig.update({
+      await (this.prisma as any).sitemapConfig.update({
         where: { id: config.id },
         data: { lastParsed: new Date() },
       })
 
-      this.logger.log(`사이트맵 "${config.name}": ${newUrls.length}개의 새로운 URL 처리 완료`)
+      this.logger.log(`사이트맵 "${config.name}": ${newUrls.length}개의 새로운 URL 처리 완료 (전체: ${urls.length}개)`)
     } catch (error) {
       this.logger.error(`사이트맵 "${config.name}" 처리 중 오류:`, error)
+    }
+  }
+
+  /**
+   * 색인 기준 설정 파싱
+   */
+  private parseIndexingConfig(configStr: string): IndexingConfig {
+    try {
+      const config = JSON.parse(configStr)
+      return {
+        mode: config.mode || 'recentCount',
+        count: config.count || 50,
+        days: config.days || 7,
+        startDate: config.startDate,
+      }
+    } catch {
+      // 기본값 반환
+      return {
+        mode: 'recentCount',
+        count: 50,
+      }
     }
   }
 
@@ -172,6 +343,8 @@ export class SitemapQueueProcessor {
         return `${baseUrl}/sitemap.xml`
       case 'wordpress':
         return `${baseUrl}/sitemap.xml`
+      case 'custom':
+        return `${baseUrl}/sitemap.xml`
       default:
         return `${baseUrl}/sitemap.xml`
     }
@@ -185,7 +358,7 @@ export class SitemapQueueProcessor {
 
     for (const url of urls) {
       // 이미 처리된 URL인지 확인 (IndexJob 테이블에서 체크)
-      const existingJob = await this.prisma.indexJob.findFirst({
+      const existingJob = await (this.prisma as any).indexJob.findFirst({
         where: {
           siteId,
           url: url.loc,
@@ -203,7 +376,7 @@ export class SitemapQueueProcessor {
   /**
    * URL에 대한 인덱싱 작업 생성
    */
-  private async createIndexJobForUrl(site: any, url: SitemapUrl) {
+  private async createIndexJobForUrl(site: any, url: SitemapUrl): Promise<void> {
     try {
       // 각 검색엔진에 대해 인덱싱 작업 생성
       const engines = ['GOOGLE', 'NAVER', 'DAUM', 'BING']
@@ -212,11 +385,12 @@ export class SitemapQueueProcessor {
         const config = this.getEngineConfig(site, engine)
         if (config && config.use) {
           try {
-            await this.indexJobService.create({
+            const createJobDto: CreateIndexJobDto = {
               url: url.loc,
               provider: engine,
               siteId: site.id,
-            })
+            }
+            await this.indexJobService.create(createJobDto)
           } catch (error) {
             this.logger.error(`URL ${url.loc}의 ${engine} 인덱싱 작업 생성 실패:`, error)
           }
@@ -230,8 +404,8 @@ export class SitemapQueueProcessor {
   /**
    * 검색엔진별 설정 가져오기
    */
-  private getEngineConfig(site: any, engine: string) {
-    const configMap = {
+  private getEngineConfig(site: any, engine: string): EngineConfig | null {
+    const configMap: Record<string, string> = {
       GOOGLE: site.googleConfig,
       NAVER: site.naverConfig,
       DAUM: site.daumConfig,
@@ -242,7 +416,7 @@ export class SitemapQueueProcessor {
     if (!configStr) return null
 
     try {
-      return JSON.parse(configStr)
+      return JSON.parse(configStr) as EngineConfig
     } catch {
       return null
     }

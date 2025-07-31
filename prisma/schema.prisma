@@ -45,9 +45,30 @@ model Site {
   daumConfig    String        @default("{}")   // Daum 설정
   bingConfig    String        @default("{}")   // Bing 설정
   
+  // 색인 기준 설정 (JSON 형태로 저장)
+  indexingConfig String       @default("{}")   // 색인 기준 설정: { mode: 'recentCount' | 'recentDays' | 'fromDate', count?: number, days?: number, startDate?: string }
+  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   indexJobs     IndexJob[]
+  sitemapConfigs SitemapConfig[]
+}
+
+// 사이트맵 설정 모델
+model SitemapConfig {
+  id          Int      @id @default(autoincrement())
+  siteId      Int
+  name        String   // 사이트맵 설정명
+  sitemapType String   // 'blogspot' | 'tistory' | 'wordpress' | 'custom'
+  isEnabled   Boolean  @default(true)
+  lastParsed  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // 관계
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
 }
 
 // 기본 Job 모델

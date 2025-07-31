@@ -20,6 +20,13 @@ export interface UpdateSitemapConfigDto {
   isEnabled?: boolean
 }
 
+export interface IndexingConfig {
+  mode: 'recentCount' | 'recentDays' | 'fromDate' | 'all'
+  count?: number
+  days?: number
+  startDate?: string
+}
+
 export interface IndexJob {
   id: string
   url: string
@@ -35,10 +42,12 @@ export interface IndexJob {
 
 export interface IndexJobsResponse {
   jobs: IndexJob[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
 }
 
 export const sitemapApi = {
@@ -60,6 +69,16 @@ export const sitemapApi = {
   // 사이트맵 설정 삭제
   deleteSitemapConfig: (id: string): Promise<void> => {
     return api.delete(`/sitemap/configs/${id}`).then(res => res.data)
+  },
+
+  // 색인 기준 설정 조회
+  getIndexingConfig: (siteId: number): Promise<IndexingConfig> => {
+    return api.get(`/sitemap/indexing-config/${siteId}`).then(res => res.data)
+  },
+
+  // 색인 기준 설정 업데이트
+  updateIndexingConfig: (siteId: number, config: IndexingConfig): Promise<void> => {
+    return api.put(`/sitemap/indexing-config/${siteId}`, config).then(res => res.data)
   },
 
   // 인덱싱 작업 목록 조회
