@@ -391,7 +391,6 @@ export class NaverIndexerService implements OnModuleInit {
 
     const browser: Browser = await chromium.launch({
       headless: useHeadless,
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     })
 
     const page: Page = await browser.newPage()

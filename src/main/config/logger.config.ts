@@ -1,5 +1,4 @@
 // 파일 존재 여부 확인
-import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import electronLog from 'electron-log'
@@ -10,37 +9,29 @@ export class LoggerConfig {
   private static logger = electronLog
 
   public static initialize() {
-    // 로그 파일 경로 설정
-    this.logger.transports.file.resolvePathFn = () => {
-      return path.join(EnvConfig.isPackaged ? app.getPath('logs') : process.cwd(), 'logs/main.log')
+    // 로그 파일 경로 설정 및 파일 로깅은 패키지 상태에서만 적용
+    if (EnvConfig.isPackaged) {
+      this.logger.transports.file.resolvePathFn = () => {
+        return path.join(EnvConfig.isPackaged ? app.getPath('logs') : process.cwd(), 'logs/main.log')
+      }
+      this.logger.transports.file.level = 'info'
+      this.logger.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text} {stack}'
+      this.logger.transports.file.maxSize = 10 * 1024 * 1024
+      this.logger.transports.file.archiveLog = oldFile => {
+        const timestamp = Date.now()
+        return `${oldFile}.${timestamp}`
+      }
+    } else {
+      // 개발환경에서는 파일 로깅 비활성화
+      this.logger.transports.file.level = false
     }
-
     this.logger.transports.console.level = 'info'
-    this.logger.transports.file.level = 'info'
-
-    // 로그 포맷 설정 - 스택 트레이스 포함
-    this.logger.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text} {stack}'
-
-    // 로그 파일 크기 제한 (10MB)
-    this.logger.transports.file.maxSize = 10 * 1024 * 1024
-
-    // 로그 파일 순환 설정
-    this.logger.transports.file.archiveLog = oldFile => {
-      const timestamp = Date.now()
-      return `${oldFile}.${timestamp}`
-    }
 
     // 전역 에러 핸들링 설정
     this.setupErrorHandlers()
-
-    // 초기화 로그
-    this.logger.info('=== Application Start ===')
-    this.logSystemInfo()
-    this.logEnvironmentVariables()
-    this.logPrismaConfig()
   }
 
-  private static logSystemInfo() {
+  static logSystemInfo() {
     this.logger.info('--- System Information ---')
     this.logger.info('App Version:', process.env.npm_package_version)
     this.logger.info('Environment:', process.env.NODE_ENV)
@@ -55,7 +46,7 @@ export class LoggerConfig {
     this.logger.info('User Data Path:', app.getPath('userData'))
   }
 
-  private static logEnvironmentVariables() {
+  static logEnvironmentVariables() {
     this.logger.info('--- Environment Variables ---')
     Object.keys(process.env).forEach(key => {
       // 민감한 정보는 제외
@@ -63,22 +54,6 @@ export class LoggerConfig {
         this.logger.info(`${key}:`, process.env[key])
       }
     })
-  }
-
-  private static logPrismaConfig() {
-    this.logger.info('--- Prisma Configuration ---')
-    this.logger.info('Database URL:', process.env.DATABASE_URL)
-    this.logger.info('Query Engine Binary:', process.env.PRISMA_QUERY_ENGINE_BINARY)
-    this.logger.info('Query Engine Library:', process.env.PRISMA_QUERY_ENGINE_LIBRARY)
-    const enginePath = process.env.PRISMA_QUERY_ENGINE_BINARY
-    const libPath = process.env.PRISMA_QUERY_ENGINE_LIBRARY
-
-    if (enginePath) {
-      this.logger.info('Engine exists:', fs.existsSync(enginePath))
-    }
-    if (libPath) {
-      this.logger.info('Library exists:', fs.existsSync(libPath))
-    }
   }
 
   private static setupErrorHandlers() {

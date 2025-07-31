@@ -90,7 +90,6 @@ export class DaumIndexerService {
     const useHeadless = false
     const browser: Browser = await chromium.launch({
       headless: useHeadless,
-      executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
     })
     const page: Page = await browser.newPage()
 
