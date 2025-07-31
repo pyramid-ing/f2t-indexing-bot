@@ -247,7 +247,7 @@ export const SitemapSettings: React.FC<SitemapSettingsProps> = ({ siteId }) => {
               loading={parsing}
               disabled={configs.length === 0}
             >
-              수동 파싱
+              사이트맵 색인
             </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={handleAddConfig}>
               사이트맵 추가
