@@ -1,12 +1,11 @@
-const { version, description } = require('./package.json')
-
 /**
  * @type {import('electron-builder').Configuration}
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
-  appId: 'com.f2t.indexing',
-  productName: '윈소프트 검색엔진 등록 봇',
+  appId: 'com.winsoft.indexing',
+  productName: 'winsoft-indexing',
+  artifactName: '${productName}-${version}.${ext}',
   directories: {
     output: 'dist/electron',
   },
@@ -15,7 +14,7 @@ const config = {
     {
       provider: 'github',
       owner: 'pyramid-ing',
-      repo: 'f2t-indexing-bot',
+      repo: 'f2t-indexing-pc',
       releaseType: 'release',
     },
   ],
@@ -59,12 +58,14 @@ const config = {
     identity: null,
     hardenedRuntime: false,
     gatekeeperAssess: false,
+    artifactName: '${productName}-${version}-${arch}.${ext}',
   },
   win: {
     icon: 'build/icon.ico',
     target: [
       'nsis',
     ],
+    artifactName: '${productName}-${version}.${ext}',
   },
   nsis: {
     oneClick: false,
@@ -73,6 +74,7 @@ const config = {
     createStartMenuShortcut: true,
     runAfterFinish: true,
     perMachine: true,
+    artifactName: '${productName}-Setup-${version}.${ext}',
   },
 }
 
