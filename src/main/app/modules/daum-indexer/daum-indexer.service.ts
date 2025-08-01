@@ -90,6 +90,7 @@ export class DaumIndexerService {
     const useHeadless = false
     const browser: Browser = await chromium.launch({
       headless: useHeadless,
+      executablePath: process.env.PLAYWRIGHT_BROWSERS_PATH,
     })
     const page: Page = await browser.newPage()
 
